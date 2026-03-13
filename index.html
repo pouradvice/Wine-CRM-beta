@@ -34,8 +34,11 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function loadBrands() {
-  const { data, error } = await supabase.from('brands').select('id, brand_name');
-  if (error) { console.error(error); return; }
+const { data, error } = await supabase
+  .from('brands')
+  .select('id, brand_name');
+
+if (error) console.error('Supabase error fetching brands:', error);
   const select = document.getElementById('brand-select');
   data.forEach(b => {
     const opt = document.createElement('option');
