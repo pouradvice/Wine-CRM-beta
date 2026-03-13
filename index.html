@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pour Advice — Specialist Dossier Generator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display&family=DM+Sans&display=swap">
+<style>
+  body { font-family: 'DM Sans', sans-serif; background: #fafafa; color: #1a1409; padding: 2rem; }
+  h1,h2,h3 { font-family: 'Playfair Display', serif; color: #111; }
+  .card { background: #fff; border: 1px solid #d8d8d8; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
+  .product-list { margin-left: 1rem; }
+  a { color: #6b1f2a; text-decoration: none; }
+</style>
+</head>
+<body>
+<h1>Specialist Dossier Generator</h1>
+
+<div class="card">
+  <label for="brand-select">Select Brand:</label>
+  <select id="brand-select"></select>
+</div>
+
+<div class="card">
+  <button id="generate-dossier">Generate Dossier</button>
+</div>
+
+<div id="dossier-output"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://ikbrgwtyzhjmqtadhfia.supabase.co;
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrYnJnd3R5emhqbXF0YWRoZmlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTU5MDUsImV4cCI6MjA4ODk5MTkwNX0.MK5SXriCTOC3CLOhO6Cy3MC_PNh0uzBZRyA1W3Ylo68";
+const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function loadBrands() {
+  const { data, error } = await supabase.from('brands').select('id, brand_name');
+  if (error) { console.error(error); return; }
+  const select = document.getElementById('brand-select');
+  data.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = b.brand_name;
+    select.appendChild(opt);
+  });
+}
+
+async function generateDossier() {
+  const brandId = document.getElementById('brand-select').value;
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      product_name,
+      sku_number,
+      srp,
+      wholesale_price,
+      tech_sheet_url,
+      brand_id,
+      brands (brand_name, story, supplier_id, suppliers(name))
+    `)
+    .eq('brand_id', brandId);
+
+  if (error) { console.error(error); return; }
+
+  const dossierDiv = document.getElementById('dossier-output');
+  dossierDiv.innerHTML = "";
+
+  if (data.length === 0) { dossierDiv.textContent = "No products found for this brand."; return; }
+
+  const brand = data[0].brands;
+  const supplier = data[0].brands.suppliers;
+
+  dossierDiv.innerHTML += `<h2>${brand.brand_name}</h2>`;
+  dossierDiv.innerHTML += `<p><strong>Story:</strong> ${brand.story || "N/A"}</p>`;
+  dossierDiv.innerHTML += `<p><strong>Supplier:</strong> ${supplier.name || "N/A"}</p>`;
+  dossierDiv.innerHTML += `<h3>Products</h3>`;
+  
+  const ul = document.createElement('ul');
+  ul.className = "product-list";
+  data.forEach(p => {
+    const li = document.createElement('li');
+    li.innerHTML = `${p.product_name} (${p.sku_number}) — MSRP: $${p.srp} / Wholesale: $${p.wholesale_price} 
+                    <a href="${p.tech_sheet_url}" target="_blank">Tech Sheet</a>`;
+    ul.appendChild(li);
+  });
+  dossierDiv.appendChild(ul);
+}
+
+document.getElementById('generate-dossier').addEventListener('click', generateDossier);
+loadBrands();
+</script>
+</body>
+</html>
