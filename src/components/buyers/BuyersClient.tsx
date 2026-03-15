@@ -4,21 +4,21 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { upsertBuyer } from '@/lib/data';
+import { upsertContact } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
-import type { Buyer, BuyerInsert, Client } from '@/types';
+import type { Contact, ContactInsert, Account } from '@/types';
 import styles from './BuyersClient.module.css';
 
 interface BuyersClientProps {
-  initialBuyers: Buyer[];
-  activeClients: Client[];
+  initialBuyers: Contact[];
+  activeClients: Account[];
   teamId: string;
 }
 
-interface BuyerForm {
-  client_id: string;
-  contact_name: string;
+interface ContactForm {
+  account_id: string;
+  first_name: string;
   role: string;
   phone: string;
   email: string;
@@ -26,9 +26,9 @@ interface BuyerForm {
   notes: string;
 }
 
-const emptyForm = (): BuyerForm => ({
-  client_id: '',
-  contact_name: '',
+const emptyForm = (): ContactForm => ({
+  account_id: '',
+  first_name: '',
   role: '',
   phone: '',
   email: '',
@@ -36,70 +36,70 @@ const emptyForm = (): BuyerForm => ({
   notes: '',
 });
 
-function buyerToForm(b: Buyer): BuyerForm {
+function contactToForm(c: Contact): ContactForm {
   return {
-    client_id: b.client_id,
-    contact_name: b.contact_name,
-    role: b.role ?? '',
-    phone: b.phone ?? '',
-    email: b.email ?? '',
-    premise_type: b.premise_type ?? '',
-    notes: b.notes ?? '',
+    account_id: c.account_id,
+    first_name: c.first_name,
+    role: c.role ?? '',
+    phone: c.phone ?? '',
+    email: c.email ?? '',
+    premise_type: c.premise_type ?? '',
+    notes: c.notes ?? '',
   };
 }
 
 export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersClientProps) {
   const router = useRouter();
-  const [buyers, setBuyers] = useState<Buyer[]>(initialBuyers);
-  const [clientFilter, setClientFilter] = useState('');
+  const [contacts, setContacts] = useState<Contact[]>(initialBuyers);
+  const [accountFilter, setAccountFilter] = useState('');
   const [search, setSearch] = useState('');
   const [slideoverOpen, setSlideoverOpen] = useState(false);
-  const [editingBuyer, setEditingBuyer] = useState<Buyer | null>(null);
-  const [form, setForm] = useState<BuyerForm>(emptyForm());
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [form, setForm] = useState<ContactForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Partial<BuyerForm>>({});
+  const [errors, setErrors] = useState<Partial<ContactForm>>({});
 
-  // Build unique client list from buyers data
-  const clientsInList = useMemo(() => {
+  // Build unique account list from contacts data
+  const accountsInList = useMemo(() => {
     const seen = new Map<string, string>();
-    buyers.forEach((b) => {
-      if (b.client && !seen.has(b.client_id)) {
-        seen.set(b.client_id, (b.client as Client).company_name);
+    contacts.forEach((c) => {
+      if (c.account && !seen.has(c.account_id)) {
+        seen.set(c.account_id, (c.account as Account).name);
       }
     });
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [buyers]);
+  }, [contacts]);
 
   const filtered = useMemo(() => {
-    return buyers.filter((b) => {
+    return contacts.filter((c) => {
       const q = search.toLowerCase();
-      const matchSearch = !q || b.contact_name.toLowerCase().includes(q);
-      const matchClient = !clientFilter || b.client_id === clientFilter;
-      return matchSearch && matchClient;
+      const matchSearch = !q || c.first_name.toLowerCase().includes(q);
+      const matchAccount = !accountFilter || c.account_id === accountFilter;
+      return matchSearch && matchAccount;
     });
-  }, [buyers, search, clientFilter]);
+  }, [contacts, search, accountFilter]);
 
   const openAdd = () => {
-    setEditingBuyer(null);
+    setEditingContact(null);
     setForm(emptyForm());
     setErrors({});
     setSaveError(null);
     setSlideoverOpen(true);
   };
 
-  const openEdit = (b: Buyer) => {
-    setEditingBuyer(b);
-    setForm(buyerToForm(b));
+  const openEdit = (c: Contact) => {
+    setEditingContact(c);
+    setForm(contactToForm(c));
     setErrors({});
     setSaveError(null);
     setSlideoverOpen(true);
   };
 
   const validate = (): boolean => {
-    const errs: Partial<BuyerForm> = {};
-    if (!form.client_id) errs.client_id = 'Client is required';
-    if (!form.contact_name.trim()) errs.contact_name = 'Contact name is required';
+    const errs: Partial<ContactForm> = {};
+    if (!form.account_id) errs.account_id = 'Account is required';
+    if (!form.first_name.trim()) errs.first_name = 'Contact name is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -111,9 +111,9 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
 
     const sb = createClient();
     try {
-      const payload: BuyerInsert & { id?: string } = {
-        client_id: form.client_id,
-        contact_name: form.contact_name.trim(),
+      const payload: ContactInsert & { id?: string } = {
+        account_id: form.account_id,
+        first_name: form.first_name.trim(),
         role: form.role || null,
         phone: form.phone || null,
         email: form.email || null,
@@ -121,32 +121,32 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
         notes: form.notes || null,
         team_id: teamId,
         is_active: true,
-        ...(editingBuyer ? { id: editingBuyer.id } : {}),
+        ...(editingContact ? { id: editingContact.id } : {}),
       };
 
-      const saved = await upsertBuyer(sb, payload);
+      const saved = await upsertContact(sb, payload);
 
-      // Re-attach client info for display
-      const clientData = activeClients.find((c) => c.id === saved.client_id) ?? null;
-      const savedWithClient: Buyer = { ...saved, client: clientData };
+      // Re-attach account info for display
+      const accountData = activeClients.find((a) => a.id === saved.account_id) ?? null;
+      const savedWithAccount: Contact = { ...saved, account: accountData };
 
-      if (editingBuyer) {
-        setBuyers((prev) => prev.map((b) => (b.id === saved.id ? savedWithClient : b)));
+      if (editingContact) {
+        setContacts((prev) => prev.map((c) => (c.id === saved.id ? savedWithAccount : c)));
       } else {
-        setBuyers((prev) => [savedWithClient, ...prev]);
+        setContacts((prev) => [savedWithAccount, ...prev]);
       }
 
       setSlideoverOpen(false);
       router.refresh();
     } catch (err) {
       const e = err as { error?: string; message?: string };
-      setSaveError(e.error ?? e.message ?? 'Failed to save buyer.');
+      setSaveError(e.error ?? e.message ?? 'Failed to save contact.');
     } finally {
       setSaving(false);
     }
   };
 
-  const setField = <K extends keyof BuyerForm>(key: K, value: BuyerForm[K]) => {
+  const setField = <K extends keyof ContactForm>(key: K, value: ContactForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
@@ -154,8 +154,8 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
   return (
     <>
       <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Buyers</h1>
-        <Button variant="primary" onClick={openAdd}>Add Buyer</Button>
+        <h1 className={styles.pageTitle}>Contacts</h1>
+        <Button variant="primary" onClick={openAdd}>Add Contact</Button>
       </div>
 
       <div className={styles.toolbar}>
@@ -168,11 +168,11 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
         />
         <select
           className={styles.filterSelect}
-          value={clientFilter}
-          onChange={(e) => setClientFilter(e.target.value)}
+          value={accountFilter}
+          onChange={(e) => setAccountFilter(e.target.value)}
         >
-          <option value="">All clients</option>
-          {clientsInList.map(({ id, name }) => (
+          <option value="">All accounts</option>
+          {accountsInList.map(({ id, name }) => (
             <option key={id} value={id}>{name}</option>
           ))}
         </select>
@@ -181,15 +181,15 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
       {filtered.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {search || clientFilter ? 'No buyers match your filters' : 'No buyers yet'}
+            {search || accountFilter ? 'No contacts match your filters' : 'No contacts yet'}
           </p>
           <p className={styles.emptyDesc}>
-            {search || clientFilter
+            {search || accountFilter
               ? 'Try adjusting your search or filter.'
-              : 'Add buyers (sommeliers, GMs, owners) to track who you meet at each account.'}
+              : 'Add contacts (sommeliers, GMs, owners) to track who you meet at each account.'}
           </p>
-          {!search && !clientFilter && (
-            <Button variant="primary" onClick={openAdd}>Add Buyer</Button>
+          {!search && !accountFilter && (
+            <Button variant="primary" onClick={openAdd}>Add Contact</Button>
           )}
         </div>
       ) : (
@@ -198,19 +198,19 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
             <tr>
               <th>Contact Name</th>
               <th>Role</th>
-              <th>Client</th>
+              <th>Account</th>
               <th>Premise Type</th>
               <th>Email</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((b) => (
-              <tr key={b.id} className={styles.tableRow} onClick={() => openEdit(b)}>
-                <td className={styles.nameCell}>{b.contact_name}</td>
-                <td>{b.role ?? '—'}</td>
-                <td>{(b.client as Client | null)?.company_name ?? '—'}</td>
-                <td>{b.premise_type ?? '—'}</td>
-                <td>{b.email ?? '—'}</td>
+            {filtered.map((c) => (
+              <tr key={c.id} className={styles.tableRow} onClick={() => openEdit(c)}>
+                <td className={styles.nameCell}>{c.first_name}</td>
+                <td>{c.role ?? '—'}</td>
+                <td>{(c.account as Account | null)?.name ?? '—'}</td>
+                <td>{c.premise_type ?? '—'}</td>
+                <td>{c.email ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -220,7 +220,7 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
       <Slideover
         open={slideoverOpen}
         onClose={() => setSlideoverOpen(false)}
-        title={editingBuyer ? 'Edit Buyer' : 'Add Buyer'}
+        title={editingContact ? 'Edit Contact' : 'Add Contact'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setSlideoverOpen(false)} disabled={saving}>Cancel</Button>
@@ -231,19 +231,19 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
         <div className={styles.formGrid}>
           <div className={`${styles.formField} ${styles.formGridFull}`}>
             <label className={styles.formLabel}>
-              Client <span className={styles.required}>*</span>
+              Account <span className={styles.required}>*</span>
             </label>
             <select
               className={styles.formSelect}
-              value={form.client_id}
-              onChange={(e) => setField('client_id', e.target.value)}
+              value={form.account_id}
+              onChange={(e) => setField('account_id', e.target.value)}
             >
-              <option value="">Select client…</option>
-              {activeClients.map((c) => (
-                <option key={c.id} value={c.id}>{c.company_name}</option>
+              <option value="">Select account…</option>
+              {activeClients.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
-            {errors.client_id && <span className={styles.formError}>{errors.client_id}</span>}
+            {errors.account_id && <span className={styles.formError}>{errors.account_id}</span>}
           </div>
 
           <div className={`${styles.formField} ${styles.formGridFull}`}>
@@ -252,10 +252,10 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
             </label>
             <input
               className={styles.formInput}
-              value={form.contact_name}
-              onChange={(e) => setField('contact_name', e.target.value)}
+              value={form.first_name}
+              onChange={(e) => setField('first_name', e.target.value)}
             />
-            {errors.contact_name && <span className={styles.formError}>{errors.contact_name}</span>}
+            {errors.first_name && <span className={styles.formError}>{errors.first_name}</span>}
           </div>
 
           <div className={styles.formField}>

@@ -1,7 +1,7 @@
 // src/app/app/crm/clients/page.tsx
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getClients } from '@/lib/data';
+import { getAccounts } from '@/lib/data';
 import { ClientsClient } from '@/components/clients/ClientsClient';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export default async function ClientsPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: clients, count } = await getClients(sb, 'Active', { page: 0, pageSize: 50 });
+  const { data: clients, count } = await getAccounts(sb, 'Active', { page: 0, pageSize: 50 });
 
   const teamId = (user.user_metadata?.team_id as string | undefined) ?? user.id;
 

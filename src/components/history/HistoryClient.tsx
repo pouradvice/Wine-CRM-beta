@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getRecaps } from '@/lib/data';
 import { OutcomeBadge } from '@/components/ui/Badge';
-import type { Recap, Client, Buyer, Product } from '@/types';
+import type { Recap, Account, Contact, Product } from '@/types';
 import styles from './HistoryClient.module.css';
 
 interface HistoryClientProps {
@@ -22,7 +22,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
   const [expandedId, setExpandedId] = useState<string | null>(highlightId);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [clientFilter, setClientFilter] = useState('');
+  const [accountFilter, setAccountFilter] = useState('');
   const [salespersonFilter, setSalespersonFilter] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -35,12 +35,12 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
     }
   }, [highlightId]);
 
-  // Build unique clients list from recaps
-  const clientsInList = useMemo(() => {
+  // Build unique accounts list from recaps
+  const accountsInList = useMemo(() => {
     const seen = new Map<string, string>();
     recaps.forEach((r) => {
-      if (r.client && !seen.has(r.client_id)) {
-        seen.set(r.client_id, (r.client as Client).company_name);
+      if (r.account && !seen.has(r.account_id)) {
+        seen.set(r.account_id, (r.account as Account).name);
       }
     });
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
@@ -50,13 +50,13 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
     return recaps.filter((r) => {
       const matchFrom = !fromDate || r.visit_date >= fromDate;
       const matchTo = !toDate || r.visit_date <= toDate;
-      const matchClient = !clientFilter || r.client_id === clientFilter;
+      const matchAccount = !accountFilter || r.account_id === accountFilter;
       const matchSalesperson =
         !salespersonFilter ||
         r.salesperson.toLowerCase().includes(salespersonFilter.toLowerCase());
-      return matchFrom && matchTo && matchClient && matchSalesperson;
+      return matchFrom && matchTo && matchAccount && matchSalesperson;
     });
-  }, [recaps, fromDate, toDate, clientFilter, salespersonFilter]);
+  }, [recaps, fromDate, toDate, accountFilter, salespersonFilter]);
 
   const applyFilters = async () => {
     setLoading(true);
@@ -65,7 +65,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
       const result = await getRecaps(sb, {
         from: fromDate || undefined,
         to: toDate || undefined,
-        clientId: clientFilter || undefined,
+        accountId: accountFilter || undefined,
         salesperson: salespersonFilter || undefined,
         page: 0,
         pageSize: 50,
@@ -106,14 +106,14 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
           />
         </div>
         <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Client</label>
+          <label className={styles.filterLabel}>Account</label>
           <select
             className={styles.filterSelect}
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
           >
-            <option value="">All clients</option>
-            {clientsInList.map(({ id, name }) => (
+            <option value="">All accounts</option>
+            {accountsInList.map(({ id, name }) => (
               <option key={id} value={id}>{name}</option>
             ))}
           </select>
@@ -162,8 +162,8 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
           {filtered.map((recap) => {
             const isExpanded = expandedId === recap.id;
             const isHighlighted = recap.id === highlightId;
-            const client = recap.client as Client | null;
-            const buyer = recap.buyer as Buyer | null;
+            const account = recap.account as Account | null;
+            const contact = recap.contact as Contact | null;
             const products = recap.recap_products ?? [];
 
             return (
@@ -182,9 +182,9 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                 >
                   <span className={styles.recapDate}>{recap.visit_date}</span>
                   <div className={styles.recapMeta}>
-                    <span className={styles.recapClient}>{client?.company_name ?? '—'}</span>
-                    {buyer && (
-                      <span className={styles.recapBuyer}>with {buyer.contact_name}</span>
+                    <span className={styles.recapClient}>{account?.name ?? '—'}</span>
+                    {contact && (
+                      <span className={styles.recapBuyer}>with {contact.first_name}</span>
                     )}
                     <span className={styles.recapSalesperson}>{recap.salesperson}</span>
                     <span className={styles.recapType}>{recap.nature}</span>
