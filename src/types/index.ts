@@ -275,3 +275,60 @@ export interface RecapFormState {
   notes: string;
   products: RecapFormProduct[];
 }
+
+// ── Phase 2 types ─────────────────────────────────────────────
+
+export interface DashboardStats {
+  visits_this_week: number;
+  visits_this_month: number;
+  products_shown_this_month: number;
+  overall_conversion_rate: number;
+  open_follow_ups: number;
+  overdue_follow_ups: number;
+}
+
+export interface TopAccount {
+  client_name: string;
+  visit_count: number;
+  last_visit: string;
+}
+
+export interface SalespersonStats {
+  salesperson: string;
+  total_visits: number;
+  unique_accounts: number;
+  products_shown: number;
+  orders: number;
+  avg_probability: number;
+  first_visit: string;
+  last_visit: string;
+}
+
+export interface SalespersonWeeklyTrend {
+  week: string;   // ISO week start date YYYY-MM-DD
+  visits: number;
+}
+
+export interface InactiveAccount {
+  id: string;
+  company_name: string;
+  account_lead: string | null;
+  value_tier: string | null;
+  last_visit: string | null;
+  days_since_visit: number | null;
+}
+
+export interface PipelineHealth {
+  outcome: RecapOutcome;
+  count: number;
+}
+
+export interface ExpenseRecap {
+  visit_date: string;
+  salesperson: string;
+  client_name: string;
+  brand_name: string | null;
+  supplier: string | null;
+  expense_receipt_url: string | null;
+  notes: string | null;
+}

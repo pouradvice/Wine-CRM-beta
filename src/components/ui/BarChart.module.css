@@ -1,0 +1,41 @@
+.figure {
+  margin: 0;
+  padding: 0;
+}
+
+.caption {
+  font-size: 0.75rem;
+  color: var(--ink);
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.rect {
+  fill: var(--wine-light);
+}
+
+.rectCurrent {
+  fill: var(--wine);
+}
+
+.bar:hover .rect,
+.bar:hover .rectCurrent {
+  fill: var(--wine-dark);
+}
+
+.label {
+  font-size: 9px;
+  fill: var(--ink);
+  opacity: 0.55;
+}
+
+.baseline {
+  stroke: var(--mist-dark);
+  stroke-width: 1;
+}

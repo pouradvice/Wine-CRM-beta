@@ -20,6 +20,13 @@ import type {
   PaginatedResult,
   ApiErrorResponse,
   RecapOutcome,
+  DashboardStats,
+  TopAccount,
+  SalespersonStats,
+  SalespersonWeeklyTrend,
+  InactiveAccount,
+  PipelineHealth,
+  ExpenseRecap,
 } from '@/types';
 import { mapDbError } from '@/types';
 
@@ -408,6 +415,338 @@ export async function getProductsByBuyer(
 
   if (error) throw mapDbError(error);
   return (data ?? []) as ProductsByBuyerRow[];
+}
+
+// ── Phase 2: Dashboard & Reporting ────────────────────────────
+
+/** ISO week start (Monday) for any date string. */
+function isoWeekStart(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getUTCDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() + diff);
+  return monday.toISOString().slice(0, 10);
+}
+
+export async function getDashboardStats(sb: SupabaseClient): Promise<DashboardStats> {
+  const now = new Date();
+  const startOfWeek = isoWeekStart(now.toISOString().slice(0, 10));
+  const startOfMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+  const [
+    weekRes,
+    monthRes,
+    productsRes,
+    convRes,
+    openRes,
+    overdueRes,
+  ] = await Promise.all([
+    sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfWeek),
+    sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfMonth),
+    sb.from('recap_products').select('id', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+    sb.from('v_product_performance').select('conversion_rate_pct'),
+    sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open'),
+    sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open').eq('is_overdue', true),
+  ]);
+
+  const rates = (convRes.data ?? [])
+    .map((r) => r.conversion_rate_pct as number | null)
+    .filter((v): v is number => v !== null);
+  const overall_conversion_rate =
+    rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 0;
+
+  return {
+    visits_this_week: weekRes.count ?? 0,
+    visits_this_month: monthRes.count ?? 0,
+    products_shown_this_month: productsRes.count ?? 0,
+    overall_conversion_rate,
+    open_follow_ups: openRes.count ?? 0,
+    overdue_follow_ups: overdueRes.count ?? 0,
+  };
+}
+
+export async function getTopSkus(
+  sb: SupabaseClient,
+  limit = 5,
+): Promise<ProductPerformance[]> {
+  const { data, error } = await sb
+    .from('v_product_performance')
+    .select('*')
+    .gte('times_shown', 1)
+    .order('times_shown', { ascending: false })
+    .limit(limit);
+  if (error) throw mapDbError(error);
+  return (data ?? []) as ProductPerformance[];
+}
+
+export async function getTopAccounts(
+  sb: SupabaseClient,
+  limit = 5,
+): Promise<TopAccount[]> {
+  const { data, error } = await sb
+    .from('recaps')
+    .select('client_id, visit_date, client:clients(company_name)');
+  if (error) throw mapDbError(error);
+
+  // JS-side group by client
+  const map = new Map<string, { client_name: string; visits: string[] }>();
+  for (const row of data ?? []) {
+    const r = row as unknown as {
+      client_id: string;
+      visit_date: string;
+      client: Array<{ company_name: string }> | { company_name: string } | null;
+    };
+    const name = Array.isArray(r.client)
+      ? r.client[0]?.company_name ?? r.client_id
+      : (r.client as { company_name: string } | null)?.company_name ?? r.client_id;
+    if (!map.has(r.client_id)) map.set(r.client_id, { client_name: name, visits: [] });
+    map.get(r.client_id)!.visits.push(r.visit_date);
+  }
+
+  return Array.from(map.values())
+    .map((v) => ({
+      client_name: v.client_name,
+      visit_count: v.visits.length,
+      last_visit: v.visits.sort().at(-1) ?? '',
+    }))
+    .sort((a, b) => b.visit_count - a.visit_count)
+    .slice(0, limit);
+}
+
+export async function getSalespersonStats(
+  sb: SupabaseClient,
+  options?: { salesperson?: string },
+): Promise<SalespersonStats[]> {
+  let query = sb
+    .from('recaps')
+    .select(`
+      id,
+      salesperson,
+      visit_date,
+      client_id,
+      recap_products(outcome, order_probability)
+    `);
+  if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
+
+  const { data, error } = await query;
+  if (error) throw mapDbError(error);
+
+  type RawRow = {
+    id: string;
+    salesperson: string;
+    visit_date: string;
+    client_id: string;
+    recap_products: Array<{ outcome: string; order_probability: number | null }>;
+  };
+
+  const map = new Map<string, {
+    visits: string[];
+    clients: Set<string>;
+    products: number;
+    orders: number;
+    probs: number[];
+  }>();
+
+  for (const row of (data ?? []) as unknown as RawRow[]) {
+    if (!map.has(row.salesperson)) {
+      map.set(row.salesperson, { visits: [], clients: new Set(), products: 0, orders: 0, probs: [] });
+    }
+    const s = map.get(row.salesperson)!;
+    s.visits.push(row.visit_date);
+    s.clients.add(row.client_id);
+    const products = Array.isArray(row.recap_products) ? row.recap_products : [];
+    s.products += products.length;
+    for (const p of products) {
+      if (p.outcome === 'Yes Today') s.orders++;
+      if (p.order_probability !== null) s.probs.push(p.order_probability);
+    }
+  }
+
+  return Array.from(map.entries()).map(([salesperson, s]) => {
+    const sorted = [...s.visits].sort();
+    return {
+      salesperson,
+      total_visits: s.visits.length,
+      unique_accounts: s.clients.size,
+      products_shown: s.products,
+      orders: s.orders,
+      avg_probability: s.probs.length
+        ? Math.round(s.probs.reduce((a, b) => a + b, 0) / s.probs.length)
+        : 0,
+      first_visit: sorted[0] ?? '',
+      last_visit: sorted.at(-1) ?? '',
+    };
+  }).sort((a, b) => b.total_visits - a.total_visits);
+}
+
+export async function getSalespersonWeeklyTrend(
+  sb: SupabaseClient,
+  options?: { salesperson?: string },
+): Promise<SalespersonWeeklyTrend[]> {
+  // Last 12 weeks
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - 84);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  let query = sb
+    .from('recaps')
+    .select('visit_date')
+    .gte('visit_date', cutoffStr);
+  if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
+
+  const { data, error } = await query;
+  if (error) throw mapDbError(error);
+
+  // Build 12-week scaffold (Monday-anchored)
+  const weeks: string[] = [];
+  const now = new Date();
+  const currentMonday = new Date(now);
+  const day = currentMonday.getUTCDay();
+  currentMonday.setUTCDate(currentMonday.getUTCDate() - (day === 0 ? 6 : day - 1));
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(currentMonday);
+    d.setUTCDate(currentMonday.getUTCDate() - i * 7);
+    weeks.push(d.toISOString().slice(0, 10));
+  }
+
+  const counts = new Map<string, number>(weeks.map((w) => [w, 0]));
+  for (const row of data ?? []) {
+    const w = isoWeekStart(row.visit_date);
+    if (counts.has(w)) counts.set(w, counts.get(w)! + 1);
+  }
+
+  return weeks.map((week) => ({ week, visits: counts.get(week) ?? 0 }));
+}
+
+export async function getInactiveAccounts(
+  sb: SupabaseClient,
+  dayThreshold = 60,
+): Promise<InactiveAccount[]> {
+  const [clientsRes, recapsRes] = await Promise.all([
+    sb.from('clients').select('id, company_name, account_lead, value_tier').eq('is_active', true),
+    sb.from('recaps').select('client_id, visit_date').order('visit_date', { ascending: false }),
+  ]);
+  if (clientsRes.error) throw mapDbError(clientsRes.error);
+  if (recapsRes.error) throw mapDbError(recapsRes.error);
+
+  // Latest visit per client
+  const lastVisit = new Map<string, string>();
+  for (const r of recapsRes.data ?? []) {
+    if (!lastVisit.has(r.client_id)) lastVisit.set(r.client_id, r.visit_date);
+  }
+
+  const today = new Date();
+  const results: InactiveAccount[] = [];
+
+  for (const c of clientsRes.data ?? []) {
+    const lv = lastVisit.get(c.id) ?? null;
+    const days = lv
+      ? Math.floor((today.getTime() - new Date(lv).getTime()) / 86400000)
+      : null;
+    if (days === null || days >= dayThreshold) {
+      results.push({
+        id: c.id,
+        company_name: c.company_name,
+        account_lead: c.account_lead ?? null,
+        value_tier: c.value_tier ?? null,
+        last_visit: lv,
+        days_since_visit: days,
+      });
+    }
+  }
+
+  return results.sort((a, b) => {
+    const da = a.days_since_visit ?? 9999;
+    const db = b.days_since_visit ?? 9999;
+    return db - da;
+  });
+}
+
+export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHealth[]> {
+  const { data, error } = await sb
+    .from('v_follow_up_queue')
+    .select('outcome')
+    .eq('status', 'Open');
+  if (error) throw mapDbError(error);
+
+  const map = new Map<string, number>();
+  for (const r of data ?? []) {
+    const o = r.outcome as string;
+    map.set(o, (map.get(o) ?? 0) + 1);
+  }
+
+  return Array.from(map.entries()).map(([outcome, count]) => ({
+    outcome: outcome as RecapOutcome,
+    count,
+  }));
+}
+
+export async function getExpenseRecaps(
+  sb: SupabaseClient,
+  options?: { from?: string; to?: string; supplier?: string },
+): Promise<ExpenseRecap[]> {
+  let query = sb
+    .from('recaps')
+    .select(`
+      visit_date,
+      salesperson,
+      expense_receipt_url,
+      notes,
+      client:clients(company_name),
+      recap_products(
+        product:products(
+          brand:brands(name, supplier)
+        )
+      )
+    `)
+    .not('expense_receipt_url', 'is', null)
+    .order('visit_date', { ascending: false });
+
+  if (options?.from) query = query.gte('visit_date', options.from);
+  if (options?.to) query = query.lte('visit_date', options.to);
+
+  const { data, error } = await query;
+  if (error) throw mapDbError(error);
+
+  type BrandInfo = { name: string | null; supplier: string | null };
+  type RawProduct = { brand: BrandInfo[] | BrandInfo | null };
+  type RawRecap = {
+    visit_date: string;
+    salesperson: string;
+    expense_receipt_url: string | null;
+    notes: string | null;
+    client: Array<{ company_name: string }> | { company_name: string } | null;
+    recap_products: RawProduct[];
+  };
+
+  const rows: ExpenseRecap[] = [];
+  for (const row of (data ?? []) as unknown as RawRecap[]) {
+    const clientName = Array.isArray(row.client)
+      ? row.client[0]?.company_name ?? ''
+      : (row.client as { company_name: string } | null)?.company_name ?? '';
+
+    // Pick first brand from recap_products
+    let brandName: string | null = null;
+    let supplier: string | null = null;
+    for (const rp of row.recap_products ?? []) {
+      const b = Array.isArray(rp.brand) ? rp.brand[0] : rp.brand;
+      if (b) { brandName = b.name; supplier = b.supplier; break; }
+    }
+
+    if (options?.supplier && supplier !== options.supplier) continue;
+
+    rows.push({
+      visit_date: row.visit_date,
+      salesperson: row.salesperson,
+      client_name: clientName,
+      brand_name: brandName,
+      supplier,
+      expense_receipt_url: row.expense_receipt_url,
+      notes: row.notes,
+    });
+  }
+  return rows;
 }
 
 // Re-export error type for API routes

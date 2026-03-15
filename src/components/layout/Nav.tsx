@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { href: '/app/crm/new-recap',   label: 'New Recap' },
   { href: '/app/crm/history',     label: 'History' },
   { href: '/app/crm/follow-ups',  label: 'Follow-Ups' },
-  { href: '/app/crm/reports',     label: 'Reports' },
+  { href: '/app/crm/reports', label: 'Reports' },
 ];
 
 interface NavProps {

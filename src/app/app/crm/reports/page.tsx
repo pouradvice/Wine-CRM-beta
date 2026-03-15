@@ -6,6 +6,14 @@ import {
   getFollowUpQueue,
   getVisitsBySupplier,
   getProductsByBuyer,
+  getDashboardStats,
+  getTopSkus,
+  getTopAccounts,
+  getSalespersonStats,
+  getSalespersonWeeklyTrend,
+  getInactiveAccounts,
+  getPipelineHealth,
+  getExpenseRecaps,
 } from '@/lib/data';
 import { ReportsClient } from '@/components/reports/ReportsClient';
 
@@ -21,11 +29,27 @@ export default async function ReportsPage() {
     { data: followUps },
     visitsBySupplier,
     productsByBuyer,
+    dashboardStats,
+    topSkus,
+    topAccounts,
+    salespersonStats,
+    salespersonTrend,
+    inactiveAccounts,
+    pipelineHealth,
+    expenses,
   ] = await Promise.all([
     getProductPerformance(sb, { page: 0, pageSize: 50 }),
     getFollowUpQueue(sb, { page: 0, pageSize: 100 }),
     getVisitsBySupplier(sb),
     getProductsByBuyer(sb),
+    getDashboardStats(sb),
+    getTopSkus(sb, 5),
+    getTopAccounts(sb, 5),
+    getSalespersonStats(sb),
+    getSalespersonWeeklyTrend(sb),
+    getInactiveAccounts(sb, 60),
+    getPipelineHealth(sb),
+    getExpenseRecaps(sb),
   ]);
 
   return (
@@ -34,6 +58,14 @@ export default async function ReportsPage() {
       followUps={followUps}
       visitsBySupplier={visitsBySupplier}
       productsByBuyer={productsByBuyer}
+      dashboardStats={dashboardStats}
+      topSkus={topSkus}
+      topAccounts={topAccounts}
+      salespersonStats={salespersonStats}
+      salespersonTrend={salespersonTrend}
+      inactiveAccounts={inactiveAccounts}
+      pipelineHealth={pipelineHealth}
+      expenses={expenses}
     />
   );
 }

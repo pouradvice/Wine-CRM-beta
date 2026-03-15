@@ -1,30 +1,62 @@
 'use client';
 // src/components/reports/ReportsClient.tsx
+// Unified reports page with expanded tab bar (Phase 1 + Phase 2 tabs).
 
 import { useState } from 'react';
 import { OutcomeBadge } from '@/components/ui/Badge';
+import { DashboardClient } from './DashboardClient';
+import { SalespersonClient } from './SalespersonClient';
+import { ManagerClient } from './ManagerClient';
+import { ExpensesClient } from './ExpensesClient';
 import type {
   ProductPerformance,
   FollowUpQueueRow,
   VisitsBySupplierRow,
   ProductsByBuyerRow,
+  DashboardStats,
+  TopAccount,
+  SalespersonStats,
+  SalespersonWeeklyTrend,
+  InactiveAccount,
+  PipelineHealth,
+  ExpenseRecap,
 } from '@/types';
 import styles from './ReportsClient.module.css';
 
-type TabId = 'performance' | 'order-queue' | 'by-supplier' | 'by-buyer';
+type TabId =
+  | 'dashboard'
+  | 'salesperson'
+  | 'manager'
+  | 'expenses'
+  | 'performance'
+  | 'by-supplier'
+  | 'by-buyer';
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'performance',  label: 'Product Performance' },
-  { id: 'order-queue', label: 'Order / Follow-Up Queue' },
-  { id: 'by-supplier', label: 'Visits by Supplier' },
-  { id: 'by-buyer',    label: 'Products by Buyer' },
+  { id: 'dashboard',   label: 'Dashboard' },
+  { id: 'salesperson', label: 'Salesperson' },
+  { id: 'manager',     label: 'Manager' },
+  { id: 'expenses',    label: 'Expenses' },
+  { id: 'performance', label: 'Performance' },
+  { id: 'by-supplier', label: 'By Supplier' },
+  { id: 'by-buyer',    label: 'By Buyer' },
 ];
 
 interface ReportsClientProps {
+  // Phase 1
   performance: ProductPerformance[];
   followUps: FollowUpQueueRow[];
   visitsBySupplier: VisitsBySupplierRow[];
   productsByBuyer: ProductsByBuyerRow[];
+  // Phase 2
+  dashboardStats: DashboardStats;
+  topSkus: ProductPerformance[];
+  topAccounts: TopAccount[];
+  salespersonStats: SalespersonStats[];
+  salespersonTrend: SalespersonWeeklyTrend[];
+  inactiveAccounts: InactiveAccount[];
+  pipelineHealth: PipelineHealth[];
+  expenses: ExpenseRecap[];
 }
 
 export function ReportsClient({
@@ -32,23 +64,22 @@ export function ReportsClient({
   followUps,
   visitsBySupplier,
   productsByBuyer,
+  dashboardStats,
+  topSkus,
+  topAccounts,
+  salespersonStats,
+  salespersonTrend,
+  inactiveAccounts,
+  pipelineHealth,
+  expenses,
 }: ReportsClientProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('performance');
+  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
 
-  // Tab 1 — product performance, sorted by conversion rate desc, at least 1 showing
   const perfData = [...performance]
     .filter((p) => p.times_shown >= 1)
     .sort((a, b) => (b.conversion_rate_pct ?? 0) - (a.conversion_rate_pct ?? 0));
 
-  // Tab 2 — follow-ups filtered to Yes Today / Yes Later
-  const orderQueue = followUps
-    .filter((f) => f.outcome === 'Yes Today' || f.outcome === 'Yes Later')
-    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
-
-  // Tab 3 — visits grouped by brand
   const supplierGroups = groupBy(visitsBySupplier, (r) => r.brand_name ?? 'Unknown');
-
-  // Tab 4 — products grouped by client+buyer
   const buyerGroups = groupBy(
     productsByBuyer,
     (r) => `${r.client_name} — ${r.buyer_name ?? 'Unknown buyer'}`,
@@ -70,6 +101,33 @@ export function ReportsClient({
           </button>
         ))}
       </div>
+
+      {activeTab === 'dashboard' && (
+        <DashboardClient
+          stats={dashboardStats}
+          topSkus={topSkus}
+          topAccounts={topAccounts}
+        />
+      )}
+
+      {activeTab === 'salesperson' && (
+        <SalespersonClient
+          allStats={salespersonStats}
+          allTrend={salespersonTrend}
+        />
+      )}
+
+      {activeTab === 'manager' && (
+        <ManagerClient
+          teamStats={salespersonStats}
+          inactiveAccounts={inactiveAccounts}
+          pipelineHealth={pipelineHealth}
+        />
+      )}
+
+      {activeTab === 'expenses' && (
+        <ExpensesClient expenses={expenses} />
+      )}
 
       {activeTab === 'performance' && (
         <>
@@ -110,43 +168,6 @@ export function ReportsClient({
                       <ConversionBar pct={p.conversion_rate_pct ?? 0} />
                     </td>
                     <td>{p.last_shown_date ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
-
-      {activeTab === 'order-queue' && (
-        <>
-          {orderQueue.length === 0 ? (
-            <Empty title="No pending orders" desc="Yes Today and Yes Later outcomes with follow-up dates will appear here." />
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Due Date</th>
-                  <th>Client</th>
-                  <th>Buyer</th>
-                  <th>SKU</th>
-                  <th>Wine</th>
-                  <th>Outcome</th>
-                  <th>Bill Date</th>
-                  <th>Salesperson</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderQueue.map((f) => (
-                  <tr key={f.id}>
-                    <td>{f.due_date ?? '—'}</td>
-                    <td>{f.client_name}</td>
-                    <td>{f.buyer_name ?? '—'}</td>
-                    <td className={styles.skuCell}>{f.sku_number}</td>
-                    <td>{f.wine_name}</td>
-                    <td><OutcomeBadge outcome={f.outcome} /></td>
-                    <td>{f.bill_date ?? '—'}</td>
-                    <td>{f.salesperson}</td>
                   </tr>
                 ))}
               </tbody>
