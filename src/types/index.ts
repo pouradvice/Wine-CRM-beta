@@ -1,335 +1,428 @@
-// src/types/index.ts
-// Shared TypeScript types — mirrors the database schema exactly.
-// All nullable DB columns are typed as `string | null` (not undefined).
+// ============================================================
+// types/index.ts
+// Wine CRM — TypeScript type definitions
+// Aligned with 04_schema_rework.sql
+// ============================================================
 
-export type RecapOutcome =
-  | 'Yes Today'
-  | 'Yes Later'
-  | 'Maybe Later'
-  | 'No'
-  | 'Discussed';
 
-export type ClientStatus = 'Active' | 'Prospective' | 'Former';
-export type FollowUpStatus = 'Open' | 'Snoozed' | 'Completed';
-export type RecapNature = 'Sales Call' | 'Depletion Meeting';
+// ── Shared primitives ────────────────────────────────────────
 
-// ── Pagination ────────────────────────────────────────────────
+export type RecapOutcome     = 'Yes Today' | 'Yes Later' | 'Maybe Later' | 'No' | 'Discussed';
+export type AccountStatus    = 'Active' | 'Prospective' | 'Former';
+export type FollowUpStatus   = 'Open' | 'Snoozed' | 'Completed';
+export type FollowUpType     = 'Call' | 'Visit' | 'Email' | 'Sample';
+export type RecapNature      = 'Sales Call' | 'Depletion Meeting';
+export type UserRole         = 'owner' | 'admin' | 'member';
+export type SupplierUserRole = 'admin' | 'viewer';
+export type ContractStatus   = 'pending' | 'active' | 'expired' | 'terminated';
+export type WineType         = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Dessert' | 'Fortified' | 'Spirit' | 'Other';
+export type AccountType      = 'Restaurant' | 'Retail' | 'Hotel' | 'Bar' | 'Club' | 'Corporate' | 'Other';
+export type PremiseType      = 'On-Premise' | 'Off-Premise';
+export type ValueTier        = 'A' | 'B' | 'C';
+
 export interface PaginationOptions {
-  page?: number;     // 0-indexed, default 0
-  pageSize?: number; // default 50
+  page?:     number;
+  pageSize?: number;
 }
 
 export interface PaginatedResult<T> {
-  data: T[];
-  count: number;     // total rows matching the query (for page count UI)
-}
-
-// ── Error helpers ─────────────────────────────────────────────
-export interface ApiErrorResponse {
-  error: string;
-  code: string;
-}
-
-// Maps Postgres/PostgREST error codes to user-facing messages.
-export function mapDbError(err: unknown): ApiErrorResponse {
-  const e = err as { code?: string; message?: string };
-  switch (e.code) {
-    case '23505':
-      return { error: 'A record with this identifier already exists.', code: '23505' };
-    case '23503':
-      return { error: 'A referenced record was not found.', code: '23503' };
-    case 'PGRST116':
-      return { error: 'Record not found.', code: 'PGRST116' };
-    default:
-      return {
-        error: e.message ?? 'An unexpected error occurred.',
-        code: e.code ?? 'UNKNOWN',
-      };
-  }
-}
-
-// ── Brand ────────────────────────────────────────────────────
-export interface Brand {
-  id: string;
-  name: string;
-  team_id: string;
-  supplier: string | null;
-  country: string | null;
-  region: string | null;
-  website: string | null;
-  notes: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export type BrandInsert = Omit<Brand, 'id' | 'created_at' | 'updated_at'>;
-export type BrandUpdate = Partial<BrandInsert>;
-
-// ── Product ──────────────────────────────────────────────────
-export interface Product {
-  id: string;
-  sku_number: string;
-  wine_name: string;
-  brand_id: string | null;
-  team_id: string;
-  type: string | null;
-  varietal: string | null;
-  country: string | null;
-  region: string | null;
-  appellation: string | null;
-  vintage: string | null;
-  btg_cost: number | null;
-  three_cs_cost: number | null;
-  frontline_cost: number | null;
-  distributor: string | null;
-  tech_sheet_url: string | null;
-  is_active: boolean;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  brand?: Brand | null;
-}
-
-export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'brand'>;
-export type ProductUpdate = Partial<ProductInsert>;
-
-// ── Client ───────────────────────────────────────────────────
-export interface Client {
-  id: string;
-  company_name: string;
-  type: string | null;
-  value_tier: string | null;
-  contact_name: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  commission_pct: number | null;
-  billback_pct: number | null;
-  contract_length: string | null;
-  date_active_from: string | null;
-  date_active_to: string | null;
-  account_lead: string | null;
-  team_id: string;
-  status: ClientStatus;
-  notes: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export type ClientInsert = Omit<Client, 'id' | 'created_at' | 'updated_at'>;
-export type ClientUpdate = Partial<ClientInsert>;
-
-// ── Buyer ────────────────────────────────────────────────────
-export interface Buyer {
-  id: string;
-  client_id: string;
-  team_id: string;
-  contact_name: string;
-  role: string | null;
-  phone: string | null;
-  email: string | null;
-  premise_type: string | null;
-  notes: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  client?: Client | null;
-}
-
-export type BuyerInsert = Omit<Buyer, 'id' | 'created_at' | 'updated_at' | 'client'>;
-export type BuyerUpdate = Partial<BuyerInsert>;
-
-// ── Recap ────────────────────────────────────────────────────
-export interface Recap {
-  id: string;
-  visit_date: string;
-  salesperson: string;
-  user_id: string | null;
-  team_id: string;
-  client_id: string;
-  buyer_id: string | null;
-  nature: RecapNature;
-  expense_receipt_url: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  client?: Client | null;
-  buyer?: Buyer | null;
-  recap_products?: RecapProduct[];
-}
-
-export type RecapInsert = Omit<
-  Recap,
-  'id' | 'created_at' | 'updated_at' | 'client' | 'buyer' | 'recap_products'
->;
-export type RecapUpdate = Partial<RecapInsert>;
-
-// ── RecapProduct ─────────────────────────────────────────────
-export interface RecapProduct {
-  id: string;
-  recap_id: string;
-  product_id: string;
-  outcome: RecapOutcome;
-  order_probability: number | null;
-  buyer_feedback: string | null;
-  follow_up_required: boolean;
-  follow_up_date: string | null;
-  bill_date: string | null;
-  created_at: string;
-  product?: Product | null;
-}
-
-export type RecapProductInsert = Omit<RecapProduct, 'id' | 'created_at' | 'product'>;
-export type RecapProductUpdate = Partial<RecapProductInsert>;
-
-// ── FollowUp ─────────────────────────────────────────────────
-export interface FollowUp {
-  id: string;
-  recap_product_id: string;
-  recap_id: string;
-  client_id: string;
-  product_id: string;
-  due_date: string | null;
-  status: FollowUpStatus;
-  snoozed_until: string | null;
-  completed_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// ── View types ────────────────────────────────────────────────
-export interface ProductPerformance {
-  product_id: string;
-  sku_number: string;
-  wine_name: string;
-  type: string | null;
-  varietal: string | null;
-  brand_name: string | null;
-  distributor: string | null;
-  times_shown: number;
-  orders_placed: number;
-  committed: number;
-  avg_order_probability: number | null;
-  conversion_rate_pct: number | null;
-  last_shown_date: string | null;
-}
-
-export interface FollowUpQueueRow {
-  id: string;
-  due_date: string | null;
-  status: FollowUpStatus;
-  snoozed_until: string | null;
-  client_name: string;
-  buyer_name: string | null;
-  wine_name: string;
-  sku_number: string;
-  recap_date: string;
-  salesperson: string;
-  outcome: RecapOutcome;
-  buyer_feedback: string | null;
-  bill_date: string | null;
-  is_overdue: boolean;
-}
-
-// ── Reports view types ────────────────────────────────────────
-export interface VisitsBySupplierRow {
-  brand_name: string | null;
-  visit_date: string;
-  client_name: string;
-  sku_number: string;
-  wine_name: string;
-  outcome: RecapOutcome;
-  buyer_feedback: string | null;
-  order_probability: number | null;
-}
-
-export interface ProductsByBuyerRow {
-  client_name: string;
-  buyer_name: string | null;
-  sku_number: string;
-  wine_name: string;
-  times_shown: number;
-  last_shown_date: string | null;
-  outcome_history: string | null;
-  orders: number;
-}
-
-// ── Form state for new recap entry ───────────────────────────
-export interface RecapFormProduct {
-  product_id: string;
-  outcome: RecapOutcome;
-  order_probability: number;
-  buyer_feedback: string;
-  follow_up_date: string;
-  bill_date: string;
-}
-
-export interface RecapFormState {
-  visit_date: string;
-  salesperson: string;
-  client_id: string;
-  buyer_id: string;
-  nature: RecapNature;
-  notes: string;
-  products: RecapFormProduct[];
-}
-
-// ── Phase 2 types ─────────────────────────────────────────────
-
-export interface DashboardStats {
-  visits_this_week: number;
-  visits_this_month: number;
-  products_shown_this_month: number;
-  overall_conversion_rate: number;
-  open_follow_ups: number;
-  overdue_follow_ups: number;
-}
-
-export interface TopAccount {
-  client_name: string;
-  visit_count: number;
-  last_visit: string;
-}
-
-export interface SalespersonStats {
-  salesperson: string;
-  total_visits: number;
-  unique_accounts: number;
-  products_shown: number;
-  orders: number;
-  avg_probability: number;
-  first_visit: string;
-  last_visit: string;
-}
-
-export interface SalespersonWeeklyTrend {
-  week: string;   // ISO week start date YYYY-MM-DD
-  visits: number;
-}
-
-export interface InactiveAccount {
-  id: string;
-  company_name: string;
-  account_lead: string | null;
-  value_tier: string | null;
-  last_visit: string | null;
-  days_since_visit: number | null;
-}
-
-export interface PipelineHealth {
-  outcome: RecapOutcome;
+  data:  T[];
   count: number;
 }
 
-export interface ExpenseRecap {
-  visit_date: string;
-  salesperson: string;
-  client_name: string;
-  brand_name: string | null;
-  supplier: string | null;
+export interface ApiErrorResponse {
+  error: string;
+  code:  string;
+}
+
+/** Maps Postgres / PostgREST error codes to user-facing error strings. */
+export function mapDbError(err: { code?: string; message?: string }): string {
+  switch (err.code) {
+    case '23505':    return 'A record with that value already exists.';
+    case '23503':    return 'This record is referenced by other data and cannot be deleted.';
+    case 'PGRST116': return 'Record not found.';
+    default:         return err.message ?? 'An unexpected error occurred.';
+  }
+}
+
+
+// ── Platform layer ───────────────────────────────────────────
+
+export interface Supplier {
+  id:         string;
+  name:       string;
+  country:    string | null;
+  region:     string | null;
+  website:    string | null;
+  notes:      string | null;
+  is_active:  boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SupplierInsert = Omit<Supplier, 'id' | 'created_at' | 'updated_at'>;
+export type SupplierUpdate = Partial<SupplierInsert>;
+
+export interface SupplierUser {
+  id:          string;
+  user_id:     string;
+  supplier_id: string;
+  role:        SupplierUserRole;
+  created_at:  string;
+  // Relations
+  supplier?: Supplier | null;
+}
+
+
+// ── Team administration ──────────────────────────────────────
+
+export interface TeamMember {
+  id:         string;
+  user_id:    string;
+  team_id:    string;
+  role:       UserRole;
+  created_at: string;
+}
+
+export interface SupplierContract {
+  id:             string;
+  team_id:        string;
+  supplier_id:    string;
+  region:         string | null;
+  start_date:     string | null;
+  end_date:       string | null;
+  status:         ContractStatus;
+  commission_pct: number | null;
+  notes:          string | null;
+  created_at:     string;
+  updated_at:     string;
+  // Relations
+  supplier?: Supplier | null;
+}
+
+export type SupplierContractInsert = Omit<SupplierContract, 'id' | 'created_at' | 'updated_at' | 'supplier'>;
+export type SupplierContractUpdate = Partial<SupplierContractInsert>;
+
+
+// ── Catalog ──────────────────────────────────────────────────
+
+export interface Brand {
+  id:          string;
+  team_id:     string;
+  supplier_id: string | null;
+  name:        string;
+  country:     string | null;
+  region:      string | null;
+  description: string | null;
+  website:     string | null;
+  notes:       string | null;
+  is_active:   boolean;
+  created_at:  string;
+  updated_at:  string;
+  // Relations
+  supplier?: Supplier | null;
+}
+
+export type BrandInsert = Omit<Brand, 'id' | 'created_at' | 'updated_at' | 'supplier'>;
+export type BrandUpdate = Partial<BrandInsert>;
+
+export interface Product {
+  id:             string;
+  team_id:        string;
+  brand_id:       string | null;
+  supplier_id:    string | null;   // denormalized from brand.supplier_id via trigger
+  sku_number:     string;
+  wine_name:      string;
+  type:           WineType | null;
+  varietal:       string | null;
+  country:        string | null;
+  region:         string | null;
+  appellation:    string | null;
+  vintage:        string | null;
+  btg_cost:       number | null;
+  three_cs_cost:  number | null;
+  frontline_cost: number | null;
+  distributor:    string | null;
+  tech_sheet_url: string | null;
+  tasting_notes:  string | null;
+  description:    string | null;
+  is_active:      boolean;
+  notes:          string | null;
+  created_at:     string;
+  updated_at:     string;
+  // Relations
+  brand?:    Brand    | null;
+  supplier?: Supplier | null;
+}
+
+export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'brand' | 'supplier'>;
+export type ProductUpdate = Partial<ProductInsert>;
+
+
+// ── CRM ──────────────────────────────────────────────────────
+
+export interface Account {
+  id:               string;
+  team_id:          string;
+  name:             string;
+  type:             AccountType | null;
+  value_tier:       ValueTier | null;
+  phone:            string | null;
+  email:            string | null;
+  address:          string | null;
+  city:             string | null;
+  state:            string | null;
+  country:          string | null;
+  commission_pct:   number | null;
+  billback_pct:     number | null;
+  contract_length:  string | null;
+  date_active_from: string | null;
+  date_active_to:   string | null;
+  account_lead:     string | null;
+  status:           AccountStatus;
+  notes:            string | null;
+  is_active:        boolean;
+  created_at:       string;
+  updated_at:       string;
+}
+
+export type AccountInsert = Omit<Account, 'id' | 'created_at' | 'updated_at'>;
+export type AccountUpdate = Partial<AccountInsert>;
+
+export interface Contact {
+  id:           string;
+  team_id:      string;
+  account_id:   string;
+  first_name:   string;
+  last_name:    string | null;
+  role:         string | null;
+  phone:        string | null;
+  email:        string | null;
+  premise_type: PremiseType | null;
+  notes:        string | null;
+  is_active:    boolean;
+  created_at:   string;
+  updated_at:   string;
+  // Relations
+  account?: Account | null;
+}
+
+export type ContactInsert = Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'account'>;
+export type ContactUpdate = Partial<ContactInsert>;
+
+/** Convenience: full name as a single string. */
+export function contactFullName(c: Pick<Contact, 'first_name' | 'last_name'>): string {
+  return [c.first_name, c.last_name].filter(Boolean).join(' ');
+}
+
+export interface Recap {
+  id:                  string;
+  team_id:             string;
+  account_id:          string;
+  contact_id:          string | null;
+  user_id:             string | null;
+  visit_date:          string;
+  salesperson:         string;
+  nature:              RecapNature;
   expense_receipt_url: string | null;
-  notes: string | null;
+  notes:               string | null;
+  created_at:          string;
+  updated_at:          string;
+  // Relations
+  account?:        Account        | null;
+  contact?:        Contact        | null;
+  recap_products?: RecapProduct[] | null;
+}
+
+export interface RecapProduct {
+  id:                 string;
+  recap_id:           string;
+  product_id:         string;
+  supplier_id:        string | null;   // denormalized via trigger
+  outcome:            RecapOutcome;
+  order_probability:  number | null;
+  buyer_feedback:     string | null;
+  follow_up_required: boolean;
+  follow_up_date:     string | null;
+  bill_date:          string | null;
+  created_at:         string;
+  // Relations
+  product?: Product | null;
+}
+
+export interface FollowUp {
+  id:               string;
+  team_id:          string;
+  recap_product_id: string | null;
+  recap_id:         string | null;
+  account_id:       string;
+  contact_id:       string | null;
+  product_id:       string | null;
+  supplier_id:      string | null;
+  assigned_to:      string | null;
+  due_date:         string | null;
+  type:             FollowUpType;
+  status:           FollowUpStatus;
+  snoozed_until:    string | null;
+  completed_at:     string | null;
+  notes:            string | null;
+  created_at:       string;
+  updated_at:       string;
+}
+
+
+// ── View row types ───────────────────────────────────────────
+
+export interface ProductPerformance {
+  product_id:            string;
+  team_id:               string;
+  sku_number:            string;
+  wine_name:             string;
+  type:                  WineType | null;
+  varietal:              string | null;
+  supplier_id:           string | null;
+  brand_name:            string | null;
+  distributor:           string | null;
+  times_shown:           number;
+  orders_placed:         number;
+  committed:             number;
+  avg_order_probability: number | null;
+  conversion_rate_pct:   number | null;
+  last_shown_date:       string | null;
+}
+
+export interface FollowUpQueueRow {
+  id:             string;
+  team_id:        string;
+  due_date:       string | null;
+  status:         FollowUpStatus;
+  snoozed_until:  string | null;
+  type:           FollowUpType;
+  notes:          string | null;
+  account_name:   string;
+  contact_name:   string;
+  wine_name:      string | null;
+  sku_number:     string | null;
+  recap_date:     string | null;
+  salesperson:    string | null;
+  outcome:        RecapOutcome | null;
+  buyer_feedback: string | null;
+  bill_date:      string | null;
+  is_overdue:     boolean;
+}
+
+export interface SupplierPlacementRow {
+  supplier_id:       string;
+  recap_product_id:  string;
+  outcome:           RecapOutcome;
+  order_probability: number | null;
+  buyer_feedback:    string | null;
+  bill_date:         string | null;
+  visit_date:        string;
+  nature:            RecapNature;
+  account_name:      string;
+  account_type:      AccountType | null;
+  account_city:      string | null;
+  account_state:     string | null;
+  wine_name:         string;
+  sku_number:        string;
+  vintage:           string | null;
+  wine_type:         WineType | null;
+  brand_name:        string;
+  supplier_name:     string;
+}
+
+export interface ProductsByContactRow {
+  contact_id:      string;
+  contact_name:    string;
+  account_name:    string;
+  sku_number:      string;
+  wine_name:       string;
+  type:            WineType | null;
+  times_shown:     number;
+  last_shown:      string | null;
+  outcome_history: string | null;
+  orders:          number;
+}
+
+export interface VisitsBySupplierRow {
+  supplier_id:   string | null;
+  supplier_name: string | null;
+  brand_name:    string | null;
+  total_visits:  number;
+  orders_placed: number;
+}
+
+
+// ── Dashboard / analytics ────────────────────────────────────
+
+export interface DashboardStats {
+  total_accounts:      number;
+  active_follow_ups:   number;
+  visits_this_month:   number;
+  conversion_rate_pct: number | null;
+}
+
+export interface TopAccount {
+  account_id:    string;
+  account_name:  string;
+  total_visits:  number;
+  orders_placed: number;
+}
+
+export interface SalespersonStats {
+  salesperson:   string;
+  total_visits:  number;
+  orders_placed: number;
+  accounts_seen: number;
+}
+
+export interface SalespersonWeeklyTrend {
+  salesperson: string;
+  week_start:  string;
+  visit_count: number;
+}
+
+export interface InactiveAccount {
+  account_id:      string;
+  account_name:    string;
+  last_visit_date: string | null;
+  days_inactive:   number;
+}
+
+export interface PipelineHealth {
+  outcome:      RecapOutcome;
+  count:        number;
+  pct_of_total: number;
+}
+
+export interface ExpenseRecap {
+  recap_id:            string;
+  visit_date:          string;
+  salesperson:         string;
+  account_name:        string;
+  expense_receipt_url: string;
+}
+
+
+// ── Form state ───────────────────────────────────────────────
+
+export interface RecapFormProduct {
+  product_id:        string;
+  outcome:           RecapOutcome;
+  order_probability: number | null;
+  buyer_feedback:    string | null;
+  follow_up_date:    string | null;
+  bill_date:         string | null;
+}
+
+export interface RecapFormState {
+  visit_date:          string;
+  salesperson:         string;
+  account_id:          string;
+  contact_id:          string | null;
+  nature:              RecapNature;
+  expense_receipt_url: string | null;
+  notes:               string | null;
+  products:            RecapFormProduct[];
 }
