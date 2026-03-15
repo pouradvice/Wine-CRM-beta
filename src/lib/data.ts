@@ -140,6 +140,7 @@ export async function getProducts(
     brandId?:         string;
     supplierId?:      string;
     search?:          string;
+    limit?:           number;
   } & PaginationOptions,
 ): Promise<PaginatedResult<Product>> {
   const [from, to] = pageRange(options?.page, options?.pageSize);
