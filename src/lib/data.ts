@@ -55,7 +55,7 @@ export async function upsertBrand(
 ): Promise<Brand> {
   const { data, error } = await sb
     .from('brands')
-    .upsert(brand)
+    .upsert(brand, { onConflict: 'name,team_id' })
     .select()
     .single();
   if (error) throw mapDbError(error);
@@ -112,10 +112,12 @@ export async function upsertProduct(
   sb: SupabaseClient,
   product: ProductInsert & { id?: string },
 ): Promise<Product> {
+  // Use id as conflict target for edits, sku_number+team_id for new products.
+  const onConflict = product.id ? 'id' : 'sku_number,team_id';
   const { data, error } = await sb
     .from('products')
-    .upsert(product, { onConflict: 'sku_number' })
-    .select()
+    .upsert(product, { onConflict })
+    .select('*, brand:brands(*)')
     .single();
   if (error) throw mapDbError(error);
   return data;

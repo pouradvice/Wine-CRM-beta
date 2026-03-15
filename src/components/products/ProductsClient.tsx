@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { upsertProduct, archiveProduct } from '@/lib/data';
+import { upsertProduct, upsertBrand, archiveProduct } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type { Product, ProductInsert } from '@/types';
@@ -135,10 +135,37 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
 
     const sb = createClient();
     try {
+      // Resolve brand: find existing by name+team or create a new one
+      let brandId: string | null = null;
+      if (form.brand_name.trim()) {
+        const { data: existing } = await sb
+          .from('brands')
+          .select('id')
+          .eq('name', form.brand_name.trim())
+          .eq('team_id', teamId)
+          .maybeSingle();
+
+        if (existing) {
+          brandId = existing.id as string;
+        } else {
+          const newBrand = await upsertBrand(sb, {
+            name: form.brand_name.trim(),
+            team_id: teamId,
+            is_active: true,
+            supplier: null,
+            country: null,
+            region: null,
+            website: null,
+            notes: null,
+          });
+          brandId = newBrand.id;
+        }
+      }
+
       const payload: ProductInsert & { id?: string } = {
         sku_number: form.sku_number.trim(),
         wine_name: form.wine_name.trim(),
-        brand_id: null,
+        brand_id: brandId,
         team_id: teamId,
         type: form.type || null,
         varietal: form.varietal || null,
