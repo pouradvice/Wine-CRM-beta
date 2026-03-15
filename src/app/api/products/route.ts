@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-    const mapped = mapDbError(err);
+    const mapped = mapDbError(err as { code?: string; message?: string });
     return NextResponse.json(mapped, { status: statusFromCode(mapped.code) });
   }
 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const product = await upsertProduct(sb, body);
     return NextResponse.json(product, { status: 201 });
   } catch (err) {
-    const mapped = mapDbError(err);
+    const mapped = mapDbError(err as { code?: string; message?: string });
     return NextResponse.json(mapped, { status: statusFromCode(mapped.code) });
   }
 }

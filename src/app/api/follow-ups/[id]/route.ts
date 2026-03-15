@@ -19,7 +19,7 @@ export async function PATCH(
     await updateFollowUpStatus(sb, id, body);
     return NextResponse.json({ success: true });
   } catch (err) {
-    const mapped = mapDbError(err);
+    const mapped = mapDbError(err as { code?: string; message?: string });
     const status =
       mapped.code === 'PGRST116' ? 404 :
       mapped.code === '23505' ? 409 :
