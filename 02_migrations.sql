@@ -265,10 +265,10 @@ CREATE INDEX IF NOT EXISTS idx_follow_ups_status_due_date
 
 DO $$
 DECLARE
-  v_phase1_team_id UUID := 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID;
+  v_phase1_team_id UUID := '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
 BEGIN
   -- Validate that the placeholder was replaced
-  IF v_phase1_team_id = 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID THEN
+  IF v_phase1_team_id = '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID THEN
     RAISE EXCEPTION 'Replace the placeholder UUID in the team_id scaffold block before running.';
   END IF;
 END $$;
@@ -294,11 +294,11 @@ CREATE INDEX idx_team_members_team_id ON team_members (team_id);
 
 -- Add team_id column to the four tenant-scoped tables
 -- Using a fixed default so existing rows are backfilled automatically.
--- Replace 'REPLACE_WITH_YOUR_GENERATED_UUID' with your actual UUID below too.
-ALTER TABLE clients  ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID;
-ALTER TABLE recaps   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID;
-ALTER TABLE buyers   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT 'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID;
+-- Replace '92c8a6be-e267-4ffe-a305-90fc0a5f57b2' with your actual UUID below too.
+ALTER TABLE clients  ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE recaps   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE buyers   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
 
 CREATE INDEX IF NOT EXISTS idx_clients_team_id  ON clients  (team_id);
 CREATE INDEX IF NOT EXISTS idx_products_team_id ON products (team_id);
@@ -335,13 +335,13 @@ CREATE POLICY "team_scoped" ON buyers
   WITH CHECK (team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid()));
 
 -- ── Seed the Phase 1 team member ─────────────────────────────
--- Replace 'REPLACE_WITH_YOUR_AUTH_USER_UUID' with your actual user UUID
+-- Replace '3368fa98-4829-447f-9723-11b178d1c015' with your actual user UUID
 -- from Supabase Dashboard → Authentication → Users.
--- Replace 'REPLACE_WITH_YOUR_GENERATED_UUID' with your team UUID.
+-- Replace '92c8a6be-e267-4ffe-a305-90fc0a5f57b2' with your team UUID.
 INSERT INTO team_members (user_id, team_id, role)
 VALUES (
-  'REPLACE_WITH_YOUR_AUTH_USER_UUID'::UUID,
-  'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID,
+  '3368fa98-4829-447f-9723-11b178d1c015'::UUID,
+  '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID,
   'owner'
 )
 ON CONFLICT (user_id, team_id) DO NOTHING;
