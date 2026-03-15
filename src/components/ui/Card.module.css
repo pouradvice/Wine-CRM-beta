@@ -1,0 +1,43 @@
+/* src/components/ui/Card.module.css */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--mist);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.headerAction {
+  flex-shrink: 0;
+}
+
+.body {
+  padding: var(--space-6);
+}
+
+.footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--mist);
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

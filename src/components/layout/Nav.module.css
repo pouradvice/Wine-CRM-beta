@@ -1,0 +1,214 @@
+/* src/components/layout/Nav.module.css */
+
+.nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--mist);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  height: 56px;
+  gap: var(--space-6);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--wine);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wordmark:hover {
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: block;
+}
+
+.tabLink {
+  display: block;
+  padding: 0 var(--space-4);
+  height: 56px;
+  line-height: 56px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px; /* overlap nav bottom border */
+}
+
+.tabLink:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tabLinkActive {
+  color: var(--wine);
+  border-bottom-color: var(--wine);
+}
+
+/* User area */
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.userName {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signOutBtn {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.signOutBtn:hover {
+  color: var(--wine);
+  border-color: var(--wine);
+}
+
+/* Hamburger (mobile only) */
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.hamburgerIcon {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 20px;
+}
+
+.hamburgerIcon span {
+  display: block;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: transform 0.2s;
+}
+
+/* Mobile dropdown */
+.mobileMenu {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--mist);
+  box-shadow: var(--shadow-md);
+  z-index: 99;
+  padding: var(--space-2) 0;
+}
+
+.mobileLink {
+  display: block;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.mobileLink:hover {
+  background: var(--cream);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.mobileLinkActive {
+  color: var(--wine);
+  border-left-color: var(--wine);
+  background: var(--parchment);
+}
+
+.mobileDivider {
+  height: 1px;
+  background: var(--mist);
+  margin: var(--space-2) 0;
+}
+
+.mobileUserArea {
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobileUserName {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .tabs {
+    display: none;
+  }
+
+  .userArea {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+    margin-left: auto;
+  }
+}

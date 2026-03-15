@@ -1,29 +1,38 @@
-// src/app/api/buyers/route.ts
-// GET  /api/buyers?clientId=&page=0&pageSize=50
-// POST /api/buyers
-//
-// The GET with clientId is called by RecapForm when a client is selected,
-// replacing the pre-loaded buyers prop that was previously passed from the
-// server component.
+// src/app/api/products/route.ts
+// GET  /api/products?search=&limit=20&page=0&pageSize=50&includeInactive=false&brandId=
+// POST /api/products
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getBuyers, upsertBuyer } from '@/lib/data';
+import { getProducts, upsertProduct } from '@/lib/data';
 import { mapDbError } from '@/types';
-import type { BuyerInsert } from '@/types';
+import type { ProductInsert } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
     const sb = await createClient();
     const { searchParams } = new URL(request.url);
 
-    const clientId = searchParams.get('clientId') ?? undefined;
+    const search = searchParams.get('search') ?? undefined;
+    const includeInactive = searchParams.get('includeInactive') === 'true';
+    const brandId = searchParams.get('brandId') ?? undefined;
     const page = searchParams.get('page') ? Number(searchParams.get('page')) : 0;
     const pageSize = searchParams.get('pageSize')
       ? Number(searchParams.get('pageSize'))
       : 50;
+    const limit = searchParams.get('limit')
+      ? Math.min(Number(searchParams.get('limit')), 100)
+      : undefined;
 
-    const result = await getBuyers(sb, clientId, { page, pageSize });
+    const result = await getProducts(sb, {
+      includeInactive,
+      brandId,
+      search,
+      page,
+      pageSize,
+      limit,
+    });
+
     return NextResponse.json(result);
   } catch (err) {
     const mapped = mapDbError(err);
@@ -34,9 +43,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const sb = await createClient();
-    const body: BuyerInsert = await request.json();
-    const buyer = await upsertBuyer(sb, body);
-    return NextResponse.json(buyer, { status: 201 });
+    const body: ProductInsert = await request.json();
+    const product = await upsertProduct(sb, body);
+    return NextResponse.json(product, { status: 201 });
   } catch (err) {
     const mapped = mapDbError(err);
     return NextResponse.json(mapped, { status: statusFromCode(mapped.code) });
