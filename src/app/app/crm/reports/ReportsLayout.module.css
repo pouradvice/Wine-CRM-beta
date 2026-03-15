@@ -1,0 +1,43 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+
+.subNav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--mist-dark);
+  background: var(--cream);
+  padding: 0 1.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subLink {
+  display: inline-block;
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ink);
+  opacity: 0.6;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.subLink:hover {
+  opacity: 0.85;
+}
+
+.subLinkActive {
+  opacity: 1;
+  color: var(--wine);
+  border-bottom-color: var(--wine);
+}
+
+.content {
+  padding: 1.5rem;
+}

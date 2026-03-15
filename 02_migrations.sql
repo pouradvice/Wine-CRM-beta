@@ -336,3 +336,27 @@ VALUES (
   'owner'
 )
 ON CONFLICT (user_id, team_id) DO NOTHING;
+
+
+-- ════════════════════════════════════════════════════════════════
+-- PHASE 2 MIGRATIONS
+-- Run each block in the Supabase SQL editor in order.
+-- ════════════════════════════════════════════════════════════════
+
+-- ── Phase 2 · Item 1 ─────────────────────────────────────────
+-- Replace broken edge-function refresh with a pg_cron job.
+-- pg_cron is enabled by default on Supabase Pro and above.
+-- Run in SQL editor; confirm with: SELECT * FROM cron.job;
+--
+-- SELECT cron.schedule(
+--   'refresh-analytics',
+--   '*/15 * * * *',
+--   $$
+--     REFRESH MATERIALIZED VIEW CONCURRENTLY v_product_performance;
+--     REFRESH MATERIALIZED VIEW CONCURRENTLY v_follow_up_queue;
+--     REFRESH MATERIALIZED VIEW CONCURRENTLY v_products_by_buyer;
+--   $$
+-- );
+--
+-- To remove an existing schedule with the same name first:
+-- SELECT cron.unschedule('refresh-analytics');

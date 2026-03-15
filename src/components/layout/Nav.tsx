@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { href: '/app/crm/new-recap',   label: 'New Recap' },
   { href: '/app/crm/history',     label: 'History' },
   { href: '/app/crm/follow-ups',  label: 'Follow-Ups' },
-  { href: '/app/crm/reports',     label: 'Reports' },
+  { href: '/app/crm/reports/dashboard', label: 'Reports' },
 ];
 
 interface NavProps {
@@ -26,7 +26,11 @@ export function Nav({ displayName }: NavProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (href: string) => pathname.startsWith(href);
+  const isActive = (href: string) => {
+    // For the Reports link, highlight when anywhere under /app/crm/reports
+    if (href.startsWith('/app/crm/reports')) return pathname.startsWith('/app/crm/reports');
+    return pathname.startsWith(href);
+  };
 
   const handleSignOut = async () => {
     const sb = createClient();
