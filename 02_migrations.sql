@@ -263,15 +263,6 @@ CREATE INDEX IF NOT EXISTS idx_follow_ups_status_due_date
 -- Run that query in your Supabase SQL editor first and paste the result.
 -- ============================================================
 
-DO $$
-DECLARE
-  v_phase1_team_id UUID := '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
-BEGIN
-  -- Validate that the placeholder was replaced
-  IF v_phase1_team_id = '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID THEN
-    RAISE EXCEPTION 'Replace the placeholder UUID in the team_id scaffold block before running.';
-  END IF;
-END $$;
 
 -- team_members table
 CREATE TABLE IF NOT EXISTS team_members (
