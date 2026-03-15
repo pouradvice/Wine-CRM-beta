@@ -18,7 +18,7 @@ const PADDING_X = 8;
 export default function BarChart({ data, label }: BarChartProps) {
   if (!data.length) return null;
 
-  const maxVal = Math.max(...data.map((d) => d.visits), 1);
+  const maxVal = Math.max(...data.map((d) => d.visit_count), 1);
   const barWidth = (WIDTH - PADDING_X * 2) / data.length;
   const gap = barWidth * 0.2;
 
@@ -32,20 +32,20 @@ export default function BarChart({ data, label }: BarChartProps) {
         role="img"
       >
         {data.map((d, i) => {
-          const barH = Math.max(2, Math.round((d.visits / maxVal) * BAR_AREA_HEIGHT));
+          const barH = Math.max(2, Math.round((d.visit_count / maxVal) * BAR_AREA_HEIGHT));
           const x = PADDING_X + i * barWidth + gap / 2;
           const w = barWidth - gap;
           const y = BAR_AREA_HEIGHT - barH;
           const isLast = i === data.length - 1;
           // Label: just MM/DD
-          const dateParts = d.week.split('-');
+          const dateParts = d.week_start.split('-');
           const shortLabel = dateParts.length === 3
             ? `${dateParts[1]}/${dateParts[2]}`
-            : d.week;
+            : d.week_start;
 
           return (
-            <g key={d.week} className={styles.bar}>
-              <title>{`Week of ${d.week}: ${d.visits} visit${d.visits !== 1 ? 's' : ''}`}</title>
+            <g key={d.week_start} className={styles.bar}>
+              <title>{`Week of ${d.week_start}: ${d.visit_count} visit${d.visit_count !== 1 ? 's' : ''}`}</title>
               <rect
                 x={x}
                 y={y}

@@ -23,12 +23,10 @@ export function DashboardClient({ stats, topSkus, topAccounts }: Props) {
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const tiles: KpiTile[] = [
-    { label: 'Visits this week',        value: stats.visits_this_week },
-    { label: 'Visits this month',       value: stats.visits_this_month },
-    { label: 'Products shown (month)',  value: stats.products_shown_this_month },
-    { label: 'Conversion rate',         value: `${stats.overall_conversion_rate}%` },
-    { label: 'Open follow-ups',         value: stats.open_follow_ups },
-    { label: 'Overdue follow-ups',      value: stats.overdue_follow_ups, accent: stats.overdue_follow_ups > 0 },
+    { label: 'Total accounts',   value: stats.total_accounts },
+    { label: 'Visits this month', value: stats.visits_this_month },
+    { label: 'Active follow-ups', value: stats.active_follow_ups },
+    { label: 'Conversion rate',   value: stats.conversion_rate_pct != null ? `${stats.conversion_rate_pct}%` : '—' },
   ];
 
   const handleGenerateSummary = async () => {
@@ -138,15 +136,15 @@ export function DashboardClient({ stats, topSkus, topAccounts }: Props) {
                 <tr>
                   <th>Account</th>
                   <th>Visits</th>
-                  <th>Last Visit</th>
+                  <th>Orders</th>
                 </tr>
               </thead>
               <tbody>
                 {topAccounts.map((a) => (
-                  <tr key={a.client_name}>
-                    <td>{a.client_name}</td>
-                    <td>{a.visit_count}</td>
-                    <td>{a.last_visit}</td>
+                  <tr key={a.account_id}>
+                    <td>{a.account_name}</td>
+                    <td>{a.total_visits}</td>
+                    <td>{a.orders_placed}</td>
                   </tr>
                 ))}
               </tbody>

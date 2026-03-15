@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { upsertProduct, upsertBrand, archiveProduct } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
-import type { Product, ProductInsert } from '@/types';
+import type { Product, ProductInsert, WineType } from '@/types';
 import styles from './ProductsClient.module.css';
 
 const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Spirit', 'Other'];
@@ -152,7 +152,8 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
             name: form.brand_name.trim(),
             team_id: teamId,
             is_active: true,
-            supplier: null,
+            supplier_id: null,
+            description: null,
             country: null,
             region: null,
             website: null,
@@ -167,7 +168,7 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
         wine_name: form.wine_name.trim(),
         brand_id: brandId,
         team_id: teamId,
-        type: form.type || null,
+        type: (form.type as WineType) || null,
         varietal: form.varietal || null,
         country: form.country || null,
         region: form.region || null,
@@ -179,6 +180,9 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
         distributor: form.distributor || null,
         tech_sheet_url: form.tech_sheet_url || null,
         notes: form.notes || null,
+        supplier_id: null,
+        description: null,
+        tasting_notes: null,
         is_active: form.is_active,
         ...(editingProduct ? { id: editingProduct.id } : {}),
       };

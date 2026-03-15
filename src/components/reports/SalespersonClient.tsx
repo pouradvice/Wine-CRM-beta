@@ -71,12 +71,8 @@ export function SalespersonClient({ allStats, allTrend }: Props) {
                 <tr>
                   <th>Salesperson</th>
                   <th>Total Visits</th>
-                  <th>Unique Accounts</th>
-                  <th>Products Shown</th>
-                  <th>Orders</th>
-                  <th>Avg Probability</th>
-                  <th>First Visit</th>
-                  <th>Last Visit</th>
+                  <th>Accounts Seen</th>
+                  <th>Orders Placed</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,12 +80,8 @@ export function SalespersonClient({ allStats, allTrend }: Props) {
                   <tr key={s.salesperson}>
                     <td className={styles.bold}>{s.salesperson}</td>
                     <td>{s.total_visits}</td>
-                    <td>{s.unique_accounts}</td>
-                    <td>{s.products_shown}</td>
-                    <td>{s.orders}</td>
-                    <td>{s.avg_probability}%</td>
-                    <td>{s.first_visit}</td>
-                    <td>{s.last_visit}</td>
+                    <td>{s.accounts_seen}</td>
+                    <td>{s.orders_placed}</td>
                   </tr>
                 ))}
               </tbody>
