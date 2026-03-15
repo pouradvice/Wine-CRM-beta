@@ -12,7 +12,7 @@ import type {
   ProductPerformance,
   FollowUpQueueRow,
   VisitsBySupplierRow,
-  ProductsByBuyerRow,
+  ProductsByContactRow,
   DashboardStats,
   TopAccount,
   SalespersonStats,
@@ -30,7 +30,7 @@ type TabId =
   | 'expenses'
   | 'performance'
   | 'by-supplier'
-  | 'by-buyer';
+  | 'by-contact';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'dashboard',   label: 'Dashboard' },
@@ -39,7 +39,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'expenses',    label: 'Expenses' },
   { id: 'performance', label: 'Performance' },
   { id: 'by-supplier', label: 'By Supplier' },
-  { id: 'by-buyer',    label: 'By Buyer' },
+  { id: 'by-contact',  label: 'By Contact' },
 ];
 
 interface ReportsClientProps {
@@ -47,7 +47,7 @@ interface ReportsClientProps {
   performance: ProductPerformance[];
   followUps: FollowUpQueueRow[];
   visitsBySupplier: VisitsBySupplierRow[];
-  productsByBuyer: ProductsByBuyerRow[];
+  productsByContact: ProductsByContactRow[];
   // Phase 2
   dashboardStats: DashboardStats;
   topSkus: ProductPerformance[];
@@ -63,7 +63,7 @@ export function ReportsClient({
   performance,
   followUps,
   visitsBySupplier,
-  productsByBuyer,
+  productsByContact,
   dashboardStats,
   topSkus,
   topAccounts,
@@ -80,9 +80,9 @@ export function ReportsClient({
     .sort((a, b) => (b.conversion_rate_pct ?? 0) - (a.conversion_rate_pct ?? 0));
 
   const supplierGroups = groupBy(visitsBySupplier, (r) => r.brand_name ?? 'Unknown');
-  const buyerGroups = groupBy(
-    productsByBuyer,
-    (r) => `${r.client_name} — ${r.buyer_name ?? 'Unknown buyer'}`,
+  const contactGroups = groupBy(
+    productsByContact,
+    (r) => `${r.account_name} — ${r.contact_name ?? 'Unknown contact'}`,
   );
 
   return (
@@ -184,35 +184,20 @@ export function ReportsClient({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Visit Date</th>
-                  <th>Account</th>
-                  <th>SKU</th>
-                  <th>Wine Name</th>
-                  <th>Outcome</th>
-                  <th>Feedback</th>
-                  <th className={styles.numCell}>Probability</th>
+                  <th>Supplier</th>
+                  <th>Brand</th>
+                  <th className={styles.numCell}>Total Visits</th>
+                  <th className={styles.numCell}>Orders Placed</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(supplierGroups).map(([brand, rows]) => (
-                  <>
-                    <tr key={`header-${brand}`} className={styles.groupHeader}>
-                      <td colSpan={7}>{brand}</td>
-                    </tr>
-                    {rows.map((r, i) => (
-                      <tr key={`${brand}-${i}`}>
-                        <td>{r.visit_date}</td>
-                        <td>{r.client_name}</td>
-                        <td className={styles.skuCell}>{r.sku_number}</td>
-                        <td>{r.wine_name}</td>
-                        <td><OutcomeBadge outcome={r.outcome} /></td>
-                        <td>{r.buyer_feedback ?? '—'}</td>
-                        <td className={styles.numCell}>
-                          {r.order_probability != null ? `${r.order_probability}%` : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </>
+                {visitsBySupplier.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.supplier_name ?? '—'}</td>
+                    <td>{r.brand_name ?? '—'}</td>
+                    <td className={styles.numCell}>{r.total_visits}</td>
+                    <td className={styles.numCell}>{r.orders_placed}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -220,10 +205,10 @@ export function ReportsClient({
         </>
       )}
 
-      {activeTab === 'by-buyer' && (
+      {activeTab === 'by-contact' && (
         <>
-          {productsByBuyer.length === 0 ? (
-            <Empty title="No buyer data yet" desc="Products shown to buyers will appear here." />
+          {productsByContact.length === 0 ? (
+            <Empty title="No contact data yet" desc="Products shown to contacts will appear here." />
           ) : (
             <table className={styles.table}>
               <thead>
@@ -237,17 +222,17 @@ export function ReportsClient({
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(buyerGroups).map(([buyerKey, rows]) => (
+                {Object.entries(contactGroups).map(([contactKey, rows]) => (
                   <>
-                    <tr key={`header-${buyerKey}`} className={styles.groupHeader}>
-                      <td colSpan={6}>{buyerKey}</td>
+                    <tr key={`header-${contactKey}`} className={styles.groupHeader}>
+                      <td colSpan={6}>{contactKey}</td>
                     </tr>
                     {rows.map((r, i) => (
-                      <tr key={`${buyerKey}-${i}`}>
+                      <tr key={`${contactKey}-${i}`}>
                         <td className={styles.skuCell}>{r.sku_number}</td>
                         <td>{r.wine_name}</td>
                         <td className={styles.numCell}>{r.times_shown}</td>
-                        <td>{r.last_shown_date ?? '—'}</td>
+                        <td>{r.last_shown ?? '—'}</td>
                         <td>{r.outcome_history ?? '—'}</td>
                         <td className={styles.numCell}>{r.orders}</td>
                       </tr>

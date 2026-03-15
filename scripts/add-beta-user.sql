@@ -1,48 +1,30 @@
 -- ============================================================
--- Pour Advice CRM — Add Beta User
+-- scripts/add-beta-user.sql
+-- Wine CRM — Onboard a broker team user
 --
--- Run this in the Supabase SQL editor AFTER creating the user's
+-- Run in the Supabase SQL editor AFTER creating the user's
 -- account in Supabase Dashboard → Authentication → Users.
 --
--- What this script does:
---   1. Looks up the user by email
---   2. Generates a new team UUID for them
---   3. Inserts a team_members row (owner role)
---   4. Stamps team_id into the user's metadata so the app
---      resolves the correct team on login
+-- For the first user on a new team: leave v_team_id as NULL
+--   → a new team UUID is generated automatically.
+-- For additional users joining an existing team: paste the
+--   existing team UUID into v_team_id.
+--
+-- Uses the add_broker_user() function defined in 04_schema_rework.sql.
 -- ============================================================
 
-DO $$
-DECLARE
-  v_email   TEXT    := 'joshtiensivu@gmail.com';
-  v_user_id UUID;
-  v_team_id UUID    := gen_random_uuid();
-BEGIN
-  -- Find the user created in the Supabase dashboard
-  SELECT id INTO v_user_id
-  FROM auth.users
-  WHERE email = v_email;
+SELECT add_broker_user(
+  'user@example.com',   -- ← replace with the user's email
+  'owner',              -- ← role: 'owner' | 'admin' | 'member'
+  NULL                  -- ← team UUID to join, or NULL to create a new team
+);
 
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION
-      'User "%" not found. Create the account in Supabase Dashboard → Authentication → Users first.',
-      v_email;
-  END IF;
+-- ── Onboard a supplier portal user ───────────────────────────
+-- Uncomment and fill in to give a supplier rep portal access.
+-- The supplier record must already exist in the suppliers table.
 
-  -- Create a team_members row giving this user ownership of their team
-  INSERT INTO team_members (user_id, team_id, role)
-  VALUES (v_user_id, v_team_id, 'owner')
-  ON CONFLICT (user_id, team_id) DO NOTHING;
-
-  -- Stamp team_id into user metadata so the app reads it on login
-  UPDATE auth.users
-  SET raw_user_meta_data = jsonb_set(
-    COALESCE(raw_user_meta_data, '{}'),
-    '{team_id}',
-    to_jsonb(v_team_id::text)
-  )
-  WHERE id = v_user_id;
-
-  RAISE NOTICE 'Done. user_id=%, team_id=%', v_user_id, v_team_id;
-END;
-$$;
+-- SELECT add_supplier_user(
+--   'supplier@example.com',                  -- user's email
+--   '00000000-0000-0000-0000-000000000000',  -- supplier UUID
+--   'viewer'                                 -- 'admin' | 'viewer'
+-- );

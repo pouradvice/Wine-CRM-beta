@@ -5,7 +5,7 @@ import {
   getProductPerformance,
   getFollowUpQueue,
   getVisitsBySupplier,
-  getProductsByBuyer,
+  getProductsByContact,
   getDashboardStats,
   getTopSkus,
   getTopAccounts,
@@ -28,7 +28,7 @@ export default async function ReportsPage() {
     { data: performance },
     { data: followUps },
     visitsBySupplier,
-    productsByBuyer,
+    productsByContact,
     dashboardStats,
     topSkus,
     topAccounts,
@@ -41,7 +41,7 @@ export default async function ReportsPage() {
     getProductPerformance(sb, { page: 0, pageSize: 50 }),
     getFollowUpQueue(sb, { page: 0, pageSize: 100 }),
     getVisitsBySupplier(sb),
-    getProductsByBuyer(sb),
+    getProductsByContact(sb),
     getDashboardStats(sb),
     getTopSkus(sb, 5),
     getTopAccounts(sb, 5),
@@ -57,7 +57,7 @@ export default async function ReportsPage() {
       performance={performance}
       followUps={followUps}
       visitsBySupplier={visitsBySupplier}
-      productsByBuyer={productsByBuyer}
+      productsByContact={productsByContact}
       dashboardStats={dashboardStats}
       topSkus={topSkus}
       topAccounts={topAccounts}

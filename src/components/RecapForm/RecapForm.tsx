@@ -4,8 +4,8 @@
 // Changes from Phase 1 baseline:
 //   • No longer accepts a `products` prop — searches server-side via
 //     GET /api/products?search=&limit=20 with 300 ms debounce.
-//   • No longer accepts a `buyers` prop — fetches buyers from
-//     GET /api/buyers?clientId= when the selected client changes.
+//   • No longer accepts a `buyers` prop — fetches contacts from
+//     GET /api/contacts?accountId= when the selected account changes.
 //   • selectedProducts state holds the products already added to the recap
 //     so their rows stay visible while the search field is in use.
 
@@ -14,8 +14,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { saveRecap } from '@/lib/data';
 import type {
-  Client,
-  Buyer,
+  Account,
+  Contact,
   Product,
   RecapFormState,
   RecapFormProduct,
@@ -41,7 +41,7 @@ const OUTCOME_COLORS: Record<RecapOutcome, string> = {
 };
 
 interface Props {
-  clients: Client[];
+  clients: Account[];
   currentUser: string;
 }
 
@@ -65,10 +65,11 @@ export function RecapForm({ clients, currentUser }: Props) {
   const [form, setForm] = useState<RecapFormState>({
     visit_date: today,
     salesperson: currentUser,
-    client_id: '',
-    buyer_id: '',
+    account_id: '',
+    contact_id: null,
     nature: 'Sales Call',
-    notes: '',
+    expense_receipt_url: null,
+    notes: null,
     products: [],
   });
 
@@ -84,26 +85,26 @@ export function RecapForm({ clients, currentUser }: Props) {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Buyer lazy-load state (item 6) ──────────────────────────
-  const [buyers, setBuyers] = useState<Buyer[]>([]);
-  const [buyersLoading, setBuyersLoading] = useState(false);
+  // ── Contact lazy-load state ──────────────────────────────────
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
 
-  // ── Fetch buyers when client changes ────────────────────────
+  // ── Fetch contacts when account changes ──────────────────────
   useEffect(() => {
-    if (!form.client_id) {
-      setBuyers([]);
+    if (!form.account_id) {
+      setContacts([]);
       return;
     }
 
-    setBuyersLoading(true);
-    setBuyers([]);
+    setContactsLoading(true);
+    setContacts([]);
 
-    fetch(`/api/buyers?clientId=${form.client_id}`)
+    fetch(`/api/contacts?accountId=${form.account_id}`)
       .then((res) => res.json())
-      .then((result) => setBuyers(result.data ?? []))
-      .catch(() => setBuyers([]))
-      .finally(() => setBuyersLoading(false));
-  }, [form.client_id]);
+      .then((result) => setContacts(result.data ?? []))
+      .catch(() => setContacts([]))
+      .finally(() => setContactsLoading(false));
+  }, [form.account_id]);
 
   // ── Debounced product search ──────────────────────────────────
   useEffect(() => {
@@ -178,8 +179,8 @@ export function RecapForm({ clients, currentUser }: Props) {
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.client_id) {
-      setError('Please select a client.');
+    if (!form.account_id) {
+      setError('Please select an account.');
       return;
     }
     if (form.products.length === 0) {
@@ -254,40 +255,40 @@ export function RecapForm({ clients, currentUser }: Props) {
 
         <div className={styles.row}>
           <div className={styles.field}>
-            <label htmlFor="client_id" className={styles.label}>
+            <label htmlFor="account_id" className={styles.label}>
               Account <span className={styles.required}>*</span>
             </label>
             <select
-              id="client_id"
+              id="account_id"
               className={styles.select}
-              value={form.client_id}
+              value={form.account_id}
               onChange={(e) =>
-                setForm((f) => ({ ...f, client_id: e.target.value, buyer_id: '' }))
+                setForm((f) => ({ ...f, account_id: e.target.value, contact_id: null }))
               }
               required
             >
               <option value="">Select account…</option>
               {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.company_name}</option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="buyer_id" className={styles.label}>Buyer</label>
+            <label htmlFor="contact_id" className={styles.label}>Contact</label>
             <select
-              id="buyer_id"
+              id="contact_id"
               className={styles.select}
-              value={form.buyer_id}
-              disabled={!form.client_id || buyersLoading}
-              onChange={(e) => setForm((f) => ({ ...f, buyer_id: e.target.value }))}
+              value={form.contact_id ?? ''}
+              disabled={!form.account_id || contactsLoading}
+              onChange={(e) => setForm((f) => ({ ...f, contact_id: e.target.value || null }))}
             >
               <option value="">
-                {buyersLoading ? 'Loading buyers…' : 'Select buyer…'}
+                {contactsLoading ? 'Loading contacts…' : 'Select contact…'}
               </option>
-              {buyers.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.contact_name}{b.role ? ` — ${b.role}` : ''}
+              {contacts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.first_name}{c.role ? ` — ${c.role}` : ''}
                 </option>
               ))}
             </select>

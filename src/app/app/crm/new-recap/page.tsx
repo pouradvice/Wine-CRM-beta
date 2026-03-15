@@ -8,7 +8,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getClients } from '@/lib/data';
+import { getAccounts } from '@/lib/data';
 import { RecapForm } from '@/components/RecapForm/RecapForm';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default async function NewRecapPage() {
   // Load all active clients for the account selector.
   // 200 is a safe ceiling for Phase 1; paginate this selector in Phase 2
   // if client counts grow beyond that.
-  const { data: clients } = await getClients(sb, 'Active', { page: 0, pageSize: 200 });
+  const { data: clients } = await getAccounts(sb, 'Active', { page: 0, pageSize: 200 });
 
   const displayName =
     user.user_metadata?.full_name ??

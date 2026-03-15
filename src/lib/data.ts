@@ -1,20 +1,26 @@
+// ============================================================
 // src/lib/data.ts
-// Centralized data access layer.
-// All functions accept a Supabase client — works from server components
-// and API routes without duplication.
+// Wine CRM — Centralized data access layer
+// Aligned with 04_schema_rework.sql
+//
+// All functions accept a Supabase client — works from server
+// components and API routes without duplication.
+// ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  Supplier, SupplierInsert,
+  SupplierContract, SupplierContractInsert,
   Brand, BrandInsert,
   Product, ProductInsert,
-  Client, ClientInsert,
-  Buyer, BuyerInsert,
+  Account, AccountInsert,
+  Contact, ContactInsert,
   Recap,
   FollowUp,
   ProductPerformance,
   FollowUpQueueRow,
   VisitsBySupplierRow,
-  ProductsByBuyerRow,
+  ProductsByContactRow,
   RecapFormState,
   PaginationOptions,
   PaginatedResult,
@@ -37,14 +43,77 @@ function pageRange(page = 0, pageSize = 50): [number, number] {
   return [offset, offset + pageSize - 1];
 }
 
-// ── Brands ────────────────────────────────────────────────────
+// ── Suppliers ─────────────────────────────────────────────────
 
-export async function getBrands(sb: SupabaseClient): Promise<Brand[]> {
+export async function getSuppliers(sb: SupabaseClient): Promise<Supplier[]> {
   const { data, error } = await sb
-    .from('brands')
+    .from('suppliers')
     .select('*')
     .eq('is_active', true)
     .order('name');
+  if (error) throw mapDbError(error);
+  return data ?? [];
+}
+
+export async function upsertSupplier(
+  sb: SupabaseClient,
+  supplier: SupplierInsert & { id?: string },
+): Promise<Supplier> {
+  const { data, error } = await sb
+    .from('suppliers')
+    .upsert(supplier)
+    .select()
+    .single();
+  if (error) throw mapDbError(error);
+  return data;
+}
+
+// ── Supplier contracts ────────────────────────────────────────
+
+export async function getSupplierContracts(
+  sb: SupabaseClient,
+  options?: { status?: string },
+): Promise<SupplierContract[]> {
+  let query = sb
+    .from('supplier_contracts')
+    .select('*, supplier:suppliers(*)')
+    .order('created_at', { ascending: false });
+
+  if (options?.status) query = query.eq('status', options.status);
+
+  const { data, error } = await query;
+  if (error) throw mapDbError(error);
+  return data ?? [];
+}
+
+export async function upsertSupplierContract(
+  sb: SupabaseClient,
+  contract: SupplierContractInsert & { id?: string },
+): Promise<SupplierContract> {
+  const { data, error } = await sb
+    .from('supplier_contracts')
+    .upsert(contract, { onConflict: 'team_id,supplier_id' })
+    .select('*, supplier:suppliers(*)')
+    .single();
+  if (error) throw mapDbError(error);
+  return data;
+}
+
+// ── Brands ────────────────────────────────────────────────────
+
+export async function getBrands(
+  sb: SupabaseClient,
+  options?: { supplierId?: string },
+): Promise<Brand[]> {
+  let query = sb
+    .from('brands')
+    .select('*, supplier:suppliers(*)')
+    .eq('is_active', true)
+    .order('name');
+
+  if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
+
+  const { data, error } = await query;
   if (error) throw mapDbError(error);
   return data ?? [];
 }
@@ -56,7 +125,7 @@ export async function upsertBrand(
   const { data, error } = await sb
     .from('brands')
     .upsert(brand, { onConflict: 'name,team_id' })
-    .select()
+    .select('*, supplier:suppliers(*)')
     .single();
   if (error) throw mapDbError(error);
   return data;
@@ -68,27 +137,27 @@ export async function getProducts(
   sb: SupabaseClient,
   options?: {
     includeInactive?: boolean;
-    brandId?: string;
-    search?: string;
-    limit?: number;
+    brandId?:         string;
+    supplierId?:      string;
+    search?:          string;
   } & PaginationOptions,
 ): Promise<PaginatedResult<Product>> {
   const [from, to] = pageRange(options?.page, options?.pageSize);
 
   let query = sb
     .from('products')
-    .select('*, brand:brands(*)', { count: 'exact' })
+    .select('*, brand:brands(*, supplier:suppliers(*))', { count: 'exact' })
     .order('wine_name')
     .range(from, to);
 
   if (!options?.includeInactive) query = query.eq('is_active', true);
-  if (options?.brandId) query = query.eq('brand_id', options.brandId);
+  if (options?.brandId)          query = query.eq('brand_id', options.brandId);
+  if (options?.supplierId)       query = query.eq('supplier_id', options.supplierId);
   if (options?.search) {
     query = query.or(
       `wine_name.ilike.%${options.search}%,sku_number.ilike.%${options.search}%`,
     );
   }
-  if (options?.limit) query = query.limit(options.limit);
 
   const { data, error, count } = await query;
   if (error) throw mapDbError(error);
@@ -101,7 +170,7 @@ export async function getProductById(
 ): Promise<Product | null> {
   const { data, error } = await sb
     .from('products')
-    .select('*, brand:brands(*)')
+    .select('*, brand:brands(*, supplier:suppliers(*))')
     .eq('id', id)
     .single();
   if (error) throw mapDbError(error);
@@ -112,12 +181,11 @@ export async function upsertProduct(
   sb: SupabaseClient,
   product: ProductInsert & { id?: string },
 ): Promise<Product> {
-  // Use id as conflict target for edits, sku_number+team_id for new products.
   const onConflict = product.id ? 'id' : 'sku_number,team_id';
   const { data, error } = await sb
     .from('products')
     .upsert(product, { onConflict })
-    .select('*, brand:brands(*)')
+    .select('*, brand:brands(*, supplier:suppliers(*))')
     .single();
   if (error) throw mapDbError(error);
   return data;
@@ -134,20 +202,20 @@ export async function archiveProduct(
   if (error) throw mapDbError(error);
 }
 
-// ── Clients ───────────────────────────────────────────────────
+// ── Accounts ──────────────────────────────────────────────────
 
-export async function getClients(
+export async function getAccounts(
   sb: SupabaseClient,
   status?: 'Active' | 'Prospective' | 'Former',
   pagination?: PaginationOptions,
-): Promise<PaginatedResult<Client>> {
+): Promise<PaginatedResult<Account>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
   let query = sb
-    .from('clients')
+    .from('accounts')
     .select('*', { count: 'exact' })
     .eq('is_active', true)
-    .order('company_name')
+    .order('name')
     .range(from, to);
 
   if (status) query = query.eq('status', status);
@@ -157,12 +225,12 @@ export async function getClients(
   return { data: data ?? [], count: count ?? 0 };
 }
 
-export async function getClientById(
+export async function getAccountById(
   sb: SupabaseClient,
   id: string,
-): Promise<Client | null> {
+): Promise<Account | null> {
   const { data, error } = await sb
-    .from('clients')
+    .from('accounts')
     .select('*')
     .eq('id', id)
     .single();
@@ -170,50 +238,50 @@ export async function getClientById(
   return data;
 }
 
-export async function upsertClient(
+export async function upsertAccount(
   sb: SupabaseClient,
-  client: ClientInsert & { id?: string },
-): Promise<Client> {
+  account: AccountInsert & { id?: string },
+): Promise<Account> {
   const { data, error } = await sb
-    .from('clients')
-    .upsert(client)
+    .from('accounts')
+    .upsert(account)
     .select()
     .single();
   if (error) throw mapDbError(error);
   return data;
 }
 
-// ── Buyers ────────────────────────────────────────────────────
+// ── Contacts ──────────────────────────────────────────────────
 
-export async function getBuyers(
+export async function getContacts(
   sb: SupabaseClient,
-  clientId?: string,
+  accountId?: string,
   pagination?: PaginationOptions,
-): Promise<PaginatedResult<Buyer>> {
+): Promise<PaginatedResult<Contact>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
   let query = sb
-    .from('buyers')
-    .select('*, client:clients(id, company_name)', { count: 'exact' })
+    .from('contacts')
+    .select('*, account:accounts(id, name)', { count: 'exact' })
     .eq('is_active', true)
-    .order('contact_name')
+    .order('first_name')
     .range(from, to);
 
-  if (clientId) query = query.eq('client_id', clientId);
+  if (accountId) query = query.eq('account_id', accountId);
 
   const { data, error, count } = await query;
   if (error) throw mapDbError(error);
   return { data: data ?? [], count: count ?? 0 };
 }
 
-export async function upsertBuyer(
+export async function upsertContact(
   sb: SupabaseClient,
-  buyer: BuyerInsert & { id?: string },
-): Promise<Buyer> {
+  contact: ContactInsert & { id?: string },
+): Promise<Contact> {
   const { data, error } = await sb
-    .from('buyers')
-    .upsert(buyer)
-    .select()
+    .from('contacts')
+    .upsert(contact)
+    .select('*, account:accounts(id, name)')
     .single();
   if (error) throw mapDbError(error);
   return data;
@@ -224,10 +292,10 @@ export async function upsertBuyer(
 export async function getRecaps(
   sb: SupabaseClient,
   options?: {
-    clientId?: string;
+    accountId?:  string;
     salesperson?: string;
-    from?: string;
-    to?: string;
+    from?:        string;
+    to?:          string;
   } & PaginationOptions,
 ): Promise<PaginatedResult<Recap>> {
   const [rangeFrom, rangeTo] = pageRange(options?.page, options?.pageSize);
@@ -236,8 +304,8 @@ export async function getRecaps(
     .from('recaps')
     .select(
       `*,
-       client:clients(id, company_name),
-       buyer:buyers(id, contact_name),
+       account:accounts(id, name),
+       contact:contacts(id, first_name, last_name),
        recap_products(
          *,
          product:products(id, sku_number, wine_name, type)
@@ -247,10 +315,10 @@ export async function getRecaps(
     .order('visit_date', { ascending: false })
     .range(rangeFrom, rangeTo);
 
-  if (options?.clientId) query = query.eq('client_id', options.clientId);
+  if (options?.accountId)   query = query.eq('account_id', options.accountId);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
-  if (options?.from) query = query.gte('visit_date', options.from);
-  if (options?.to) query = query.lte('visit_date', options.to);
+  if (options?.from)        query = query.gte('visit_date', options.from);
+  if (options?.to)          query = query.lte('visit_date', options.to);
 
   const { data, error, count } = await query;
   if (error) throw mapDbError(error);
@@ -265,8 +333,8 @@ export async function getRecapById(
     .from('recaps')
     .select(`
       *,
-      client:clients(*),
-      buyer:buyers(*),
+      account:accounts(*),
+      contact:contacts(*),
       recap_products(*, product:products(*))
     `)
     .eq('id', id)
@@ -282,30 +350,26 @@ export async function saveRecap(
   const { data: { user } } = await sb.auth.getUser();
 
   const p_recap = {
-    visit_date: form.visit_date,
-    salesperson: form.salesperson,
-    user_id: user?.id ?? null,
-    client_id: form.client_id,
-    buyer_id: form.buyer_id || '',
-    nature: form.nature,
-    expense_receipt_url: '',
-    notes: form.notes || '',
+    visit_date:          form.visit_date,
+    salesperson:         form.salesperson,
+    user_id:             user?.id ?? null,
+    account_id:          form.account_id,
+    contact_id:          form.contact_id || '',
+    nature:              form.nature,
+    expense_receipt_url: form.expense_receipt_url || '',
+    notes:               form.notes || '',
   };
 
   const p_products = form.products.map((p) => ({
-    product_id: p.product_id,
-    outcome: p.outcome,
+    product_id:        p.product_id,
+    outcome:           p.outcome,
     order_probability: p.order_probability ? String(p.order_probability) : '',
-    buyer_feedback: p.buyer_feedback || '',
-    follow_up_date: p.follow_up_date || '',
-    bill_date: p.bill_date || '',
+    buyer_feedback:    p.buyer_feedback || '',
+    follow_up_date:    p.follow_up_date || '',
+    bill_date:         p.bill_date || '',
   }));
 
-  const { data, error } = await sb.rpc('save_recap', {
-    p_recap,
-    p_products,
-  });
-
+  const { data, error } = await sb.rpc('save_recap', { p_recap, p_products });
   if (error) throw mapDbError(error);
   return data as string;
 }
@@ -370,62 +434,61 @@ export async function getVisitsBySupplier(
       outcome,
       order_probability,
       buyer_feedback,
+      supplier_id,
       recap:recaps(
         visit_date,
-        client:clients(company_name)
+        account:accounts(name)
       ),
       product:products(
         sku_number,
         wine_name,
-        brand:brands(name)
+        brand:brands(name, supplier_id, supplier:suppliers(name))
       )
     `)
     .order('created_at', { ascending: false });
 
   if (error) throw mapDbError(error);
 
-  // PostgREST returns one-to-one joins as arrays; we normalise to objects.
   return (data ?? []).map((row) => {
     const r = row as unknown as {
-      outcome: RecapOutcome;
-      order_probability: number | null;
-      buyer_feedback: string | null;
-      recap: Array<{ visit_date: string; client: Array<{ company_name: string }> }>;
-      product: Array<{ sku_number: string; wine_name: string; brand: Array<{ name: string }> }>;
+      outcome:            RecapOutcome;
+      order_probability:  number | null;
+      buyer_feedback:     string | null;
+      supplier_id:        string | null;
+      recap:    Array<{ visit_date: string; account: Array<{ name: string }> }>;
+      product:  Array<{ sku_number: string; wine_name: string; brand: Array<{ name: string; supplier: Array<{ name: string }> }> }>;
     };
-    const recap = r.recap?.[0] ?? null;
-    const product = r.product?.[0] ?? null;
+    const recap    = r.recap?.[0]   ?? null;
+    const product  = r.product?.[0] ?? null;
+    const brand    = product?.brand?.[0] ?? null;
     return {
-      brand_name: product?.brand?.[0]?.name ?? null,
-      visit_date: recap?.visit_date ?? '',
-      client_name: recap?.client?.[0]?.company_name ?? '',
-      sku_number: product?.sku_number ?? '',
-      wine_name: product?.wine_name ?? '',
-      outcome: r.outcome,
-      buyer_feedback: r.buyer_feedback ?? null,
-      order_probability: r.order_probability ?? null,
+      supplier_id:       r.supplier_id ?? null,
+      supplier_name:     brand?.supplier?.[0]?.name ?? null,
+      brand_name:        brand?.name ?? null,
+      total_visits:      1,
+      orders_placed:     r.outcome === 'Yes Today' ? 1 : 0,
     };
   });
 }
 
-export async function getProductsByBuyer(
+export async function getProductsByContact(
   sb: SupabaseClient,
-): Promise<ProductsByBuyerRow[]> {
+): Promise<ProductsByContactRow[]> {
   const { data, error } = await sb
-    .from('v_products_by_buyer')
+    .from('v_products_by_contact')
     .select('*');
 
   if (error) throw mapDbError(error);
-  return (data ?? []) as ProductsByBuyerRow[];
+  return (data ?? []) as ProductsByContactRow[];
 }
 
-// ── Phase 2: Dashboard & Reporting ────────────────────────────
+// ── Dashboard & Reporting ─────────────────────────────────────
 
 /** ISO week start (Monday) for any date string. */
 function isoWeekStart(dateStr: string): string {
   const d = new Date(dateStr);
-  const day = d.getUTCDay(); // 0=Sun
-  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(d);
   monday.setUTCDate(d.getUTCDate() + diff);
   return monday.toISOString().slice(0, 10);
@@ -433,38 +496,33 @@ function isoWeekStart(dateStr: string): string {
 
 export async function getDashboardStats(sb: SupabaseClient): Promise<DashboardStats> {
   const now = new Date();
-  const startOfWeek = isoWeekStart(now.toISOString().slice(0, 10));
   const startOfMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
-  const [
-    weekRes,
-    monthRes,
-    productsRes,
-    convRes,
-    openRes,
-    overdueRes,
-  ] = await Promise.all([
-    sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfWeek),
+  const [monthRes, convRes, openRes] = await Promise.all([
     sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfMonth),
-    sb.from('recap_products').select('id', { count: 'exact', head: true }).gte('created_at', startOfMonth),
     sb.from('v_product_performance').select('conversion_rate_pct'),
     sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open'),
-    sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open').eq('is_overdue', true),
   ]);
 
   const rates = (convRes.data ?? [])
     .map((r) => r.conversion_rate_pct as number | null)
     .filter((v): v is number => v !== null);
-  const overall_conversion_rate =
-    rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 0;
+  const conversion_rate_pct =
+    rates.length > 0
+      ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length)
+      : null;
+
+  // total active accounts
+  const { count: totalAccounts } = await sb
+    .from('accounts')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true);
 
   return {
-    visits_this_week: weekRes.count ?? 0,
-    visits_this_month: monthRes.count ?? 0,
-    products_shown_this_month: productsRes.count ?? 0,
-    overall_conversion_rate,
-    open_follow_ups: openRes.count ?? 0,
-    overdue_follow_ups: overdueRes.count ?? 0,
+    total_accounts:      totalAccounts ?? 0,
+    active_follow_ups:   openRes.count ?? 0,
+    visits_this_month:   monthRes.count ?? 0,
+    conversion_rate_pct: conversion_rate_pct,
   };
 }
 
@@ -488,31 +546,31 @@ export async function getTopAccounts(
 ): Promise<TopAccount[]> {
   const { data, error } = await sb
     .from('recaps')
-    .select('client_id, visit_date, client:clients(company_name)');
+    .select('account_id, visit_date, account:accounts(name)');
   if (error) throw mapDbError(error);
 
-  // JS-side group by client
-  const map = new Map<string, { client_name: string; visits: string[] }>();
+  const map = new Map<string, { account_name: string; visits: string[] }>();
   for (const row of data ?? []) {
     const r = row as unknown as {
-      client_id: string;
+      account_id: string;
       visit_date: string;
-      client: Array<{ company_name: string }> | { company_name: string } | null;
+      account: Array<{ name: string }> | { name: string } | null;
     };
-    const name = Array.isArray(r.client)
-      ? r.client[0]?.company_name ?? r.client_id
-      : (r.client as { company_name: string } | null)?.company_name ?? r.client_id;
-    if (!map.has(r.client_id)) map.set(r.client_id, { client_name: name, visits: [] });
-    map.get(r.client_id)!.visits.push(r.visit_date);
+    const name = Array.isArray(r.account)
+      ? r.account[0]?.name ?? r.account_id
+      : (r.account as { name: string } | null)?.name ?? r.account_id;
+    if (!map.has(r.account_id)) map.set(r.account_id, { account_name: name, visits: [] });
+    map.get(r.account_id)!.visits.push(r.visit_date);
   }
 
-  return Array.from(map.values())
-    .map((v) => ({
-      client_name: v.client_name,
-      visit_count: v.visits.length,
-      last_visit: v.visits.sort().at(-1) ?? '',
+  return Array.from(map.entries())
+    .map(([account_id, v]) => ({
+      account_id,
+      account_name:  v.account_name,
+      total_visits:  v.visits.length,
+      orders_placed: 0,  // enriched separately if needed
     }))
-    .sort((a, b) => b.visit_count - a.visit_count)
+    .sort((a, b) => b.total_visits - a.total_visits)
     .slice(0, limit);
 }
 
@@ -526,7 +584,7 @@ export async function getSalespersonStats(
       id,
       salesperson,
       visit_date,
-      client_id,
+      account_id,
       recap_products(outcome, order_probability)
     `);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
@@ -535,28 +593,28 @@ export async function getSalespersonStats(
   if (error) throw mapDbError(error);
 
   type RawRow = {
-    id: string;
-    salesperson: string;
-    visit_date: string;
-    client_id: string;
+    id:             string;
+    salesperson:    string;
+    visit_date:     string;
+    account_id:     string;
     recap_products: Array<{ outcome: string; order_probability: number | null }>;
   };
 
   const map = new Map<string, {
-    visits: string[];
-    clients: Set<string>;
+    visits:   string[];
+    accounts: Set<string>;
     products: number;
-    orders: number;
-    probs: number[];
+    orders:   number;
+    probs:    number[];
   }>();
 
   for (const row of (data ?? []) as unknown as RawRow[]) {
     if (!map.has(row.salesperson)) {
-      map.set(row.salesperson, { visits: [], clients: new Set(), products: 0, orders: 0, probs: [] });
+      map.set(row.salesperson, { visits: [], accounts: new Set(), products: 0, orders: 0, probs: [] });
     }
     const s = map.get(row.salesperson)!;
     s.visits.push(row.visit_date);
-    s.clients.add(row.client_id);
+    s.accounts.add(row.account_id);
     const products = Array.isArray(row.recap_products) ? row.recap_products : [];
     s.products += products.length;
     for (const p of products) {
@@ -565,35 +623,27 @@ export async function getSalespersonStats(
     }
   }
 
-  return Array.from(map.entries()).map(([salesperson, s]) => {
-    const sorted = [...s.visits].sort();
-    return {
+  return Array.from(map.entries())
+    .map(([salesperson, s]) => ({
       salesperson,
-      total_visits: s.visits.length,
-      unique_accounts: s.clients.size,
-      products_shown: s.products,
-      orders: s.orders,
-      avg_probability: s.probs.length
-        ? Math.round(s.probs.reduce((a, b) => a + b, 0) / s.probs.length)
-        : 0,
-      first_visit: sorted[0] ?? '',
-      last_visit: sorted.at(-1) ?? '',
-    };
-  }).sort((a, b) => b.total_visits - a.total_visits);
+      total_visits:  s.visits.length,
+      orders_placed: s.orders,
+      accounts_seen: s.accounts.size,
+    }))
+    .sort((a, b) => b.total_visits - a.total_visits);
 }
 
 export async function getSalespersonWeeklyTrend(
   sb: SupabaseClient,
   options?: { salesperson?: string },
 ): Promise<SalespersonWeeklyTrend[]> {
-  // Last 12 weeks
   const cutoff = new Date();
-  cutoff.setUTCDate(cutoff.getUTCDate() - 84);
+  cutoff.setUTCDate(cutoff.getUTCDate() - 84); // 12 weeks
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
   let query = sb
     .from('recaps')
-    .select('visit_date')
+    .select('visit_date, salesperson')
     .gte('visit_date', cutoffStr);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
 
@@ -618,51 +668,48 @@ export async function getSalespersonWeeklyTrend(
     if (counts.has(w)) counts.set(w, counts.get(w)! + 1);
   }
 
-  return weeks.map((week) => ({ week, visits: counts.get(week) ?? 0 }));
+  return weeks.map((week_start) => ({
+    salesperson: options?.salesperson ?? 'all',
+    week_start,
+    visit_count: counts.get(week_start) ?? 0,
+  }));
 }
 
 export async function getInactiveAccounts(
   sb: SupabaseClient,
   dayThreshold = 60,
 ): Promise<InactiveAccount[]> {
-  const [clientsRes, recapsRes] = await Promise.all([
-    sb.from('clients').select('id, company_name, account_lead, value_tier').eq('is_active', true),
-    sb.from('recaps').select('client_id, visit_date').order('visit_date', { ascending: false }),
+  const [accountsRes, recapsRes] = await Promise.all([
+    sb.from('accounts').select('id, name, account_lead, value_tier').eq('is_active', true),
+    sb.from('recaps').select('account_id, visit_date').order('visit_date', { ascending: false }),
   ]);
-  if (clientsRes.error) throw mapDbError(clientsRes.error);
-  if (recapsRes.error) throw mapDbError(recapsRes.error);
+  if (accountsRes.error) throw mapDbError(accountsRes.error);
+  if (recapsRes.error)   throw mapDbError(recapsRes.error);
 
-  // Latest visit per client
   const lastVisit = new Map<string, string>();
   for (const r of recapsRes.data ?? []) {
-    if (!lastVisit.has(r.client_id)) lastVisit.set(r.client_id, r.visit_date);
+    if (!lastVisit.has(r.account_id)) lastVisit.set(r.account_id, r.visit_date);
   }
 
   const today = new Date();
   const results: InactiveAccount[] = [];
 
-  for (const c of clientsRes.data ?? []) {
-    const lv = lastVisit.get(c.id) ?? null;
+  for (const a of accountsRes.data ?? []) {
+    const lv   = lastVisit.get(a.id) ?? null;
     const days = lv
       ? Math.floor((today.getTime() - new Date(lv).getTime()) / 86400000)
       : null;
     if (days === null || days >= dayThreshold) {
       results.push({
-        id: c.id,
-        company_name: c.company_name,
-        account_lead: c.account_lead ?? null,
-        value_tier: c.value_tier ?? null,
-        last_visit: lv,
-        days_since_visit: days,
+        account_id:      a.id,
+        account_name:    a.name,
+        last_visit_date: lv,
+        days_inactive:   days ?? -1,
       });
     }
   }
 
-  return results.sort((a, b) => {
-    const da = a.days_since_visit ?? 9999;
-    const db = b.days_since_visit ?? 9999;
-    return db - da;
-  });
+  return results.sort((a, b) => (b.days_inactive ?? 9999) - (a.days_inactive ?? 9999));
 }
 
 export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHealth[]> {
@@ -677,28 +724,31 @@ export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHea
     const o = r.outcome as string;
     map.set(o, (map.get(o) ?? 0) + 1);
   }
+  const total = Array.from(map.values()).reduce((s, c) => s + c, 0);
 
   return Array.from(map.entries()).map(([outcome, count]) => ({
-    outcome: outcome as RecapOutcome,
+    outcome:      outcome as RecapOutcome,
     count,
+    pct_of_total: total > 0 ? Math.round((count / total) * 100) : 0,
   }));
 }
 
 export async function getExpenseRecaps(
   sb: SupabaseClient,
-  options?: { from?: string; to?: string; supplier?: string },
+  options?: { from?: string; to?: string; supplierId?: string },
 ): Promise<ExpenseRecap[]> {
   let query = sb
     .from('recaps')
     .select(`
+      id,
       visit_date,
       salesperson,
       expense_receipt_url,
-      notes,
-      client:clients(company_name),
+      account:accounts(name),
       recap_products(
+        supplier_id,
         product:products(
-          brand:brands(name, supplier)
+          brand:brands(name, supplier_id)
         )
       )
     `)
@@ -706,46 +756,45 @@ export async function getExpenseRecaps(
     .order('visit_date', { ascending: false });
 
   if (options?.from) query = query.gte('visit_date', options.from);
-  if (options?.to) query = query.lte('visit_date', options.to);
+  if (options?.to)   query = query.lte('visit_date', options.to);
 
   const { data, error } = await query;
   if (error) throw mapDbError(error);
 
-  type BrandInfo = { name: string | null; supplier: string | null };
-  type RawProduct = { brand: BrandInfo[] | BrandInfo | null };
   type RawRecap = {
-    visit_date: string;
-    salesperson: string;
+    id:                  string;
+    visit_date:          string;
+    salesperson:         string;
     expense_receipt_url: string | null;
-    notes: string | null;
-    client: Array<{ company_name: string }> | { company_name: string } | null;
-    recap_products: RawProduct[];
+    account: Array<{ name: string }> | { name: string } | null;
+    recap_products: Array<{
+      supplier_id: string | null;
+      product: Array<{ brand: Array<{ name: string; supplier_id: string | null }> }>;
+    }>;
   };
 
   const rows: ExpenseRecap[] = [];
   for (const row of (data ?? []) as unknown as RawRecap[]) {
-    const clientName = Array.isArray(row.client)
-      ? row.client[0]?.company_name ?? ''
-      : (row.client as { company_name: string } | null)?.company_name ?? '';
+    const accountName = Array.isArray(row.account)
+      ? row.account[0]?.name ?? ''
+      : (row.account as { name: string } | null)?.name ?? '';
 
-    // Pick first brand from recap_products
-    let brandName: string | null = null;
-    let supplier: string | null = null;
-    for (const rp of row.recap_products ?? []) {
-      const b = Array.isArray(rp.brand) ? rp.brand[0] : rp.brand;
-      if (b) { brandName = b.name; supplier = b.supplier; break; }
+    // Filter by supplier if requested
+    if (options?.supplierId) {
+      const hasSupplier = (row.recap_products ?? []).some(
+        (rp) => rp.supplier_id === options.supplierId,
+      );
+      if (!hasSupplier) continue;
     }
 
-    if (options?.supplier && supplier !== options.supplier) continue;
+    if (!row.expense_receipt_url) continue;
 
     rows.push({
-      visit_date: row.visit_date,
-      salesperson: row.salesperson,
-      client_name: clientName,
-      brand_name: brandName,
-      supplier,
+      recap_id:            row.id,
+      visit_date:          row.visit_date,
+      salesperson:         row.salesperson,
+      account_name:        accountName,
       expense_receipt_url: row.expense_receipt_url,
-      notes: row.notes,
     });
   }
   return rows;

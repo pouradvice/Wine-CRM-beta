@@ -4,14 +4,14 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { upsertClient, getClients } from '@/lib/data';
+import { upsertAccount, getAccounts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import type { Client, ClientInsert, ClientStatus } from '@/types';
+import type { Account, AccountInsert, AccountStatus } from '@/types';
 import styles from './ClientsClient.module.css';
 
-const STATUS_TABS: Array<{ label: string; value: ClientStatus | 'All' }> = [
+const STATUS_TABS: Array<{ label: string; value: AccountStatus | 'All' }> = [
   { label: 'All', value: 'All' },
   { label: 'Active', value: 'Active' },
   { label: 'Prospective', value: 'Prospective' },
@@ -19,16 +19,15 @@ const STATUS_TABS: Array<{ label: string; value: ClientStatus | 'All' }> = [
 ];
 
 interface ClientsClientProps {
-  initialClients: Client[];
+  initialClients: Account[];
   totalCount: number;
   teamId: string;
 }
 
 interface ClientForm {
-  company_name: string;
+  name: string;
   type: string;
   value_tier: string;
-  contact_name: string;
   phone: string;
   email: string;
   address: string;
@@ -38,15 +37,14 @@ interface ClientForm {
   date_active_from: string;
   date_active_to: string;
   account_lead: string;
-  status: ClientStatus;
+  status: AccountStatus;
   notes: string;
 }
 
 const emptyForm = (): ClientForm => ({
-  company_name: '',
+  name: '',
   type: '',
   value_tier: '',
-  contact_name: '',
   phone: '',
   email: '',
   address: '',
@@ -60,12 +58,11 @@ const emptyForm = (): ClientForm => ({
   notes: '',
 });
 
-function clientToForm(c: Client): ClientForm {
+function clientToForm(c: Account): ClientForm {
   return {
-    company_name: c.company_name,
+    name: c.name,
     type: c.type ?? '',
     value_tier: c.value_tier ?? '',
-    contact_name: c.contact_name ?? '',
     phone: c.phone ?? '',
     email: c.email ?? '',
     address: c.address ?? '',
@@ -82,11 +79,11 @@ function clientToForm(c: Client): ClientForm {
 
 export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
   const router = useRouter();
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [statusTab, setStatusTab] = useState<ClientStatus | 'All'>('All');
+  const [clients, setClients] = useState<Account[]>(initialClients);
+  const [statusTab, setStatusTab] = useState<AccountStatus | 'All'>('All');
   const [search, setSearch] = useState('');
   const [slideoverOpen, setSlideoverOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<Account | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -95,7 +92,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
   const filtered = useMemo(() => {
     return clients.filter((c) => {
       const q = search.toLowerCase();
-      const matchSearch = !q || c.company_name.toLowerCase().includes(q);
+      const matchSearch = !q || c.name.toLowerCase().includes(q);
       const matchStatus = statusTab === 'All' || c.status === statusTab;
       return matchSearch && matchStatus;
     });
@@ -109,7 +106,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
     setSlideoverOpen(true);
   };
 
-  const openEdit = (c: Client) => {
+  const openEdit = (c: Account) => {
     setEditingClient(c);
     setForm(clientToForm(c));
     setErrors({});
@@ -117,13 +114,13 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
     setSlideoverOpen(true);
   };
 
-  const handleTabChange = async (tab: ClientStatus | 'All') => {
+  const handleTabChange = async (tab: AccountStatus | 'All') => {
     setStatusTab(tab);
     // Fetch from server for non-initial tabs
     try {
       const sb = createClient();
       const status = tab === 'All' ? undefined : tab;
-      const result = await getClients(sb, status, { page: 0, pageSize: 50 });
+      const result = await getAccounts(sb, status, { page: 0, pageSize: 50 });
       setClients(result.data);
     } catch {
       // Keep existing data on error
@@ -132,7 +129,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
 
   const validate = (): boolean => {
     const errs: Partial<ClientForm> = {};
-    if (!form.company_name.trim()) errs.company_name = 'Company name is required';
+    if (!form.name.trim()) errs.name = 'Company name is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -144,11 +141,10 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
 
     const sb = createClient();
     try {
-      const payload: ClientInsert & { id?: string } = {
-        company_name: form.company_name.trim(),
+      const payload: AccountInsert & { id?: string } = {
+        name: form.name.trim(),
         type: form.type || null,
         value_tier: form.value_tier || null,
-        contact_name: form.contact_name || null,
         phone: form.phone || null,
         email: form.email || null,
         address: form.address || null,
@@ -165,7 +161,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
         ...(editingClient ? { id: editingClient.id } : {}),
       };
 
-      const saved = await upsertClient(sb, payload);
+      const saved = await upsertAccount(sb, payload);
 
       if (editingClient) {
         setClients((prev) => prev.map((c) => (c.id === saved.id ? saved : c)));
@@ -177,13 +173,13 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
       router.refresh();
     } catch (err) {
       const e = err as { error?: string; message?: string };
-      setSaveError(e.error ?? e.message ?? 'Failed to save client.');
+      setSaveError(e.error ?? e.message ?? 'Failed to save account.');
     } finally {
       setSaving(false);
     }
   };
 
-  const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
+  const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K] | AccountStatus) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
@@ -197,8 +193,8 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
   return (
     <>
       <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Clients</h1>
-        <Button variant="primary" onClick={openAdd}>Add Client</Button>
+        <h1 className={styles.pageTitle}>Accounts</h1>
+        <Button variant="primary" onClick={openAdd}>Add Account</Button>
       </div>
 
       <div className={styles.statusTabs}>
@@ -227,14 +223,14 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
       {filtered.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {search ? 'No clients match your search' : 'No clients yet'}
+            {search ? 'No accounts match your search' : 'No accounts yet'}
           </p>
           <p className={styles.emptyDesc}>
             {search
               ? 'Try a different name.'
-              : 'Add your first client account to get started with sales recaps.'}
+              : 'Add your first account to get started with sales recaps.'}
           </p>
-          {!search && <Button variant="primary" onClick={openAdd}>Add Client</Button>}
+          {!search && <Button variant="primary" onClick={openAdd}>Add Account</Button>}
         </div>
       ) : (
         <table className={styles.table}>
@@ -250,7 +246,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id} className={styles.tableRow} onClick={() => openEdit(c)}>
-                <td className={styles.companyCell}>{c.company_name}</td>
+                <td className={styles.companyCell}>{c.name}</td>
                 <td>{c.type ?? '—'}</td>
                 <td>
                   {c.value_tier ? (
@@ -270,7 +266,7 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
       <Slideover
         open={slideoverOpen}
         onClose={() => setSlideoverOpen(false)}
-        title={editingClient ? 'Edit Client' : 'Add Client'}
+        title={editingClient ? 'Edit Account' : 'Add Account'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setSlideoverOpen(false)} disabled={saving}>Cancel</Button>
@@ -285,10 +281,10 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
             </label>
             <input
               className={styles.formInput}
-              value={form.company_name}
-              onChange={(e) => setField('company_name', e.target.value)}
+              value={form.name}
+              onChange={(e) => setField('name', e.target.value)}
             />
-            {errors.company_name && <span className={styles.formError}>{errors.company_name}</span>}
+            {errors.name && <span className={styles.formError}>{errors.name}</span>}
           </div>
 
           <div className={styles.formField}>
@@ -305,11 +301,6 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
               <option value="">Select tier…</option>
               {['A', 'B', 'C'].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Contact Name</label>
-            <input className={styles.formInput} value={form.contact_name} onChange={(e) => setField('contact_name', e.target.value)} />
           </div>
 
           <div className={styles.formField}>
@@ -359,8 +350,8 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
 
           <div className={styles.formField}>
             <label className={styles.formLabel}>Status</label>
-            <select className={styles.formSelect} value={form.status} onChange={(e) => setField('status', e.target.value as ClientStatus)}>
-              {(['Active', 'Prospective', 'Former'] as ClientStatus[]).map((s) => (
+            <select className={styles.formSelect} value={form.status} onChange={(e) => setField('status', e.target.value as AccountStatus)}>
+              {(['Active', 'Prospective', 'Former'] as AccountStatus[]).map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

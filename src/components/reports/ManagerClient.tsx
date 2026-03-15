@@ -43,10 +43,7 @@ export function ManagerClient({ teamStats, inactiveAccounts, pipelineHealth }: P
                   <th>Salesperson</th>
                   <th>Visits</th>
                   <th>Accounts</th>
-                  <th>Products</th>
                   <th>Orders</th>
-                  <th>Avg Prob</th>
-                  <th>Last Visit</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,11 +51,8 @@ export function ManagerClient({ teamStats, inactiveAccounts, pipelineHealth }: P
                   <tr key={s.salesperson}>
                     <td className={styles.bold}>{s.salesperson}</td>
                     <td>{s.total_visits}</td>
-                    <td>{s.unique_accounts}</td>
-                    <td>{s.products_shown}</td>
-                    <td>{s.orders}</td>
-                    <td>{s.avg_probability}%</td>
-                    <td>{s.last_visit}</td>
+                    <td>{s.accounts_seen}</td>
+                    <td>{s.orders_placed}</td>
                   </tr>
                 ))}
               </tbody>
@@ -107,31 +101,18 @@ export function ManagerClient({ teamStats, inactiveAccounts, pipelineHealth }: P
               <thead>
                 <tr>
                   <th>Account</th>
-                  <th>Lead</th>
-                  <th>Value Tier</th>
                   <th>Last Visit</th>
                   <th>Days Since</th>
                 </tr>
               </thead>
               <tbody>
-                {inactiveAccounts.map((a) => {
-                  const isHighPriority = a.value_tier?.toUpperCase() === 'A' && (a.days_since_visit ?? 0) >= 60;
-                  return (
-                    <tr key={a.id} className={isHighPriority ? styles.rowAlert : ''}>
-                      <td className={styles.bold}>{a.company_name}</td>
-                      <td>{a.account_lead ?? '—'}</td>
-                      <td>
-                        {a.value_tier ? (
-                          <span className={`${styles.tier} ${isHighPriority ? styles.tierAlert : ''}`}>
-                            {a.value_tier}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td>{a.last_visit ?? 'Never'}</td>
-                      <td>{a.days_since_visit !== null ? `${a.days_since_visit}d` : '—'}</td>
-                    </tr>
-                  );
-                })}
+                {inactiveAccounts.map((a) => (
+                  <tr key={a.account_id}>
+                    <td className={styles.bold}>{a.account_name}</td>
+                    <td>{a.last_visit_date ?? 'Never'}</td>
+                    <td>{a.days_inactive >= 0 ? `${a.days_inactive}d` : '—'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
