@@ -1,0 +1,10 @@
+/* src/styles/outcome-tokens.css
+   Outcome colour tokens — referenced by RecapForm and badge components.
+   Defined here globally since CSS Modules cannot host :root declarations. */
+:root {
+  --outcome-yes:       #2d7a3a;
+  --outcome-later:     #1a5c8b;
+  --outcome-maybe:     #8b6a1a;
+  --outcome-no:        #8b1a1a;
+  --outcome-discussed: #5a5a5a;
+}

@@ -1,0 +1,60 @@
+/* src/components/ui/FormControl.module.css */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.required {
+  color: var(--wine);
+  margin-left: 2px;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Error state */
+.error .input,
+.error .select,
+.error .textarea {
+  border-color: var(--wine);
+}
+
+.errorMsg {
+  font-size: var(--text-xs);
+  color: var(--wine);
+  margin-top: 2px;
+}
