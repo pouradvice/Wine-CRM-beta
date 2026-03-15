@@ -335,12 +335,12 @@ CREATE POLICY "team_scoped" ON buyers
   WITH CHECK (team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid()));
 
 -- ── Seed the Phase 1 team member ─────────────────────────────
--- Replace 'REPLACE_WITH_YOUR_AUTH_USER_UUID' with your actual user UUID
+-- Replace '3368fa98-4829-447f-9723-11b178d1c015' with your actual user UUID
 -- from Supabase Dashboard → Authentication → Users.
 -- Replace 'REPLACE_WITH_YOUR_GENERATED_UUID' with your team UUID.
 INSERT INTO team_members (user_id, team_id, role)
 VALUES (
-  'REPLACE_WITH_YOUR_AUTH_USER_UUID'::UUID,
+  '3368fa98-4829-447f-9723-11b178d1c015'::UUID,
   'REPLACE_WITH_YOUR_GENERATED_UUID'::UUID,
   'owner'
 )
