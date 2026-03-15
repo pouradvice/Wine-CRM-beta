@@ -52,6 +52,7 @@ export function mapDbError(err: unknown): ApiErrorResponse {
 export interface Brand {
   id: string;
   name: string;
+  team_id: string;
   supplier: string | null;
   country: string | null;
   region: string | null;
