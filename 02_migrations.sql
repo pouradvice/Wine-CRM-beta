@@ -295,10 +295,10 @@ CREATE INDEX idx_team_members_team_id ON team_members (team_id);
 -- Add team_id column to the four tenant-scoped tables
 -- Using a fixed default so existing rows are backfilled automatically.
 -- Replace '3368fa98-4829-447f-9723-11b178d1c015' with your actual UUID below too.
-ALTER TABLE clients  ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '3368fa98-4829-447f-9723-11b178d1c015'::UUID;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '3368fa98-4829-447f-9723-11b178d1c015'::UUID;
-ALTER TABLE recaps   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '3368fa98-4829-447f-9723-11b178d1c015'::UUID;
-ALTER TABLE buyers   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '3368fa98-4829-447f-9723-11b178d1c015'::UUID;
+ALTER TABLE clients  ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE recaps   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
+ALTER TABLE buyers   ADD COLUMN IF NOT EXISTS team_id UUID NOT NULL DEFAULT '92c8a6be-e267-4ffe-a305-90fc0a5f57b2'::UUID;
 
 CREATE INDEX IF NOT EXISTS idx_clients_team_id  ON clients  (team_id);
 CREATE INDEX IF NOT EXISTS idx_products_team_id ON products (team_id);
