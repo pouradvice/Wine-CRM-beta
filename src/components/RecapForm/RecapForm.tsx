@@ -302,7 +302,7 @@ export function RecapForm({ clients, currentUser }: Props) {
             className={styles.textarea}
             rows={3}
             placeholder="General notes about this visit…"
-            value={form.notes}
+            value={form.notes ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           />
         </div>
@@ -406,7 +406,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                     <input
                       type="date"
                       className={styles.input}
-                      value={fp.bill_date}
+                      value={fp.bill_date ?? ''}
                       onChange={(e) =>
                         updateProductField(product.id, 'bill_date', e.target.value)
                       }
@@ -422,7 +422,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                     <input
                       type="date"
                       className={styles.input}
-                      value={fp.follow_up_date}
+                      value={fp.follow_up_date ?? ''}
                       onChange={(e) =>
                         updateProductField(product.id, 'follow_up_date', e.target.value)
                       }
@@ -442,7 +442,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                     max={100}
                     step={5}
                     className={styles.range}
-                    value={fp.order_probability}
+                    value={fp.order_probability ?? 0}
                     onChange={(e) =>
                       updateProductField(
                         product.id,
@@ -459,7 +459,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                     type="text"
                     className={styles.input}
                     placeholder="Brief note…"
-                    value={fp.buyer_feedback}
+                    value={fp.buyer_feedback ?? ''}
                     onChange={(e) =>
                       updateProductField(product.id, 'buyer_feedback', e.target.value)
                     }

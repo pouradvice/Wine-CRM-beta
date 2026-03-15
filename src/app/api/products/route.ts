@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-    const mapped = mapDbError(err);
-    return NextResponse.json(mapped, { status: statusFromCode(mapped.code) });
+    const e = err as { code?: string; message?: string };
+    return NextResponse.json({ error: mapDbError(e) }, { status: statusFromCode(e.code) });
   }
 }
 
@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
     const product = await upsertProduct(sb, body);
     return NextResponse.json(product, { status: 201 });
   } catch (err) {
-    const mapped = mapDbError(err);
-    return NextResponse.json(mapped, { status: statusFromCode(mapped.code) });
+    const e = err as { code?: string; message?: string };
+    return NextResponse.json({ error: mapDbError(e) }, { status: statusFromCode(e.code) });
   }
 }
 
-function statusFromCode(code: string): number {
+function statusFromCode(code: string | undefined): number {
   switch (code) {
     case 'PGRST116': return 404;
     case '23505':    return 409;

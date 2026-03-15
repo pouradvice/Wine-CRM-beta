@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { upsertContact } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
-import type { Contact, ContactInsert, Account } from '@/types';
+import type { Contact, ContactInsert, Account, PremiseType } from '@/types';
 import styles from './BuyersClient.module.css';
 
 interface BuyersClientProps {
@@ -19,6 +19,7 @@ interface BuyersClientProps {
 interface ContactForm {
   account_id: string;
   first_name: string;
+  last_name: string;
   role: string;
   phone: string;
   email: string;
@@ -29,6 +30,7 @@ interface ContactForm {
 const emptyForm = (): ContactForm => ({
   account_id: '',
   first_name: '',
+  last_name: '',
   role: '',
   phone: '',
   email: '',
@@ -40,6 +42,7 @@ function contactToForm(c: Contact): ContactForm {
   return {
     account_id: c.account_id,
     first_name: c.first_name,
+    last_name: c.last_name ?? '',
     role: c.role ?? '',
     phone: c.phone ?? '',
     email: c.email ?? '',
@@ -114,10 +117,11 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
       const payload: ContactInsert & { id?: string } = {
         account_id: form.account_id,
         first_name: form.first_name.trim(),
+        last_name: form.last_name.trim() || null,
         role: form.role || null,
         phone: form.phone || null,
         email: form.email || null,
-        premise_type: form.premise_type || null,
+        premise_type: (form.premise_type as PremiseType) || null,
         notes: form.notes || null,
         team_id: teamId,
         is_active: true,
@@ -246,9 +250,9 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
             {errors.account_id && <span className={styles.formError}>{errors.account_id}</span>}
           </div>
 
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
+          <div className={styles.formField}>
             <label className={styles.formLabel}>
-              Contact Name <span className={styles.required}>*</span>
+              First Name <span className={styles.required}>*</span>
             </label>
             <input
               className={styles.formInput}
@@ -256,6 +260,15 @@ export function BuyersClient({ initialBuyers, activeClients, teamId }: BuyersCli
               onChange={(e) => setField('first_name', e.target.value)}
             />
             {errors.first_name && <span className={styles.formError}>{errors.first_name}</span>}
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.formLabel}>Last Name</label>
+            <input
+              className={styles.formInput}
+              value={form.last_name}
+              onChange={(e) => setField('last_name', e.target.value)}
+            />
           </div>
 
           <div className={styles.formField}>

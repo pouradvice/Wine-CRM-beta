@@ -8,7 +8,7 @@ import { upsertAccount, getAccounts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import type { Account, AccountInsert, AccountStatus } from '@/types';
+import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier } from '@/types';
 import styles from './ClientsClient.module.css';
 
 const STATUS_TABS: Array<{ label: string; value: AccountStatus | 'All' }> = [
@@ -143,8 +143,8 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
     try {
       const payload: AccountInsert & { id?: string } = {
         name: form.name.trim(),
-        type: form.type || null,
-        value_tier: form.value_tier || null,
+        type: (form.type as AccountType) || null,
+        value_tier: (form.value_tier as ValueTier) || null,
         phone: form.phone || null,
         email: form.email || null,
         address: form.address || null,
@@ -154,6 +154,9 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
         date_active_from: form.date_active_from || null,
         date_active_to: form.date_active_to || null,
         account_lead: form.account_lead || null,
+        city: null,
+        state: null,
+        country: null,
         team_id: teamId,
         status: form.status,
         notes: form.notes || null,

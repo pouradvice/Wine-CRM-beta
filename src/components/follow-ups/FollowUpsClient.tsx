@@ -76,8 +76,8 @@ export function FollowUpsClient({ initialFollowUps }: FollowUpsClientProps) {
         </div>
 
         <div className={styles.meta}>
-          <span className={styles.client}>{item.client_name}</span>
-          {item.buyer_name && <span className={styles.buyer}>{item.buyer_name}</span>}
+          <span className={styles.client}>{item.account_name}</span>
+          {item.contact_name && <span className={styles.buyer}>{item.contact_name}</span>}
           <span className={styles.wine}>
             <span className={styles.sku}>{item.sku_number}</span>{' '}
             {item.wine_name}
@@ -88,7 +88,7 @@ export function FollowUpsClient({ initialFollowUps }: FollowUpsClientProps) {
           )}
         </div>
 
-        <OutcomeBadge outcome={item.outcome} />
+        {item.outcome && <OutcomeBadge outcome={item.outcome} />}
 
         <div className={styles.actions}>
           {!isSnoozedItem && (
