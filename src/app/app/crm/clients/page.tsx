@@ -11,7 +11,7 @@ export default async function ClientsPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: clients, count } = await getAccounts(sb, 'Active', { page: 0, pageSize: 50 });
+  const { data: clients, count } = await getAccounts(sb, 'Active', { page: 0, pageSize: 25 });
 
   const teamId = (user.user_metadata?.team_id as string | undefined) ?? user.id;
 

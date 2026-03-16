@@ -78,7 +78,7 @@ function clientToForm(c: Account): ClientForm {
   };
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 export function ClientsClient({ initialClients, totalCount: initialTotal, teamId }: ClientsClientProps) {
   const router = useRouter();

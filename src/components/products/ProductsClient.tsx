@@ -78,7 +78,7 @@ function productToForm(p: Product): ProductForm {
   };
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 export function ProductsClient({ initialProducts, totalCount: initialTotal, teamId }: ProductsClientProps) {
   const router = useRouter();
