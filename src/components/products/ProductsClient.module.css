@@ -9,6 +9,37 @@
   flex-wrap: wrap;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.importLink {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--wine);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--mist);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+}
+
+.importLink:hover {
+  border-color: var(--wine);
+  text-decoration: none;
+}
+
+.emptyActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
 .pageTitle {
   font-family: var(--font-display);
   font-size: var(--text-3xl);

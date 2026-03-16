@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { WideLayout } from '@/components/layout/WideLayout';
+import { OnboardingBanner } from '@/components/OnboardingBanner/OnboardingBanner';
 
 export default async function AppShellLayout({
   children,
@@ -21,5 +22,18 @@ export default async function AppShellLayout({
     user.email?.split('@')[0] ??
     'User';
 
-  return <WideLayout displayName={displayName}>{children}</WideLayout>;
+  // Check if both tables are empty to show the onboarding banner
+  const [productsRes, accountsRes] = await Promise.all([
+    sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true),
+  ]);
+  const showOnboardingBanner =
+    (productsRes.count ?? 0) === 0 && (accountsRes.count ?? 0) === 0;
+
+  return (
+    <WideLayout displayName={displayName}>
+      <OnboardingBanner show={showOnboardingBanner} />
+      {children}
+    </WideLayout>
+  );
 }

@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { upsertProduct, upsertBrand, archiveProduct } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
@@ -226,9 +227,14 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
     <>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Products</h1>
-        <Button variant="primary" onClick={openAdd}>
-          Add Product
-        </Button>
+        <div className={styles.headerActions}>
+          <Link href="/app/crm/onboarding/import" className={styles.importLink}>
+            Import from CSV
+          </Link>
+          <Button variant="primary" onClick={openAdd}>
+            Add Product
+          </Button>
+        </div>
       </div>
 
       <div className={styles.toolbar}>
@@ -262,7 +268,12 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
               : 'Add your first wine, spirit, or product to start tracking sales recaps.'}
           </p>
           {!search && !typeFilter && (
-            <Button variant="primary" onClick={openAdd}>Add Product</Button>
+            <div className={styles.emptyActions}>
+              <Button variant="primary" onClick={openAdd}>Add Product</Button>
+              <Link href="/app/crm/onboarding/import" className={styles.importLink}>
+                Import from CSV →
+              </Link>
+            </div>
           )}
         </div>
       ) : (

@@ -1,0 +1,574 @@
+/* src/components/CSVImporter/CSVImporter.module.css */
+
+/* ── Wizard shell ─────────────────────────────────────────── */
+
+.wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ── Step indicator ───────────────────────────────────────── */
+
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0 var(--space-4);
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.stepCircle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--mist);
+  color: var(--text-muted);
+  border: 2px solid var(--mist);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  position: relative;
+  z-index: 1;
+}
+
+.stepActive {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: #fff;
+}
+
+.stepCompleted {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+}
+
+.stepLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-left: var(--space-2);
+  white-space: nowrap;
+}
+
+.stepLabelActive {
+  color: var(--wine);
+  font-weight: 600;
+}
+
+.stepLine {
+  width: 3rem;
+  height: 2px;
+  background: var(--mist);
+  margin: 0 var(--space-1);
+  flex-shrink: 0;
+}
+
+.stepLineCompleted {
+  background: var(--sage);
+}
+
+@media (max-width: 480px) {
+  .stepLabel {
+    display: none;
+  }
+  .stepLine {
+    width: 1.5rem;
+  }
+}
+
+/* ── Section card ─────────────────────────────────────────── */
+
+.section {
+  background: var(--cream);
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--mist);
+}
+
+.sectionHint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Drop zone ────────────────────────────────────────────── */
+
+.dropZone {
+  border: 2px dashed var(--mist);
+  border-radius: 8px;
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  background: #fff;
+  position: relative;
+}
+
+.dropZone:hover,
+.dropZoneActive {
+  border-color: var(--wine);
+  background: rgba(139, 26, 26, 0.02);
+}
+
+.dropIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.dropText {
+  font-size: var(--text-base);
+  color: var(--ink);
+  margin: 0;
+}
+
+.dropLink {
+  color: var(--wine);
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.dropHint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.fileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Preview block ────────────────────────────────────────── */
+
+.previewWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.previewMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.fileName {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.rowCount {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.warning {
+  color: #b36b00;
+}
+
+.errorMsg {
+  font-size: var(--text-sm);
+  color: var(--wine);
+  padding: var(--space-3);
+  background: rgba(139, 26, 26, 0.06);
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+
+/* ── Tables ───────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--mist);
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  min-width: 400px;
+}
+
+.previewTable thead tr {
+  background: var(--parchment);
+}
+
+.previewTable th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--mist);
+  white-space: nowrap;
+}
+
+.previewTable td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink);
+  border-bottom: 1px solid var(--mist);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.previewTable tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.emptyCell {
+  color: var(--text-muted);
+}
+
+/* ── Two-column layout (Step 2) ───────────────────────────── */
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+.previewPanel {
+  background: var(--cream);
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: sticky;
+  top: var(--space-4);
+}
+
+.previewPanelTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.emptyPreview {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-6) 0;
+  margin: 0;
+}
+
+/* ── Column mapping ───────────────────────────────────────── */
+
+.mappingGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mappingRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 480px) {
+  .mappingRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mappingLabel {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.mappingLabelAuto {
+  color: var(--sage);
+}
+
+.required {
+  color: var(--wine);
+}
+
+.fieldNote {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+}
+
+.selectAuto {
+  border-color: var(--sage);
+  background: rgba(107, 124, 94, 0.04);
+}
+
+.sageText {
+  color: var(--sage);
+  font-weight: 500;
+}
+
+.validationError {
+  background: rgba(139, 26, 26, 0.06);
+  border: 1px solid rgba(139, 26, 26, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.validationError p {
+  font-size: var(--text-sm);
+  color: var(--wine);
+  margin: 0;
+}
+
+/* ── Step 3: Summary ──────────────────────────────────────── */
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+  background: #fff;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.summaryFull {
+  grid-column: 1 / -1;
+}
+
+.summaryValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.summaryKey {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+.mutedText {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* ── Progress bar ─────────────────────────────────────────── */
+
+.progressWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.progressLabel {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background: var(--mist);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--wine);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* ── Results ──────────────────────────────────────────────── */
+
+.resultWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.successBadge {
+  display: inline-block;
+  background: rgba(45, 122, 58, 0.1);
+  color: #2d7a3a;
+  border: 1px solid rgba(45, 122, 58, 0.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.failureBadge {
+  display: inline-block;
+  background: rgba(139, 26, 26, 0.08);
+  color: var(--wine);
+  border: 1px solid rgba(139, 26, 26, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.failureSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.failureList {
+  list-style: none;
+  padding: var(--space-3);
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.failureList li {
+  font-size: var(--text-sm);
+  color: var(--wine);
+  font-family: var(--font-mono);
+}
+
+/* ── Action buttons ───────────────────────────────────────── */
+
+.stepActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.primaryBtn {
+  padding: 0.625rem 1.75rem;
+  font-size: var(--text-base);
+  font-weight: 600;
+  background: var(--wine);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+
+.primaryBtn:hover {
+  opacity: 0.9;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghostBtn {
+  padding: 0.625rem 1.5rem;
+  font-size: var(--text-base);
+  font-weight: 500;
+  background: none;
+  border: 1.5px solid var(--mist);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.ghostBtn:hover {
+  border-color: #aaa;
+}
