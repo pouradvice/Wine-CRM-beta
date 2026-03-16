@@ -123,4 +123,156 @@ $$;
 REVOKE ALL    ON FUNCTION set_active_team(TEXT, UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION set_active_team(TEXT, UUID) TO service_role;
 
+
+-- ══════════════════════════════════════════════════════════════
+-- 3. FIX save_recap — team resolution
+--
+-- Previous versions used LIMIT 1 to pick the caller's team from
+-- team_members, then validated that the chosen account belonged
+-- to that team.  With a user in multiple teams LIMIT 1 returns an
+-- arbitrary row, so the check fails whenever the wrong team is
+-- picked first.
+--
+-- Fix: resolve the team FROM the account record, then verify the
+-- caller is a member of that team.  The account is the source of
+-- truth for which team a recap belongs to.
+-- ══════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION save_recap(
+  p_recap     JSONB,
+  p_products  JSONB
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_team_id     UUID;
+  v_account_id  UUID;
+  v_contact_id  UUID;
+  v_recap_id    UUID;
+  v_product     JSONB;
+  v_rp_id       UUID;
+  v_outcome     TEXT;
+  v_follow_date DATE;
+  v_product_id  UUID;
+  v_supplier_id UUID;
+BEGIN
+  -- Resolve account first — it is the source of truth for team_id
+  v_account_id := (p_recap->>'account_id')::UUID;
+
+  SELECT team_id INTO v_team_id
+  FROM   accounts
+  WHERE  id = v_account_id;
+
+  IF v_team_id IS NULL THEN
+    RAISE EXCEPTION 'Account % not found', v_account_id;
+  END IF;
+
+  -- Validate the calling user is a member of that team
+  IF NOT EXISTS (
+    SELECT 1 FROM team_members
+    WHERE  user_id = auth.uid()
+    AND    team_id = v_team_id
+  ) THEN
+    RAISE EXCEPTION 'Forbidden: account % does not belong to any of your teams',
+      v_account_id;
+  END IF;
+
+  v_contact_id := NULLIF(p_recap->>'contact_id', '')::UUID;
+
+  -- Insert recap
+  INSERT INTO recaps (
+    team_id,
+    account_id,
+    contact_id,
+    user_id,
+    visit_date,
+    salesperson,
+    nature,
+    expense_receipt_url,
+    notes
+  ) VALUES (
+    v_team_id,
+    v_account_id,
+    v_contact_id,
+    NULLIF(p_recap->>'user_id', '')::UUID,
+    (p_recap->>'visit_date')::DATE,
+    p_recap->>'salesperson',
+    COALESCE(NULLIF(p_recap->>'nature', ''), 'Sales Call'),
+    NULLIF(p_recap->>'expense_receipt_url', ''),
+    NULLIF(p_recap->>'notes', '')
+  )
+  RETURNING id INTO v_recap_id;
+
+  -- Process each product
+  FOR v_product IN SELECT * FROM jsonb_array_elements(p_products) LOOP
+    v_outcome     := v_product->>'outcome';
+    v_follow_date := NULLIF(v_product->>'follow_up_date', '')::DATE;
+    v_product_id  := (v_product->>'product_id')::UUID;
+
+    -- supplier_id populated automatically by trg_sync_recap_product_supplier_id
+    INSERT INTO recap_products (
+      recap_id,
+      product_id,
+      outcome,
+      order_probability,
+      buyer_feedback,
+      follow_up_required,
+      follow_up_date,
+      bill_date
+    ) VALUES (
+      v_recap_id,
+      v_product_id,
+      v_outcome,
+      NULLIF(v_product->>'order_probability', '')::INTEGER,
+      NULLIF(v_product->>'buyer_feedback', ''),
+      v_outcome IN ('Yes Later','Maybe Later'),
+      v_follow_date,
+      NULLIF(v_product->>'bill_date', '')::DATE
+    )
+    RETURNING id INTO v_rp_id;
+
+    -- Auto-generate follow_up for actionable outcomes
+    IF v_outcome IN ('Yes Later','Maybe Later') THEN
+      SELECT supplier_id INTO v_supplier_id
+      FROM   products WHERE id = v_product_id;
+
+      INSERT INTO follow_ups (
+        team_id,
+        recap_product_id,
+        recap_id,
+        account_id,
+        contact_id,
+        product_id,
+        supplier_id,
+        due_date,
+        type,
+        status
+      ) VALUES (
+        v_team_id,
+        v_rp_id,
+        v_recap_id,
+        v_account_id,
+        v_contact_id,
+        v_product_id,
+        v_supplier_id,
+        v_follow_date,
+        'Visit',
+        'Open'
+      );
+    END IF;
+  END LOOP;
+
+  RETURN v_recap_id;
+
+EXCEPTION WHEN OTHERS THEN
+  RAISE;
+END;
+$$;
+
+REVOKE ALL    ON FUNCTION save_recap(JSONB, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION save_recap(JSONB, JSONB) TO authenticated;
+
 COMMIT;
