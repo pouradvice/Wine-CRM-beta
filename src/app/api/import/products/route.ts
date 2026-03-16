@@ -3,9 +3,8 @@
 // Accepts { rows: ProductInsert[] }, imports in batches, returns succeeded/failed counts.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { upsertProduct } from '@/lib/data';
-import { mapDbError } from '@/types';
 import type { ProductInsert } from '@/types';
 
 interface ImportBody {
@@ -39,15 +38,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
   }
 
-  // Use service client for writes (bypasses RLS for bulk import)
-  const serviceSb = await createServiceClient();
-
   const succeeded: number[] = [];
   const failed: Array<{ index: number; error: string }> = [];
 
   const results = await Promise.allSettled(
     body.rows.map((row, index) =>
-      upsertProduct(serviceSb, {
+      upsertProduct(sb, {
         ...(row as ProductInsert),
         team_id: teamId,
         is_active: true,
