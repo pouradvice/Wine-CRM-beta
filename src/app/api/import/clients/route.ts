@@ -3,7 +3,7 @@
 // Accepts { rows: AccountInsert[] }, imports in batches, returns succeeded/failed counts.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { upsertAccount } from '@/lib/data';
 import type { AccountInsert } from '@/types';
 
@@ -38,15 +38,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
   }
 
-  // Use service client for writes
-  const serviceSb = await createServiceClient();
-
   const succeeded: number[] = [];
   const failed: Array<{ index: number; error: string }> = [];
 
   const results = await Promise.allSettled(
     body.rows.map((row) =>
-      upsertAccount(serviceSb, {
+      upsertAccount(sb, {
         ...(row as AccountInsert),
         team_id: teamId,
         is_active: true,
