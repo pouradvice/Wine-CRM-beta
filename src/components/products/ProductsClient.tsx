@@ -1,11 +1,11 @@
 'use client';
 // src/components/products/ProductsClient.tsx
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertProduct, upsertBrand, archiveProduct } from '@/lib/data';
+import { upsertProduct, upsertBrand, archiveProduct, getProducts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type { Product, ProductInsert, WineType } from '@/types';
@@ -78,9 +78,13 @@ function productToForm(p: Product): ProductForm {
   };
 }
 
-export function ProductsClient({ initialProducts, teamId }: ProductsClientProps) {
+const PAGE_SIZE = 50;
+
+export function ProductsClient({ initialProducts, totalCount: initialTotal, teamId }: ProductsClientProps) {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [totalCount, setTotalCount] = useState(initialTotal);
+  const [currentPage, setCurrentPage] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [slideoverOpen, setSlideoverOpen] = useState(false);
@@ -89,6 +93,20 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ProductForm>>({});
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const fetchPage = useCallback(async (page: number) => {
+    try {
+      const sb = createClient();
+      const result = await getProducts(sb, { page, pageSize: PAGE_SIZE });
+      setProducts(result.data);
+      setTotalCount(result.count);
+      setCurrentPage(page);
+    } catch {
+      // Keep existing data on error
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -277,42 +295,73 @@ export function ProductsClient({ initialProducts, teamId }: ProductsClientProps)
           )}
         </div>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Wine Name</th>
-              <th>Type</th>
-              <th>Brand / Distributor</th>
-              <th>BTG Cost</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => (
-              <tr
-                key={p.id}
-                className={styles.tableRow}
-                onClick={() => openEdit(p)}
-              >
-                <td className={styles.skuCell}>{p.sku_number}</td>
-                <td className={styles.wineNameCell}>{p.wine_name}</td>
-                <td>{p.type ?? '—'}</td>
-                <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
-                <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
-                <td className={styles.actionsCell}>
-                  <button
-                    type="button"
-                    className={styles.archiveBtn}
-                    onClick={(e) => handleArchive(e, p)}
-                  >
-                    Archive
-                  </button>
-                </td>
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Wine Name</th>
+                <th>Type</th>
+                <th>Brand / Distributor</th>
+                <th>BTG Cost</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((p) => (
+                <tr
+                  key={p.id}
+                  className={styles.tableRow}
+                  onClick={() => openEdit(p)}
+                >
+                  <td className={styles.skuCell}>{p.sku_number}</td>
+                  <td className={styles.wineNameCell}>{p.wine_name}</td>
+                  <td>{p.type ?? '—'}</td>
+                  <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
+                  <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
+                  <td className={styles.actionsCell}>
+                    <button
+                      type="button"
+                      className={styles.archiveBtn}
+                      onClick={(e) => handleArchive(e, p)}
+                    >
+                      Archive
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              <span className={styles.pageInfo}>
+                {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+              </span>
+              <div className={styles.pageButtons}>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => fetchPage(currentPage - 1)}
+                  disabled={currentPage === 0}
+                >
+                  ← Previous
+                </button>
+                <span className={styles.pageCurrent}>
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => fetchPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Slideover
