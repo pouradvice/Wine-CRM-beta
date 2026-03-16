@@ -2,7 +2,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Cookie name used to short-circuit the DB lookup on return visits.
+// Cookie used to short-circuit the DB lookup on return visits.
+// The VALUE is the authenticated user's UUID so the check is user-specific:
+// a cookie left from a previous user's session on the same browser will
+// never match the current user's ID, forcing a fresh DB check.
 const ONBOARDING_DONE_COOKIE = 'onboarding_done';
 
 export async function middleware(request: NextRequest) {
@@ -55,9 +58,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/app') &&
     !pathname.startsWith('/app/onboarding')
   ) {
-    // Fast path: cookie set by the onboarding wizard means the user has completed it.
+    // Fast path: cookie value must match the current user's ID.
+    // A stale cookie from a different user's session on the same browser
+    // will not match and falls through to the DB check below.
     const cookieVal = request.cookies.get(ONBOARDING_DONE_COOKIE)?.value;
-    if (cookieVal === '1') {
+    if (cookieVal === user.id) {
       return supabaseResponse;
     }
 
@@ -76,10 +81,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Set the cookie so future requests skip the DB query.
-    supabaseResponse.cookies.set(ONBOARDING_DONE_COOKIE, '1', {
+    // Set the cookie with this user's ID as the value so future requests
+    // for THIS user skip the DB query without affecting other users.
+    supabaseResponse.cookies.set(ONBOARDING_DONE_COOKIE, user.id, {
       path:     '/',
-      httpOnly: false, // readable by the client wizard to confirm completion
+      httpOnly: false,
       sameSite: 'lax',
       maxAge:   60 * 60 * 24 * 365, // 1 year
     });
