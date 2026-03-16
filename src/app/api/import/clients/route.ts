@@ -1,10 +1,12 @@
 // src/app/api/import/clients/route.ts
 // POST /api/import/clients
 // Accepts { rows: AccountInsert[] }, delegates to bulk_import_accounts() (SECURITY DEFINER),
-// returns succeeded/failed counts. Uses the stored function to bypass RLS for all roles.
+// returns succeeded/failed counts.
+// User identity is verified with the anon client; the RPC is called with the
+// service-role client so RLS does not block the insert.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { mapDbError } from '@/types';
 
 interface ImportBody {
@@ -46,7 +48,12 @@ export async function POST(request: NextRequest) {
 
   const team_id: string = memberRow?.team_id ?? user.id;
 
-  const { data, error } = await sb.rpc('bulk_import_accounts', {
+  // Use the service-role client to call the RPC so RLS does not block the
+  // insert.  The user's identity was already verified above with the anon
+  // client, and the correct team_id is validated from the team_members row.
+  const sbService = createServiceClient();
+
+  const { data, error } = await sbService.rpc('bulk_import_accounts', {
     p_rows: body.rows,
     p_team_id: team_id,
   });

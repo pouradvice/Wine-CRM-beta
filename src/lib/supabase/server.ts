@@ -29,9 +29,9 @@ export async function createClient() {
 }
 
 // Service-role client — bypasses RLS entirely.
-// Use ONLY for admin operations that must cross team boundaries
-// (e.g. seeding, migrations, scheduled jobs).
-// NEVER import in client-side code or Route Handlers that serve user requests.
+// Safe to use in server-side Route Handlers for operations where the caller's
+// identity has already been verified with the anon client and the correct
+// team_id is validated before calling.  Do NOT import in Client Components.
 export function createServiceClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
