@@ -409,12 +409,39 @@ export function CSVImporter({ type, teamId, onComplete }: CSVImporterProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rows: payload }),
         });
-        const data: ImportResult = await res.json();
+
+        if (!res.ok) {
+          let apiError = `Server error (${res.status})`;
+          try {
+            const errBody = await res.json();
+            if (errBody?.error) apiError = errBody.error;
+          } catch {
+            // response body is not valid JSON — keep the status-based message
+          }
+          console.error('Import API error:', apiError, res.status);
+          for (const { originalIndex } of batch) {
+            failed.push({ index: originalIndex, error: apiError });
+          }
+          continue;
+        }
+
+        let data: ImportResult;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          console.error('Import response parse error:', parseErr);
+          for (const { originalIndex } of batch) {
+            failed.push({ index: originalIndex, error: 'Invalid response from server' });
+          }
+          continue;
+        }
+
         succeeded += data.succeeded;
         for (const f of data.failed) {
           failed.push({ index: batch[f.index]?.originalIndex ?? f.index, error: f.error });
         }
       } catch (err) {
+        console.error('Import network error:', err);
         for (const { originalIndex } of batch) {
           failed.push({ index: originalIndex, error: 'Network error' });
         }
