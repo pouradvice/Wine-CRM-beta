@@ -37,7 +37,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Resolve team_id — individual users fall back to user.id
+  // Resolve team_id from team_members.
+  // The handle_new_user() trigger provisions every signup with an owner row,
+  // so memberRow should always be present.  Falling back to user.id is a
+  // safety net for accounts created before the trigger was applied.
   const { data: memberRow } = await sb
     .from('team_members')
     .select('team_id')

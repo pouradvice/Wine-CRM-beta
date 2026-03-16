@@ -29,7 +29,11 @@ export default async function OnboardingRoute() {
     redirect('/app/crm/accounts');
   }
 
-  // 3. Resolve onboarding role from team_members
+  // 3. Resolve onboarding role from team_members.
+  //    The handle_new_user() auth trigger (03_onboarding.sql §0) inserts
+  //    every self-signup user as 'owner' of a fresh team, so memberRow
+  //    should always be present.  The 'individual' fallback is a safety
+  //    net for edge cases (e.g. users created before the trigger existed).
   const { data: memberRow } = await sb
     .from('team_members')
     .select('role')
@@ -38,11 +42,13 @@ export default async function OnboardingRoute() {
 
   let userRole: OnboardingRole;
   if (!memberRow) {
+    // Edge case: no team row yet (pre-trigger accounts or provisioning gap).
+    // Treat as individual — full step set, data keyed to user.id.
     userRole = 'individual';
   } else if (memberRow.role === 'owner' || memberRow.role === 'admin') {
     userRole = 'team_lead';
   } else {
-    // 'member'
+    // 'member' — invited into an existing team
     userRole = 'team_member';
   }
 
