@@ -125,14 +125,14 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     try {
       const sb = createClient();
       const status = tab === 'All' ? undefined : tab;
-      const result = await getAccounts(sb, status, { page, pageSize: PAGE_SIZE });
+      const result = await getAccounts(sb, status, { page, pageSize: PAGE_SIZE }, teamId);
       setClients(result.data);
       setTotalCount(result.count);
       setCurrentPage(page);
     } catch {
       // Keep existing data on error
     }
-  }, []);
+  }, [teamId]);
 
   const handleTabChange = async (tab: AccountStatus | 'All') => {
     setStatusTab(tab);

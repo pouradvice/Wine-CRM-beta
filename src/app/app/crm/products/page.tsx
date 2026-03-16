@@ -11,9 +11,9 @@ export default async function ProductsPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: products, count } = await getProducts(sb, { page: 0, pageSize: 25 });
-
   const teamId = (user.user_metadata?.team_id as string | undefined) ?? user.id;
+
+  const { data: products, count } = await getProducts(sb, { page: 0, pageSize: 25, teamId });
 
   return (
     <ProductsClient

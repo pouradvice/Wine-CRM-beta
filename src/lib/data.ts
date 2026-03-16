@@ -141,6 +141,7 @@ export async function getProducts(
     supplierId?:      string;
     search?:          string;
     limit?:           number;
+    teamId?:          string;
   } & PaginationOptions,
 ): Promise<PaginatedResult<Product>> {
   const [from, to] = pageRange(options?.page, options?.pageSize);
@@ -152,6 +153,7 @@ export async function getProducts(
     .range(from, to);
 
   if (!options?.includeInactive) query = query.eq('is_active', true);
+  if (options?.teamId)           query = query.eq('team_id', options.teamId);
   if (options?.brandId)          query = query.eq('brand_id', options.brandId);
   if (options?.supplierId)       query = query.eq('supplier_id', options.supplierId);
   if (options?.search) {
@@ -168,12 +170,14 @@ export async function getProducts(
 export async function getProductById(
   sb: SupabaseClient,
   id: string,
+  teamId?: string,
 ): Promise<Product | null> {
-  const { data, error } = await sb
+  let query = sb
     .from('products')
     .select('*, brand:brands(*, supplier:suppliers(*))')
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query.single();
   if (error) throw new Error(mapDbError(error));
   return data;
 }
@@ -195,11 +199,14 @@ export async function upsertProduct(
 export async function archiveProduct(
   sb: SupabaseClient,
   id: string,
+  teamId?: string,
 ): Promise<void> {
-  const { error } = await sb
+  let query = sb
     .from('products')
     .update({ is_active: false })
     .eq('id', id);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { error } = await query;
   if (error) throw new Error(mapDbError(error));
 }
 
@@ -209,6 +216,7 @@ export async function getAccounts(
   sb: SupabaseClient,
   status?: 'Active' | 'Prospective' | 'Former',
   pagination?: PaginationOptions,
+  teamId?: string,
 ): Promise<PaginatedResult<Account>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
@@ -219,6 +227,7 @@ export async function getAccounts(
     .order('name')
     .range(from, to);
 
+  if (teamId) query = query.eq('team_id', teamId);
   if (status) query = query.eq('status', status);
 
   const { data, error, count } = await query;
@@ -229,12 +238,14 @@ export async function getAccounts(
 export async function getAccountById(
   sb: SupabaseClient,
   id: string,
+  teamId?: string,
 ): Promise<Account | null> {
-  const { data, error } = await sb
+  let query = sb
     .from('accounts')
     .select('*')
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query.single();
   if (error) throw new Error(mapDbError(error));
   return data;
 }
@@ -258,6 +269,7 @@ export async function getContacts(
   sb: SupabaseClient,
   accountId?: string,
   pagination?: PaginationOptions,
+  teamId?: string,
 ): Promise<PaginatedResult<Contact>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
@@ -268,6 +280,7 @@ export async function getContacts(
     .order('first_name')
     .range(from, to);
 
+  if (teamId)    query = query.eq('team_id', teamId);
   if (accountId) query = query.eq('account_id', accountId);
 
   const { data, error, count } = await query;

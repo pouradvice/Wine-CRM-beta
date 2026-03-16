@@ -99,14 +99,14 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const fetchPage = useCallback(async (page: number) => {
     try {
       const sb = createClient();
-      const result = await getProducts(sb, { page, pageSize: PAGE_SIZE });
+      const result = await getProducts(sb, { page, pageSize: PAGE_SIZE, teamId });
       setProducts(result.data);
       setTotalCount(result.count);
       setCurrentPage(page);
     } catch {
       // Keep existing data on error
     }
-  }, []);
+  }, [teamId]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
