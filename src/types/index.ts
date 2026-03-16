@@ -405,6 +405,30 @@ export interface ExpenseRecap {
 }
 
 
+// ── Onboarding ───────────────────────────────────────────────
+
+/**
+ * Role used by the onboarding wizard to control which steps are shown.
+ * Distinct from UserRole (team_members.role) which uses 'owner'|'admin'|'member'.
+ */
+export type OnboardingRole = 'team_lead' | 'individual' | 'team_member';
+
+export interface OnboardingState {
+  user_id:           string;
+  completed_at:      string | null;
+  accounts_imported: number;
+  products_imported: number;
+  created_at:        string;
+  updated_at:        string;
+}
+
+export interface BulkImportResult {
+  inserted: number;
+  skipped:  number;
+  errors:   string[];
+}
+
+
 // ── Form state ───────────────────────────────────────────────
 
 export interface RecapFormProduct {
