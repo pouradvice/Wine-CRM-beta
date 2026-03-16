@@ -11,7 +11,12 @@ export default async function BuyersPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const teamId = (user.user_metadata?.team_id as string | undefined) ?? user.id;
+  const { data: memberRow } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const teamId: string = memberRow?.team_id ?? user.id;
 
   const [{ data: contacts }, { data: activeClients }] = await Promise.all([
     getContacts(sb, undefined, { page: 0, pageSize: 50 }, teamId),

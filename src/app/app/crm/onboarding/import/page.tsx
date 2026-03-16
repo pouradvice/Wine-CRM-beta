@@ -13,8 +13,12 @@ export default async function OnboardingImportPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const teamId: string =
-    (user.user_metadata?.team_id as string | undefined) ?? user.id;
+  const { data: memberRow } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const teamId: string = memberRow?.team_id ?? user.id;
 
   return (
     <NarrowLayout
