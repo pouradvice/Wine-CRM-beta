@@ -22,13 +22,14 @@ export default async function AppShellLayout({
     user.email?.split('@')[0] ??
     'User';
 
-  // Resolve the user's team_id for scoped queries
+  // Resolve the user's team_id and role for scoped queries
   const { data: memberRow } = await sb
     .from('team_members')
-    .select('team_id')
+    .select('team_id, role')
     .eq('user_id', user.id)
     .maybeSingle();
   const teamId = memberRow?.team_id;
+  const isOwner = memberRow?.role === 'owner';
 
   // Check if both tables are empty (for this team) to show the onboarding banner
   let productsQuery = sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
@@ -42,7 +43,7 @@ export default async function AppShellLayout({
     (productsRes.count ?? 0) === 0 && (accountsRes.count ?? 0) === 0;
 
   return (
-    <WideLayout displayName={displayName}>
+    <WideLayout displayName={displayName} isOwner={isOwner}>
       <OnboardingBanner show={showOnboardingBanner} />
       {children}
     </WideLayout>

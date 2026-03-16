@@ -5,14 +5,15 @@ import styles from './WideLayout.module.css';
 interface WideLayoutProps {
   children: React.ReactNode;
   displayName?: string;
+  isOwner?: boolean;
   title?: string;
   action?: React.ReactNode;
 }
 
-export function WideLayout({ children, displayName, title, action }: WideLayoutProps) {
+export function WideLayout({ children, displayName, isOwner, title, action }: WideLayoutProps) {
   return (
     <div className={styles.shell}>
-      <Nav displayName={displayName} />
+      <Nav displayName={displayName} isOwner={isOwner} />
       <main className={styles.main}>
         {title && (
           <div className={styles.heading}>
