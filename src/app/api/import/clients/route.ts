@@ -1,12 +1,13 @@
 // src/app/api/import/clients/route.ts
 // POST /api/import/clients
-// Accepts { rows: AccountInsert[] }, delegates to bulk_import_accounts() (SECURITY DEFINER),
-// returns succeeded/failed counts.
-// User identity is verified with the anon client; the RPC is called with the
-// service-role client so RLS does not block the insert.
+// Accepts { rows: AccountInsert[] }, inserts directly via the service-role
+// client (bypasses RLS), returns succeeded/failed counts.
+// User identity is verified with the anon client; the actual INSERT uses the
+// service-role client so RLS does not block the operation.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { mapDbError } from '@/types';
 
 interface ImportBody {
@@ -36,48 +37,73 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
   }
 
-  // Resolve team_id from team_members.
-  // The handle_new_user() trigger provisions every signup with an owner row,
-  // so memberRow should always be present.  Falling back to user.id is a
-  // safety net for accounts created before the trigger was applied.
+  // Resolve team_id from team_members (authenticated client).
   const { data: memberRow } = await sb
     .from('team_members')
     .select('team_id')
     .eq('user_id', user.id)
-    .maybeSingle();
+    .single();
 
-  const team_id: string = memberRow?.team_id ?? user.id;
-
-  // Use the service-role client to call the RPC so RLS does not block the
-  // insert.  The user's identity was already verified above with the anon
-  // client, and the correct team_id is validated from the team_members row.
-  const sbService = createServiceClient();
-
-  const { data, error } = await sbService.rpc('bulk_import_accounts', {
-    p_rows: body.rows,
-    p_team_id: team_id,
-  });
-
-  if (error) {
-    return NextResponse.json({ error: mapDbError(error) }, { status: 500 });
+  if (!memberRow) {
+    return NextResponse.json({ error: 'User not in any team' }, { status: 403 });
   }
 
-  // bulk_import_accounts returns { inserted, skipped, errors: string[] }.
-  // Transform to the { succeeded, failed } shape expected by CSVImporter.
-  const errors: string[] = (data as { errors?: string[] })?.errors ?? [];
-  const failed: Array<{ index: number; error: string }> = errors.map((msg: string) => {
-    const match = /^Row (\d+):\s*/.exec(msg);
-    // Use -1 when the row number cannot be parsed so callers know the row is unidentified.
-    const index = match ? parseInt(match[1], 10) - 1 : -1;
-    const errorMsg = match ? msg.slice(match[0].length) : msg;
-    return { index, error: errorMsg };
-  });
+  const team_id = memberRow.team_id;
 
-  const response: ImportResponse = {
-    succeeded: ((data as { inserted?: number })?.inserted ?? 0) +
-               ((data as { skipped?: number })?.skipped ?? 0),
-    failed,
-  };
+  // Use service role for inserts (bypasses RLS completely).
+  const sbService = createServiceClient();
 
+  let succeeded = 0;
+  let skipped = 0;
+  const failed: Array<{ index: number; error: string }> = [];
+
+  for (let idx = 0; idx < body.rows.length; idx++) {
+    const row = body.rows[idx];
+
+    try {
+      // Validate required field
+      const companyName = String(row['company_name'] || '').trim();
+      if (!companyName) {
+        failed.push({ index: idx, error: 'company_name is required' });
+        continue;
+      }
+
+      // Validate/default status
+      let status = String(row['status'] || 'Active').trim();
+      if (!['Active', 'Prospective', 'Former'].includes(status)) {
+        status = 'Active';
+      }
+
+      // Insert directly with service role (NO RLS)
+      const { error } = await sbService
+        .from('accounts')
+        .insert({
+          team_id,
+          name: companyName,
+          type: row['type'] ? String(row['type']).trim() || null : null,
+          value_tier: row['value_tier'] ? String(row['value_tier']).trim() || null : null,
+          phone: row['phone'] ? String(row['phone']).trim() || null : null,
+          email: row['email'] ? String(row['email']).trim() || null : null,
+          address: row['address'] ? String(row['address']).trim() || null : null,
+          status,
+          notes: row['notes'] ? String(row['notes']).trim() || null : null,
+          is_active: true,
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          skipped++;
+        } else {
+          failed.push({ index: idx, error: mapDbError(error) });
+        }
+      } else {
+        succeeded++;
+      }
+    } catch (e) {
+      failed.push({ index: idx, error: String(e) });
+    }
+  }
+
+  const response: ImportResponse = { succeeded, failed };
   return NextResponse.json(response, { status: 200 });
 }
