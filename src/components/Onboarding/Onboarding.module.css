@@ -1,0 +1,470 @@
+/* src/components/Onboarding/Onboarding.module.css */
+/* Pour Advice onboarding wizard — CSS Modules */
+/* Tokens from globals.css: --cream, --wine, --ink, --mist, --mist-dark, --sage, --parchment */
+
+/* ── Page shell ──────────────────────────────────────────────── */
+
+.page {
+  min-height: 100vh;
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+}
+
+/* ── Card header ─────────────────────────────────────────────── */
+
+.cardHeader {
+  background: var(--parchment);
+  border-bottom: 1px solid var(--mist);
+  padding: var(--space-6) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.brandMark {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--wine);
+  letter-spacing: 0.02em;
+}
+
+/* ── Progress bar ────────────────────────────────────────────── */
+
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.progressDot {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--mist-dark);
+  background: var(--cream);
+  color: var(--mist-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.progressStepActive .progressDot {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: #fff;
+}
+
+.progressStepComplete .progressDot {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+}
+
+.progressLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progressStepActive .progressLabel {
+  color: var(--wine);
+  font-weight: 600;
+}
+
+.progressStepComplete .progressLabel {
+  color: var(--sage);
+}
+
+.progressLine {
+  flex: 1;
+  height: 2px;
+  background: var(--mist);
+  margin-bottom: calc(var(--text-xs) + var(--space-1) + 2px); /* align with dot centres */
+  transition: background 0.2s;
+}
+
+.progressLineComplete {
+  background: var(--sage);
+}
+
+/* ── Step panel ──────────────────────────────────────────────── */
+
+.stepPanel {
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.stepTitle {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.stepDesc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Template button ─────────────────────────────────────────── */
+
+.templateBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--mist-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.templateBtn:hover {
+  border-color: var(--wine);
+  background: var(--parchment);
+}
+
+/* ── Drop zone ───────────────────────────────────────────────── */
+
+.dropZone {
+  border: 2px dashed var(--mist-dark);
+  border-radius: var(--radius-lg);
+  background: var(--cream);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+}
+
+.dropZone:hover,
+.dropZone:focus-visible {
+  border-color: var(--wine);
+  background: var(--parchment);
+}
+
+.dropZoneDragging {
+  border-style: solid;
+  border-color: var(--wine);
+  background: var(--parchment);
+}
+
+.dropZoneSelected {
+  border-style: solid;
+  border-color: var(--sage);
+  background: var(--cream);
+}
+
+.dropZoneIcon {
+  font-size: var(--text-2xl);
+  color: var(--mist-dark);
+  line-height: 1;
+}
+
+.dropZoneFileName {
+  font-size: var(--text-sm);
+  color: var(--sage);
+  font-weight: 500;
+}
+
+.fileInputHidden {
+  display: none;
+}
+
+/* ── Preview table ───────────────────────────────────────────── */
+
+.previewWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.previewLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+  min-width: 360px;
+}
+
+.previewTable th {
+  background: var(--parchment);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px solid var(--mist);
+}
+
+.previewTable td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink);
+  border-bottom: 1px solid var(--mist);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Result box ──────────────────────────────────────────────── */
+
+.resultBox {
+  background: var(--parchment);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.errorDetails summary {
+  cursor: pointer;
+  color: var(--wine);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.errorDetails ul {
+  margin-top: var(--space-2);
+  padding-left: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ── Error message ───────────────────────────────────────────── */
+
+.errorMsg {
+  font-size: var(--text-sm);
+  color: var(--wine);
+  background: rgba(139, 26, 26, 0.06);
+  border: 1px solid rgba(139, 26, 26, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+/* ── Step actions ────────────────────────────────────────────── */
+
+.stepActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+/* ── Primary button ──────────────────────────────────────────── */
+
+.primaryBtn {
+  background: var(--wine, #8b1a1a);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: background 0.15s;
+  line-height: 1.4;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: var(--wine-dark, #5c0f0f);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Finish button ───────────────────────────────────────────── */
+
+.finishBtn {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: var(--text-lg);
+  padding: var(--space-4) var(--space-8);
+}
+
+/* ── Skip link ───────────────────────────────────────────────── */
+
+.skipLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-decoration: underline;
+  padding: 0;
+}
+
+.skipLink:hover {
+  color: var(--ink);
+}
+
+/* ── Loading spinner ─────────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: var(--radius-full);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Done step ───────────────────────────────────────────────── */
+
+.doneCheck {
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--sage);
+}
+
+.doneTitle {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+/* ── Tips list ───────────────────────────────────────────────── */
+
+.tipsList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+}
+
+.tipItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  background: var(--parchment);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.tipIcon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.tipItem strong {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.tipItem p {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 520px) {
+  .cardHeader {
+    flex-direction: column;
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .stepPanel {
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .stepActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .primaryBtn {
+    text-align: center;
+    justify-content: center;
+  }
+
+  .skipLink {
+    text-align: center;
+  }
+
+  .progressLabel {
+    display: none;
+  }
+}
