@@ -1,7 +1,7 @@
 'use client';
 // src/components/clients/ClientsClient.tsx
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -78,9 +78,13 @@ function clientToForm(c: Account): ClientForm {
   };
 }
 
-export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
+const PAGE_SIZE = 50;
+
+export function ClientsClient({ initialClients, totalCount: initialTotal, teamId }: ClientsClientProps) {
   const router = useRouter();
   const [clients, setClients] = useState<Account[]>(initialClients);
+  const [totalCount, setTotalCount] = useState(initialTotal);
+  const [currentPage, setCurrentPage] = useState(0);
   const [statusTab, setStatusTab] = useState<AccountStatus | 'All'>('All');
   const [search, setSearch] = useState('');
   const [slideoverOpen, setSlideoverOpen] = useState(false);
@@ -89,6 +93,8 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ClientForm>>({});
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -115,17 +121,23 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
     setSlideoverOpen(true);
   };
 
-  const handleTabChange = async (tab: AccountStatus | 'All') => {
-    setStatusTab(tab);
-    // Fetch from server for non-initial tabs
+  const fetchPage = useCallback(async (page: number, tab: AccountStatus | 'All') => {
     try {
       const sb = createClient();
       const status = tab === 'All' ? undefined : tab;
-      const result = await getAccounts(sb, status, { page: 0, pageSize: 50 });
+      const result = await getAccounts(sb, status, { page, pageSize: PAGE_SIZE });
       setClients(result.data);
+      setTotalCount(result.count);
+      setCurrentPage(page);
     } catch {
       // Keep existing data on error
     }
+  }, []);
+
+  const handleTabChange = async (tab: AccountStatus | 'All') => {
+    setStatusTab(tab);
+    setSearch('');
+    await fetchPage(0, tab);
   };
 
   const validate = (): boolean => {
@@ -249,34 +261,65 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
           )}
         </div>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Type</th>
-              <th>Tier</th>
-              <th>Account Lead</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className={styles.tableRow} onClick={() => openEdit(c)}>
-                <td className={styles.companyCell}>{c.name}</td>
-                <td>{c.type ?? '—'}</td>
-                <td>
-                  {c.value_tier ? (
-                    <span className={`${styles.tierBadge} ${tierClass(c.value_tier)}`}>
-                      {c.value_tier}
-                    </span>
-                  ) : '—'}
-                </td>
-                <td>{c.account_lead ?? '—'}</td>
-                <td><StatusBadge status={c.status} /></td>
+        <>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Type</th>
+                <th>Tier</th>
+                <th>Account Lead</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className={styles.tableRow} onClick={() => openEdit(c)}>
+                  <td className={styles.companyCell}>{c.name}</td>
+                  <td>{c.type ?? '—'}</td>
+                  <td>
+                    {c.value_tier ? (
+                      <span className={`${styles.tierBadge} ${tierClass(c.value_tier)}`}>
+                        {c.value_tier}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td>{c.account_lead ?? '—'}</td>
+                  <td><StatusBadge status={c.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              <span className={styles.pageInfo}>
+                {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+              </span>
+              <div className={styles.pageButtons}>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => fetchPage(currentPage - 1, statusTab)}
+                  disabled={currentPage === 0}
+                >
+                  ← Previous
+                </button>
+                <span className={styles.pageCurrent}>
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => fetchPage(currentPage + 1, statusTab)}
+                  disabled={currentPage >= totalPages - 1}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Slideover
