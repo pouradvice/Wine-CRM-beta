@@ -443,7 +443,7 @@ export function CSVImporter({ type, teamId, onComplete }: CSVImporterProps) {
       } catch (err) {
         console.error('Import network error:', err);
         for (const { originalIndex } of batch) {
-          failed.push({ index: originalIndex, error: 'Network error' });
+          failed.push({ index: originalIndex, error: String(err) });
         }
       }
 
