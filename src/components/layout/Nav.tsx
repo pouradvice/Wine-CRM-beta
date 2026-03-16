@@ -17,15 +17,22 @@ const NAV_LINKS = [
   { href: '/app/crm/reports', label: 'Reports' },
 ];
 
+const OWNER_NAV_LINKS = [
+  ...NAV_LINKS,
+  { href: '/app/crm/team', label: 'Team' },
+];
+
 interface NavProps {
   displayName?: string;
+  isOwner?: boolean;
 }
 
-export function Nav({ displayName }: NavProps) {
+export function Nav({ displayName, isOwner }: NavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const links = isOwner ? OWNER_NAV_LINKS : NAV_LINKS;
   const isActive = (href: string) => pathname.startsWith(href);
 
   const handleSignOut = async () => {
@@ -44,7 +51,7 @@ export function Nav({ displayName }: NavProps) {
 
           {/* Desktop tabs */}
           <ul className={styles.tabs} role="list">
-            {NAV_LINKS.map(({ href, label }) => (
+            {links.map(({ href, label }) => (
               <li key={href} className={styles.tab}>
                 <Link
                   href={href}
@@ -90,7 +97,7 @@ export function Nav({ displayName }: NavProps) {
       {/* Mobile dropdown — rendered outside nav at portal level via fixed positioning */}
       {mobileOpen && (
         <div className={styles.mobileMenu}>
-          {NAV_LINKS.map(({ href, label }) => (
+          {links.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
