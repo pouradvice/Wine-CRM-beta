@@ -1,12 +1,6 @@
-// src/app/api/import/products/route.ts
-// POST /api/import/products
-// Accepts { rows: ProductInsert[] }, delegates to bulk_import_products() (SECURITY DEFINER),
-// returns succeeded/failed counts.
-// User identity is verified with the anon client; the RPC is called with the
-// service-role client so RLS does not block the insert.
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { mapDbError } from '@/types';
 
 interface ImportBody {
@@ -36,48 +30,107 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
   }
 
-  // Resolve team_id from team_members.
-  // The handle_new_user() trigger provisions every signup with an owner row,
-  // so memberRow should always be present.  Falling back to user.id is a
-  // safety net for accounts created before the trigger was applied.
+  // Get user's team
   const { data: memberRow } = await sb
     .from('team_members')
     .select('team_id')
     .eq('user_id', user.id)
-    .maybeSingle();
+    .single();
 
-  const team_id: string = memberRow?.team_id ?? user.id;
-
-  // Use the service-role client to call the RPC so RLS does not block the
-  // insert.  The user's identity was already verified above with the anon
-  // client, and the correct team_id is validated from the team_members row.
-  const sbService = createServiceClient();
-
-  const { data, error } = await sbService.rpc('bulk_import_products', {
-    p_rows: body.rows,
-    p_team_id: team_id,
-  });
-
-  if (error) {
-    return NextResponse.json({ error: mapDbError(error) }, { status: 500 });
+  if (!memberRow) {
+    return NextResponse.json({ error: 'User not in any team' }, { status: 403 });
   }
 
-  // bulk_import_products returns { inserted, skipped, errors: string[] }.
-  // Transform to the { succeeded, failed } shape expected by CSVImporter.
-  const errors: string[] = (data as { errors?: string[] })?.errors ?? [];
-  const failed: Array<{ index: number; error: string }> = errors.map((msg: string) => {
-    const match = /^Row (\d+):\s*/.exec(msg);
-    // Use -1 when the row number cannot be parsed so callers know the row is unidentified.
-    const index = match ? parseInt(match[1], 10) - 1 : -1;
-    const errorMsg = match ? msg.slice(match[0].length) : msg;
-    return { index, error: errorMsg };
-  });
+  const team_id = memberRow.team_id;
 
-  const response: ImportResponse = {
-    succeeded: ((data as { inserted?: number })?.inserted ?? 0) +
-               ((data as { skipped?: number })?.skipped ?? 0),
-    failed,
-  };
+  // Use service role for inserts (bypasses RLS completely)
+  const sbService = createServiceClient();
 
-  return NextResponse.json(response, { status: 200 });
+  let succeeded = 0;
+  let skipped = 0;
+  const failed: Array<{ index: number; error: string }> = [];
+
+  for (let idx = 0; idx < body.rows.length; idx++) {
+    const row = body.rows[idx];
+
+    try {
+      // Validate required fields
+      const skuNumber = String(row['sku_number'] || '').trim();
+      const wineName = String(row['wine_name'] || '').trim();
+
+      if (!skuNumber) {
+        failed.push({
+          index: idx,
+          error: 'sku_number is required',
+        });
+        continue;
+      }
+
+      if (!wineName) {
+        failed.push({
+          index: idx,
+          error: 'wine_name is required',
+        });
+        continue;
+      }
+
+      // Parse numeric fields
+      const btgCost = row['btg_cost']
+        ? /^\d+(\.\d+)?$/.test(String(row['btg_cost']))
+          ? parseFloat(String(row['btg_cost']))
+          : null
+        : null;
+
+      const frontlineCost = row['frontline_cost']
+        ? /^\d+(\.\d+)?$/.test(String(row['frontline_cost']))
+          ? parseFloat(String(row['frontline_cost']))
+          : null
+        : null;
+
+      // Insert directly with service role (NO RLS)
+      const { error } = await sbService
+        .from('products')
+        .upsert(
+          {
+            team_id,
+            sku_number: skuNumber,
+            wine_name: wineName,
+            type: row['type'] ? String(row['type']).trim() || null : null,
+            varietal: row['varietal'] ? String(row['varietal']).trim() || null : null,
+            country: row['country'] ? String(row['country']).trim() || null : null,
+            region: row['region'] ? String(row['region']).trim() || null : null,
+            appellation: row['appellation'] ? String(row['appellation']).trim() || null : null,
+            vintage: row['vintage'] ? String(row['vintage']).trim() || null : null,
+            distributor: row['distributor'] ? String(row['distributor']).trim() || null : null,
+            btg_cost: btgCost,
+            frontline_cost: frontlineCost,
+            notes: row['notes'] ? String(row['notes']).trim() || null : null,
+            is_active: true,
+          },
+          { onConflict: 'sku_number,team_id' }
+        );
+
+      if (error) {
+        failed.push({
+          index: idx,
+          error: mapDbError(error),
+        });
+      } else {
+        succeeded++;
+      }
+    } catch (e) {
+      failed.push({
+        index: idx,
+        error: String(e),
+      });
+    }
+  }
+
+  return NextResponse.json(
+    {
+      succeeded,
+      failed,
+    },
+    { status: 200 }
+  );
 }
