@@ -19,10 +19,12 @@ export default async function NewRecapPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
+  const teamId = (user.user_metadata?.team_id as string | undefined) ?? user.id;
+
   // Load all active clients for the account selector.
   // 200 is a safe ceiling for Phase 1; paginate this selector in Phase 2
   // if client counts grow beyond that.
-  const { data: clients } = await getAccounts(sb, 'Active', { page: 0, pageSize: 200 });
+  const { data: clients } = await getAccounts(sb, 'Active', { page: 0, pageSize: 200 }, teamId);
 
   const displayName =
     user.user_metadata?.full_name ??

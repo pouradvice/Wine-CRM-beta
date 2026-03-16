@@ -11,6 +11,19 @@ import type { ProductInsert } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     const sb = await createClient();
+
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: memberRow } = await sb
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const teamId: string | undefined = memberRow?.team_id ?? undefined;
+
     const { searchParams } = new URL(request.url);
 
     const search = searchParams.get('search') ?? undefined;
@@ -31,6 +44,7 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       limit,
+      teamId,
     });
 
     return NextResponse.json(result);

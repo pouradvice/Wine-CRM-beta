@@ -22,11 +22,22 @@ export default async function AppShellLayout({
     user.email?.split('@')[0] ??
     'User';
 
-  // Check if both tables are empty to show the onboarding banner
-  const [productsRes, accountsRes] = await Promise.all([
-    sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
-    sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true),
-  ]);
+  // Resolve the user's team_id for scoped queries
+  const { data: memberRow } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const teamId = memberRow?.team_id;
+
+  // Check if both tables are empty (for this team) to show the onboarding banner
+  let productsQuery = sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
+  let accountsQuery = sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true);
+  if (teamId) {
+    productsQuery = productsQuery.eq('team_id', teamId);
+    accountsQuery = accountsQuery.eq('team_id', teamId);
+  }
+  const [productsRes, accountsRes] = await Promise.all([productsQuery, accountsQuery]);
   const showOnboardingBanner =
     (productsRes.count ?? 0) === 0 && (accountsRes.count ?? 0) === 0;
 
