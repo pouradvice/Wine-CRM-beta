@@ -3,7 +3,7 @@
 // src/components/Onboarding/OnboardingPage.tsx
 // First-login onboarding wizard.
 // Steps: upload accounts → upload portfolio (products) → done.
-// team_member role: products step excluded (latent — see STEPS_BY_ROLE).
+// All roles (team_lead, individual, team_member) now include the products step.
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -28,9 +28,7 @@ type Step = 'accounts' | 'products' | 'done';
 const STEPS_BY_ROLE: Record<OnboardingRole, Step[]> = {
   team_lead:   ['accounts', 'products', 'done'],
   individual:  ['accounts', 'products', 'done'],
-  // LATENT: hidden from team_members — this step is excluded from STEPS_BY_ROLE for 'team_member'
-  // When team_member product access is activated, add 'products' back to their steps array above.
-  team_member: ['accounts', 'done'],
+  team_member: ['accounts', 'products', 'done'],
 };
 
 // ── StepAccounts ──────────────────────────────────────────────
@@ -76,8 +74,6 @@ function StepAccounts({ teamId: _teamId, importedCount, onOpenImporter, onNext, 
 }
 
 // ── StepProducts ──────────────────────────────────────────────
-// LATENT: hidden from team_members — this step is excluded from STEPS_BY_ROLE for 'team_member'
-// When team_member product access is activated, add 'products' back to their steps array above.
 
 interface StepProductsProps {
   teamId: string;
