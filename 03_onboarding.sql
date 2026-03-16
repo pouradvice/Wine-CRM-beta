@@ -7,6 +7,60 @@
 -- ============================================================
 
 
+-- ── 0. Auto-provision new users as team owner ────────────────
+--
+-- When a user signs up through Supabase Auth (email/password or OAuth),
+-- this trigger fires immediately and:
+--   • Creates a fresh team UUID for them
+--   • Inserts them into team_members as 'owner'
+--   • Writes team_id into user_metadata so the app can read it
+--
+-- This means every self-signup user arrives at the onboarding wizard
+-- with an 'owner' role and their own isolated team — they are never
+-- silently merged into a shared team.
+--
+-- add_broker_user() still works for manually adding colleagues to an
+-- existing team; the ON CONFLICT DO NOTHING guard prevents it from
+-- overwriting the auto-provisioned owner row on the same (user, team).
+--
+-- To add a user to a SECOND team (without touching their existing owner
+-- team), call add_broker_user() with the target team UUID explicitly.
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_team_id UUID := gen_random_uuid();
+BEGIN
+  -- Provision a private team for the new user
+  INSERT INTO public.team_members (user_id, team_id, role)
+  VALUES (NEW.id, v_team_id, 'owner')
+  ON CONFLICT DO NOTHING;
+
+  -- Stamp team_id into user_metadata only if not already set
+  -- (e.g. created via add_broker_user before signup, edge case)
+  IF (NEW.raw_user_meta_data->>'team_id') IS NULL THEN
+    UPDATE auth.users
+    SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) ||
+                             jsonb_build_object('team_id', v_team_id)
+    WHERE id = NEW.id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- Drop first in case this migration is re-run
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
 -- ── 1a. user_onboarding_state ─────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS user_onboarding_state (

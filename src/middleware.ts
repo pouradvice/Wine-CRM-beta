@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from login
   if (pathname === '/login' && user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/app/crm/accounts';
+    url.pathname = '/app/crm/clients';
     return NextResponse.redirect(url);
   }
 

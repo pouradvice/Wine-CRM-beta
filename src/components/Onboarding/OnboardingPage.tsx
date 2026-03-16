@@ -5,9 +5,11 @@
 // Steps: upload accounts → upload portfolio (products) → done.
 // team_member role: products step excluded (latent — see STEPS_BY_ROLE).
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { OnboardingRole, BulkImportResult } from '@/types';
+import type { OnboardingRole } from '@/types';
+import { Slideover } from '@/components/ui/Slideover';
+import { CSVImporter } from '@/components/CSVImporter/CSVImporter';
 import styles from './Onboarding.module.css';
 
 // ── Props ─────────────────────────────────────────────────────
@@ -15,6 +17,7 @@ import styles from './Onboarding.module.css';
 interface Props {
   userRole?: OnboardingRole; // default: 'individual'
   userName?: string;         // default: ''
+  teamId?: string;           // resolved by the server page
   onComplete?: () => void;
 }
 
@@ -30,248 +33,37 @@ const STEPS_BY_ROLE: Record<OnboardingRole, Step[]> = {
   team_member: ['accounts', 'done'],
 };
 
-// ── CSV parser ────────────────────────────────────────────────
-
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const fields: string[] = [];
-    let inQuotes = false;
-    let current = '';
-
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === ',' && !inQuotes) {
-        fields.push(current);
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-    fields.push(current);
-    rows.push(fields);
-  }
-
-  return rows;
-}
-
-function normalizeHeader(h: string): string {
-  return h.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-}
-
-function csvToObjects(text: string): Record<string, string>[] {
-  const rows = parseCSV(text);
-  if (rows.length < 2) return [];
-  const headers = rows[0].map(normalizeHeader);
-  return rows.slice(1).map((row) => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
-    return obj;
-  });
-}
-
-// ── Download CSV template helper ──────────────────────────────
-
-function downloadTemplate(filename: string, headers: string[]) {
-  const csv = headers.join(',') + '\n';
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // ── StepAccounts ──────────────────────────────────────────────
 
-const ACCOUNTS_HEADERS = [
-  'company_name', 'type', 'value_tier', 'contact_name',
-  'phone', 'email', 'address', 'status', 'notes',
-];
-
 interface StepAccountsProps {
-  onNext: (imported: number) => void;
+  teamId: string;
+  importedCount: number;
+  onOpenImporter: () => void;
+  onNext: () => void;
   onSkip: () => void;
 }
 
-function StepAccounts({ onNext, onSkip }: StepAccountsProps) {
-  const [rows, setRows] = useState<Record<string, string>[]>([]);
-  const [fileName, setFileName] = useState('');
-  const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BulkImportResult | null>(null);
-  const [uploadError, setUploadError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = (file: File) => {
-    setResult(null);
-    setUploadError('');
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setRows(csvToObjects(text));
-      setFileName(file.name);
-    };
-    reader.readAsText(file);
-  };
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, []);
-
-  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
-  const onDragLeave = () => setDragging(false);
-
-  const handleImport = async () => {
-    setLoading(true);
-    setUploadError('');
-    try {
-      const res = await fetch('/api/accounts/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows }),
-      });
-      const json = await res.json() as BulkImportResult & { error?: string };
-      if (!res.ok) {
-        setUploadError(json.error ?? 'Import failed.');
-      } else {
-        setResult(json);
-      }
-    } catch {
-      setUploadError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const preview = rows.slice(0, 5);
-
+function StepAccounts({ teamId: _teamId, importedCount, onOpenImporter, onNext, onSkip }: StepAccountsProps) {
   return (
     <div className={styles.stepPanel}>
       <h2 className={styles.stepTitle}>Import your accounts</h2>
       <p className={styles.stepDesc}>
-        Upload a CSV of your restaurants, retailers, and other venues. You can always add more later.
+        Upload a CSV of your restaurants, retailers, and other venues. Our importer will match
+        your column headers automatically — no reformatting needed. You can always add more later.
       </p>
 
-      <button
-        type="button"
-        className={styles.templateBtn}
-        onClick={() => downloadTemplate('accounts_template.csv', ACCOUNTS_HEADERS)}
-      >
-        Download CSV template
-      </button>
-
-      <div
-        className={[
-          styles.dropZone,
-          dragging ? styles.dropZoneDragging : '',
-          fileName && !dragging ? styles.dropZoneSelected : '',
-        ].filter(Boolean).join(' ')}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-        aria-label="Upload CSV file"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          className={styles.fileInputHidden}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-        />
-        {fileName
-          ? <span className={styles.dropZoneFileName}>{fileName} — {rows.length} rows</span>
-          : (
-            <>
-              <span className={styles.dropZoneIcon} aria-hidden>↑</span>
-              <span>Drag &amp; drop a CSV, or <u>browse</u></span>
-            </>
-          )}
-      </div>
-
-      {preview.length > 0 && (
-        <div className={styles.previewWrap}>
-          <p className={styles.previewLabel}>Preview ({Math.min(rows.length, 5)} of {rows.length})</p>
-          <div className={styles.tableScroll}>
-            <table className={styles.previewTable}>
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Contact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.company_name}</td>
-                    <td>{row.type}</td>
-                    <td>{row.status}</td>
-                    <td>{row.contact_name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {uploadError && <p className={styles.errorMsg}>{uploadError}</p>}
-
-      {result && (
-        <div className={styles.resultBox}>
-          <p>
-            <strong>{result.inserted}</strong> imported
-            {result.skipped > 0 && <>, <strong>{result.skipped}</strong> skipped</>}
-          </p>
-          {result.errors.length > 0 && (
-            <details className={styles.errorDetails}>
-              <summary>{result.errors.length} error{result.errors.length !== 1 ? 's' : ''}</summary>
-              <ul>
-                {result.errors.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            </details>
-          )}
+      {importedCount > 0 && (
+        <div className={styles.importedBadge}>
+          ✓ {importedCount} account{importedCount !== 1 ? 's' : ''} imported
         </div>
       )}
 
       <div className={styles.stepActions}>
-        {rows.length > 0 && !result && (
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={handleImport}
-            disabled={loading}
-          >
-            {loading ? <span className={styles.spinner} aria-hidden /> : null}
-            {loading ? 'Importing…' : 'Import accounts'}
-          </button>
-        )}
-        {result && (
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={() => onNext(result.inserted)}
-          >
+        <button type="button" className={styles.primaryBtn} onClick={onOpenImporter}>
+          {importedCount > 0 ? 'Import more accounts' : 'Upload CSV'}
+        </button>
+        {importedCount > 0 && (
+          <button type="button" className={styles.primaryBtn} onClick={onNext}>
             Continue →
           </button>
         )}
@@ -287,184 +79,35 @@ function StepAccounts({ onNext, onSkip }: StepAccountsProps) {
 // LATENT: hidden from team_members — this step is excluded from STEPS_BY_ROLE for 'team_member'
 // When team_member product access is activated, add 'products' back to their steps array above.
 
-const PRODUCTS_HEADERS = [
-  'sku_number', 'wine_name', 'type', 'varietal', 'country',
-  'region', 'appellation', 'vintage', 'distributor',
-  'btg_cost', 'frontline_cost', 'notes',
-];
-
 interface StepProductsProps {
-  onNext: (imported: number) => void;
+  teamId: string;
+  importedCount: number;
+  onOpenImporter: () => void;
+  onNext: () => void;
   onSkip: () => void;
 }
 
-function StepProducts({ onNext, onSkip }: StepProductsProps) {
-  const [rows, setRows] = useState<Record<string, string>[]>([]);
-  const [fileName, setFileName] = useState('');
-  const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BulkImportResult | null>(null);
-  const [uploadError, setUploadError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = (file: File) => {
-    setResult(null);
-    setUploadError('');
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setRows(csvToObjects(text));
-      setFileName(file.name);
-    };
-    reader.readAsText(file);
-  };
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, []);
-
-  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
-  const onDragLeave = () => setDragging(false);
-
-  const handleImport = async () => {
-    setLoading(true);
-    setUploadError('');
-    try {
-      const res = await fetch('/api/products/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows }),
-      });
-      const json = await res.json() as BulkImportResult & { error?: string };
-      if (!res.ok) {
-        setUploadError(json.error ?? 'Import failed.');
-      } else {
-        setResult(json);
-      }
-    } catch {
-      setUploadError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const preview = rows.slice(0, 5);
-
+function StepProducts({ teamId: _teamId, importedCount, onOpenImporter, onNext, onSkip }: StepProductsProps) {
   return (
     <div className={styles.stepPanel}>
       <h2 className={styles.stepTitle}>Import your portfolio</h2>
       <p className={styles.stepDesc}>
-        Upload a CSV of the wines and spirits you represent. SKU number and wine name are required.
+        Upload a CSV of the wines and spirits you represent. SKU number and wine name are required;
+        everything else is matched automatically from your existing headers.
       </p>
 
-      <button
-        type="button"
-        className={styles.templateBtn}
-        onClick={() => downloadTemplate('products_template.csv', PRODUCTS_HEADERS)}
-      >
-        Download CSV template
-      </button>
-
-      <div
-        className={[
-          styles.dropZone,
-          dragging ? styles.dropZoneDragging : '',
-          fileName && !dragging ? styles.dropZoneSelected : '',
-        ].filter(Boolean).join(' ')}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-        aria-label="Upload CSV file"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          className={styles.fileInputHidden}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-        />
-        {fileName
-          ? <span className={styles.dropZoneFileName}>{fileName} — {rows.length} rows</span>
-          : (
-            <>
-              <span className={styles.dropZoneIcon} aria-hidden>↑</span>
-              <span>Drag &amp; drop a CSV, or <u>browse</u></span>
-            </>
-          )}
-      </div>
-
-      {preview.length > 0 && (
-        <div className={styles.previewWrap}>
-          <p className={styles.previewLabel}>Preview ({Math.min(rows.length, 5)} of {rows.length})</p>
-          <div className={styles.tableScroll}>
-            <table className={styles.previewTable}>
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Wine name</th>
-                  <th>Type</th>
-                  <th>Distributor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.sku_number}</td>
-                    <td>{row.wine_name}</td>
-                    <td>{row.type}</td>
-                    <td>{row.distributor}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {uploadError && <p className={styles.errorMsg}>{uploadError}</p>}
-
-      {result && (
-        <div className={styles.resultBox}>
-          <p>
-            <strong>{result.inserted}</strong> imported
-            {result.skipped > 0 && <>, <strong>{result.skipped}</strong> updated</>}
-          </p>
-          {result.errors.length > 0 && (
-            <details className={styles.errorDetails}>
-              <summary>{result.errors.length} error{result.errors.length !== 1 ? 's' : ''}</summary>
-              <ul>
-                {result.errors.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            </details>
-          )}
+      {importedCount > 0 && (
+        <div className={styles.importedBadge}>
+          ✓ {importedCount} product{importedCount !== 1 ? 's' : ''} imported
         </div>
       )}
 
       <div className={styles.stepActions}>
-        {rows.length > 0 && !result && (
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={handleImport}
-            disabled={loading}
-          >
-            {loading ? <span className={styles.spinner} aria-hidden /> : null}
-            {loading ? 'Importing…' : 'Import portfolio'}
-          </button>
-        )}
-        {result && (
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={() => onNext(result.inserted)}
-          >
+        <button type="button" className={styles.primaryBtn} onClick={onOpenImporter}>
+          {importedCount > 0 ? 'Import more products' : 'Upload CSV'}
+        </button>
+        {importedCount > 0 && (
+          <button type="button" className={styles.primaryBtn} onClick={onNext}>
             Continue →
           </button>
         )}
@@ -584,6 +227,7 @@ function ProgressBar({ steps, stepIndex }: ProgressBarProps) {
 export function OnboardingPage({
   userRole = 'individual',
   userName = '',
+  teamId = '',
   onComplete,
 }: Props) {
   const router = useRouter();
@@ -592,7 +236,25 @@ export function OnboardingPage({
   const [accountsImported, setAccountsImported] = useState(0);
   const [productsImported, setProductsImported] = useState(0);
 
+  // Slideover state — one instance shared between account and product steps
+  const [sliderOpen, setSliderOpen]   = useState(false);
+  const [sliderType, setSliderType]   = useState<'clients' | 'products'>('clients');
+
   const advance = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+
+  const openImporter = (type: 'clients' | 'products') => {
+    setSliderType(type);
+    setSliderOpen(true);
+  };
+
+  const handleImporterDone = (succeeded: number) => {
+    if (sliderType === 'clients') {
+      setAccountsImported((n) => n + succeeded);
+    } else {
+      setProductsImported((n) => n + succeeded);
+    }
+    setSliderOpen(false);
+  };
 
   const handleFinish = async () => {
     try {
@@ -608,7 +270,7 @@ export function OnboardingPage({
       try { localStorage.setItem('onboarding_complete', '1'); } catch { /* storage blocked */ }
     }
     onComplete?.();
-    router.push('/app/crm/accounts');
+    router.push('/app/crm/clients');
   };
 
   const currentStep = steps[stepIndex];
@@ -623,13 +285,19 @@ export function OnboardingPage({
 
         {currentStep === 'accounts' && (
           <StepAccounts
-            onNext={(n) => { setAccountsImported((prev) => prev + n); advance(); }}
+            teamId={teamId}
+            importedCount={accountsImported}
+            onOpenImporter={() => openImporter('clients')}
+            onNext={advance}
             onSkip={advance}
           />
         )}
         {currentStep === 'products' && (
           <StepProducts
-            onNext={(n) => { setProductsImported((prev) => prev + n); advance(); }}
+            teamId={teamId}
+            importedCount={productsImported}
+            onOpenImporter={() => openImporter('products')}
+            onNext={advance}
             onSkip={advance}
           />
         )}
@@ -637,6 +305,21 @@ export function OnboardingPage({
           <StepDone userName={userName} onFinish={handleFinish} />
         )}
       </div>
+
+      {/* CSV importer slideover — shared for both accounts and products */}
+      <Slideover
+        open={sliderOpen}
+        onClose={() => setSliderOpen(false)}
+        title={sliderType === 'clients' ? 'Import Accounts' : 'Import Portfolio'}
+      >
+        {sliderOpen && (
+          <CSVImporter
+            type={sliderType}
+            teamId={teamId}
+            onComplete={handleImporterDone}
+          />
+        )}
+      </Slideover>
     </div>
   );
 }

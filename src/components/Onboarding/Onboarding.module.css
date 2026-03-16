@@ -135,26 +135,23 @@
   line-height: 1.6;
 }
 
-/* ── Template button ─────────────────────────────────────────── */
+/* ── Imported success badge ──────────────────────────────────── */
 
-.templateBtn {
-  align-self: flex-start;
-  background: none;
-  border: 1px solid var(--mist-dark);
+.importedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(107, 124, 94, 0.1);
+  border: 1px solid var(--sage);
+  color: var(--sage);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
-  color: var(--ink);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  font-weight: 500;
+  align-self: flex-start;
 }
 
-.templateBtn:hover {
-  border-color: var(--wine);
-  background: var(--parchment);
-}
-
-/* ── Drop zone ───────────────────────────────────────────────── */
+/* ── Drop zone (kept for compatibility) ──────────────────────── */
 
 .dropZone {
   border: 2px dashed var(--mist-dark);
