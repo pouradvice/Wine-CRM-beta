@@ -1,0 +1,75 @@
+/* src/app/app/crm/onboarding/import/ImportHub.module.css */
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--cream);
+  border: 1px solid var(--mist);
+  border-radius: 10px;
+  padding: var(--space-8) var(--space-6);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-family: inherit;
+}
+
+.card:hover {
+  border-color: var(--wine);
+  box-shadow: var(--shadow-md);
+}
+
+.cardIcon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.cardDesc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cardCta {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--wine);
+  margin-top: var(--space-2);
+}
+
+.backLink {
+  background: none;
+  border: none;
+  font-size: var(--text-sm);
+  color: var(--wine);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  margin-bottom: var(--space-4);
+  display: inline-block;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}

@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { upsertAccount, getAccounts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
@@ -197,7 +198,12 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
     <>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Accounts</h1>
-        <Button variant="primary" onClick={openAdd}>Add Account</Button>
+        <div className={styles.headerActions}>
+          <Link href="/app/crm/onboarding/import" className={styles.importLink}>
+            Import from CSV
+          </Link>
+          <Button variant="primary" onClick={openAdd}>Add Account</Button>
+        </div>
       </div>
 
       <div className={styles.statusTabs}>
@@ -233,7 +239,14 @@ export function ClientsClient({ initialClients, teamId }: ClientsClientProps) {
               ? 'Try a different name.'
               : 'Add your first account to get started with sales recaps.'}
           </p>
-          {!search && <Button variant="primary" onClick={openAdd}>Add Account</Button>}
+          {!search && (
+            <div className={styles.emptyActions}>
+              <Button variant="primary" onClick={openAdd}>Add Account</Button>
+              <Link href="/app/crm/onboarding/import" className={styles.importLink}>
+                Import from CSV →
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <table className={styles.table}>
