@@ -51,7 +51,7 @@ export async function getSuppliers(sb: SupabaseClient): Promise<Supplier[]> {
     .select('*')
     .eq('is_active', true)
     .order('name');
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data ?? [];
 }
 
@@ -64,7 +64,7 @@ export async function upsertSupplier(
     .upsert(supplier)
     .select()
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -82,7 +82,7 @@ export async function getSupplierContracts(
   if (options?.status) query = query.eq('status', options.status);
 
   const { data, error } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data ?? [];
 }
 
@@ -95,7 +95,7 @@ export async function upsertSupplierContract(
     .upsert(contract, { onConflict: 'team_id,supplier_id' })
     .select('*, supplier:suppliers(*)')
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -114,7 +114,7 @@ export async function getBrands(
   if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
 
   const { data, error } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data ?? [];
 }
 
@@ -127,7 +127,7 @@ export async function upsertBrand(
     .upsert(brand, { onConflict: 'name,team_id' })
     .select('*, supplier:suppliers(*)')
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -161,7 +161,7 @@ export async function getProducts(
   }
 
   const { data, error, count } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -174,7 +174,7 @@ export async function getProductById(
     .select('*, brand:brands(*, supplier:suppliers(*))')
     .eq('id', id)
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -188,7 +188,7 @@ export async function upsertProduct(
     .upsert(product, { onConflict })
     .select('*, brand:brands(*, supplier:suppliers(*))')
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -200,7 +200,7 @@ export async function archiveProduct(
     .from('products')
     .update({ is_active: false })
     .eq('id', id);
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 }
 
 // ── Accounts ──────────────────────────────────────────────────
@@ -222,7 +222,7 @@ export async function getAccounts(
   if (status) query = query.eq('status', status);
 
   const { data, error, count } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -235,7 +235,7 @@ export async function getAccountById(
     .select('*')
     .eq('id', id)
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -248,7 +248,7 @@ export async function upsertAccount(
     .upsert(account)
     .select()
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -271,7 +271,7 @@ export async function getContacts(
   if (accountId) query = query.eq('account_id', accountId);
 
   const { data, error, count } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -284,7 +284,7 @@ export async function upsertContact(
     .upsert(contact)
     .select('*, account:accounts(id, name)')
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -322,7 +322,7 @@ export async function getRecaps(
   if (options?.to)          query = query.lte('visit_date', options.to);
 
   const { data, error, count } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -340,7 +340,7 @@ export async function getRecapById(
     `)
     .eq('id', id)
     .single();
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data;
 }
 
@@ -371,7 +371,7 @@ export async function saveRecap(
   }));
 
   const { data, error } = await sb.rpc('save_recap', { p_recap, p_products });
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return data as string;
 }
 
@@ -388,7 +388,7 @@ export async function getFollowUpQueue(
     .select('*', { count: 'exact' })
     .range(from, to);
 
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -405,7 +405,7 @@ export async function updateFollowUpStatus(
     ...(update.snoozed_until ? { snoozed_until: update.snoozed_until } : {}),
   };
   const { error } = await sb.from('follow_ups').update(payload).eq('id', id);
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 }
 
 // ── Analytics ─────────────────────────────────────────────────
@@ -422,7 +422,7 @@ export async function getProductPerformance(
     .order('times_shown', { ascending: false })
     .range(from, to);
 
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
@@ -448,7 +448,7 @@ export async function getVisitsBySupplier(
     `)
     .order('created_at', { ascending: false });
 
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   return (data ?? []).map((row) => {
     const r = row as unknown as {
@@ -479,7 +479,7 @@ export async function getProductsByContact(
     .from('v_products_by_contact')
     .select('*');
 
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return (data ?? []) as ProductsByContactRow[];
 }
 
@@ -537,7 +537,7 @@ export async function getTopSkus(
     .gte('times_shown', 1)
     .order('times_shown', { ascending: false })
     .limit(limit);
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
   return (data ?? []) as ProductPerformance[];
 }
 
@@ -548,7 +548,7 @@ export async function getTopAccounts(
   const { data, error } = await sb
     .from('recaps')
     .select('account_id, visit_date, account:accounts(name)');
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   const map = new Map<string, { account_name: string; visits: string[] }>();
   for (const row of data ?? []) {
@@ -591,7 +591,7 @@ export async function getSalespersonStats(
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
 
   const { data, error } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   type RawRow = {
     id:             string;
@@ -649,7 +649,7 @@ export async function getSalespersonWeeklyTrend(
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
 
   const { data, error } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   // Build 12-week scaffold (Monday-anchored)
   const weeks: string[] = [];
@@ -684,8 +684,8 @@ export async function getInactiveAccounts(
     sb.from('accounts').select('id, name, account_lead, value_tier').eq('is_active', true),
     sb.from('recaps').select('account_id, visit_date').order('visit_date', { ascending: false }),
   ]);
-  if (accountsRes.error) throw mapDbError(accountsRes.error);
-  if (recapsRes.error)   throw mapDbError(recapsRes.error);
+  if (accountsRes.error) throw new Error(mapDbError(accountsRes.error));
+  if (recapsRes.error)   throw new Error(mapDbError(recapsRes.error));
 
   const lastVisit = new Map<string, string>();
   for (const r of recapsRes.data ?? []) {
@@ -718,7 +718,7 @@ export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHea
     .from('v_follow_up_queue')
     .select('outcome')
     .eq('status', 'Open');
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   const map = new Map<string, number>();
   for (const r of data ?? []) {
@@ -760,7 +760,7 @@ export async function getExpenseRecaps(
   if (options?.to)   query = query.lte('visit_date', options.to);
 
   const { data, error } = await query;
-  if (error) throw mapDbError(error);
+  if (error) throw new Error(mapDbError(error));
 
   type RawRecap = {
     id:                  string;
