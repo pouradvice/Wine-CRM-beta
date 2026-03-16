@@ -26,17 +26,17 @@ export default async function OnboardingRoute() {
     .maybeSingle();
 
   if (onboardingState?.completed_at != null) {
-    redirect('/app/crm/accounts');
+    redirect('/app/crm/clients');
   }
 
-  // 3. Resolve onboarding role from team_members.
+  // 3. Resolve onboarding role and team_id from team_members.
   //    The handle_new_user() auth trigger (03_onboarding.sql §0) inserts
   //    every self-signup user as 'owner' of a fresh team, so memberRow
   //    should always be present.  The 'individual' fallback is a safety
   //    net for edge cases (e.g. users created before the trigger existed).
   const { data: memberRow } = await sb
     .from('team_members')
-    .select('role')
+    .select('role, team_id')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -52,11 +52,14 @@ export default async function OnboardingRoute() {
     userRole = 'team_member';
   }
 
+  // team_id used by CSVImporter for row ownership
+  const teamId: string = memberRow?.team_id ?? user.id;
+
   // 4. Display name
   const displayName: string =
     (user.user_metadata?.full_name as string | undefined) ??
     user.email?.split('@')[0] ??
     '';
 
-  return <OnboardingPage userRole={userRole} userName={displayName} />;
+  return <OnboardingPage userRole={userRole} userName={displayName} teamId={teamId} />;
 }

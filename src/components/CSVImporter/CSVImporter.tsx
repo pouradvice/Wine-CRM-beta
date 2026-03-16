@@ -290,9 +290,12 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
 interface CSVImporterProps {
   type: ImportType;
   teamId: string;
+  /** When provided (e.g. inside the onboarding wizard), called with the
+   *  succeeded count instead of navigating to the list page. */
+  onComplete?: (succeeded: number) => void;
 }
 
-export function CSVImporter({ type, teamId }: CSVImporterProps) {
+export function CSVImporter({ type, teamId, onComplete }: CSVImporterProps) {
   const router = useRouter();
   const schema = type === 'products' ? PRODUCT_SCHEMA : CLIENT_SCHEMA;
   const apiPath = type === 'products' ? '/api/import/products' : '/api/import/clients';
@@ -728,12 +731,21 @@ export function CSVImporter({ type, teamId }: CSVImporterProps) {
                 >
                   Import another file
                 </button>
-                <button
-                  className={styles.primaryBtn}
-                  onClick={() => router.push(successPath)}
-                >
-                  Go to {type === 'products' ? 'Products' : 'Accounts'} →
-                </button>
+                {onComplete ? (
+                  <button
+                    className={styles.primaryBtn}
+                    onClick={() => onComplete(result.succeeded)}
+                  >
+                    Done →
+                  </button>
+                ) : (
+                  <button
+                    className={styles.primaryBtn}
+                    onClick={() => router.push(successPath)}
+                  >
+                    Go to {type === 'products' ? 'Products' : 'Accounts'} →
+                  </button>
+                )}
               </div>
             </div>
           )}
