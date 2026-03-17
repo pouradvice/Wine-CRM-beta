@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  let newMember = null;
+  let newMember: { user_id: string; role: string; email: string; display_name: string } | null = null;
   if (memberRow) {
     const { data: userData } = await svc.auth.admin.getUserById(memberRow.user_id);
     const authUser = userData?.user;
