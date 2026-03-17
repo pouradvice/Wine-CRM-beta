@@ -67,11 +67,17 @@ export async function middleware(request: NextRequest) {
     }
 
     // Slow path: query the DB (only needed on first visit after login).
-    const { data: onboardingState } = await supabase
+    const { data: onboardingState, error: onboardingError } = await supabase
       .from('user_onboarding_state')
       .select('completed_at')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    // If the query errors (e.g. table not yet created), let the user through
+    // rather than looping. The page-level guards will catch any real issues.
+    if (onboardingError) {
+      return supabaseResponse;
+    }
 
     const hasCompleted = onboardingState?.completed_at != null;
 

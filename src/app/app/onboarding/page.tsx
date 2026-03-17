@@ -19,13 +19,14 @@ export default async function OnboardingRoute() {
   }
 
   // 2. If already completed, skip wizard
-  const { data: onboardingState } = await sb
+  const { data: onboardingState, error: onboardingError } = await sb
     .from('user_onboarding_state')
     .select('completed_at')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (onboardingState?.completed_at != null) {
+  // Only redirect away if we know for certain onboarding is done
+  if (!onboardingError && onboardingState?.completed_at != null) {
     redirect('/app/crm/clients');
   }
 
