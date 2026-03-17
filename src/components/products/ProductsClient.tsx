@@ -224,13 +224,14 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     }
   };
 
-  const handleArchive = async (e: React.MouseEvent, p: Product) => {
-    e.stopPropagation();
-    if (!confirm(`Archive "${p.wine_name}"? It will no longer appear in lists.`)) return;
+  const handleArchive = async () => {
+    if (!editingProduct) return;
+    if (!confirm(`Archive "${editingProduct.wine_name}"? It will no longer appear in lists.`)) return;
     const sb = createClient();
     try {
-      await archiveProduct(sb, p.id);
-      setProducts((prev) => prev.filter((x) => x.id !== p.id));
+      await archiveProduct(sb, editingProduct.id);
+      setProducts((prev) => prev.filter((x) => x.id !== editingProduct.id));
+      setSlideoverOpen(false);
     } catch {
       alert('Failed to archive product. Please try again.');
     }
@@ -296,6 +297,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         </div>
       ) : (
         <>
+          <div className={styles.tableWrapper}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -309,11 +311,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr
-                  key={p.id}
-                  className={styles.tableRow}
-                  onClick={() => openEdit(p)}
-                >
+                <tr key={p.id} className={styles.tableRow}>
                   <td className={styles.skuCell}>{p.sku_number}</td>
                   <td className={styles.wineNameCell}>{p.wine_name}</td>
                   <td>{p.type ?? '—'}</td>
@@ -322,16 +320,17 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                   <td className={styles.actionsCell}>
                     <button
                       type="button"
-                      className={styles.archiveBtn}
-                      onClick={(e) => handleArchive(e, p)}
+                      className={styles.editBtn}
+                      onClick={() => openEdit(p)}
                     >
-                      Archive
+                      Edit
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
 
           {totalPages > 1 && (
             <div className={styles.pagination}>
@@ -370,6 +369,11 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         title={editingProduct ? 'Edit Product' : 'Add Product'}
         footer={
           <>
+            {editingProduct && (
+              <button type="button" className={styles.archiveBtn} onClick={handleArchive} disabled={saving}>
+                Archive
+              </button>
+            )}
             <Button variant="secondary" onClick={closeSlide} disabled={saving}>Cancel</Button>
             <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
           </>
