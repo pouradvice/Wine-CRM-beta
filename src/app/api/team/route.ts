@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     .from('team_members')
     .select('team_id, role')
     .eq('user_id', user.id)
+    .eq('role', 'owner')
     .maybeSingle();
 
   if (!callerRow || callerRow.role !== 'owner') {
@@ -46,6 +47,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Set the invited user's active team to the shared team so the app
+  // doesn't non-deterministically pick their solo auto-provisioned team.
+  try {
+    await svc.rpc('set_active_team', {
+      p_email:   email,
+      p_team_id: callerRow.team_id,
+    });
+  } catch (setTeamErr) {
+    console.error('set_active_team failed (non-fatal):', setTeamErr);
+  }
+
   return NextResponse.json({ ok: true });
 }
 
@@ -62,6 +74,7 @@ export async function DELETE(req: NextRequest) {
     .from('team_members')
     .select('team_id, role')
     .eq('user_id', user.id)
+    .eq('role', 'owner')
     .maybeSingle();
 
   if (!callerRow || callerRow.role !== 'owner') {
@@ -101,6 +114,7 @@ export async function PATCH(req: NextRequest) {
     .from('team_members')
     .select('team_id, role')
     .eq('user_id', user.id)
+    .eq('role', 'owner')
     .maybeSingle();
 
   if (!callerRow || callerRow.role !== 'owner') {
