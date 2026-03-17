@@ -24,6 +24,13 @@ export default async function ReportsPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
+  const { data: memberRow } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .single();
+  const teamId = memberRow?.team_id as string | undefined;
+
   const [
     { data: performance },
     { data: followUps },
@@ -38,18 +45,18 @@ export default async function ReportsPage() {
     pipelineHealth,
     expenses,
   ] = await Promise.all([
-    getProductPerformance(sb, { page: 0, pageSize: 50 }),
-    getFollowUpQueue(sb, { page: 0, pageSize: 100 }),
-    getVisitsBySupplier(sb),
+    getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId),
+    getFollowUpQueue(sb, { page: 0, pageSize: 100 }, teamId),
+    getVisitsBySupplier(sb, teamId),
     getProductsByContact(sb),
-    getDashboardStats(sb),
-    getTopSkus(sb, 5),
-    getTopAccounts(sb, 5),
-    getSalespersonStats(sb),
-    getSalespersonWeeklyTrend(sb),
-    getInactiveAccounts(sb, 60),
-    getPipelineHealth(sb),
-    getExpenseRecaps(sb),
+    getDashboardStats(sb, teamId),
+    getTopSkus(sb, 5, teamId),
+    getTopAccounts(sb, 5, teamId),
+    getSalespersonStats(sb, { teamId }),
+    getSalespersonWeeklyTrend(sb, { teamId }),
+    getInactiveAccounts(sb, 60, teamId),
+    getPipelineHealth(sb, teamId),
+    getExpenseRecaps(sb, { teamId }),
   ]);
 
   return (

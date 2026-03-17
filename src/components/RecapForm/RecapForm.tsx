@@ -247,8 +247,7 @@ export function RecapForm({ clients, currentUser }: Props) {
               type="text"
               className={styles.input}
               value={form.salesperson}
-              onChange={(e) => setForm((f) => ({ ...f, salesperson: e.target.value }))}
-              required
+              readOnly
             />
           </div>
         </div>

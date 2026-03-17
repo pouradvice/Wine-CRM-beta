@@ -263,6 +263,20 @@ export async function upsertAccount(
   return data;
 }
 
+export async function archiveAccount(
+  sb: SupabaseClient,
+  id: string,
+  teamId?: string,
+): Promise<void> {
+  let query = sb
+    .from('accounts')
+    .update({ is_active: false })
+    .eq('id', id);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { error } = await query;
+  if (error) throw new Error(mapDbError(error));
+}
+
 // ── Contacts ──────────────────────────────────────────────────
 
 export async function getContacts(
@@ -393,14 +407,17 @@ export async function saveRecap(
 export async function getFollowUpQueue(
   sb: SupabaseClient,
   pagination?: PaginationOptions,
+  teamId?: string,
 ): Promise<PaginatedResult<FollowUpQueueRow>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
-  const { data, error, count } = await sb
+  let query = sb
     .from('v_follow_up_queue')
     .select('*', { count: 'exact' })
     .range(from, to);
+  if (teamId) query = query.eq('team_id', teamId);
 
+  const { data, error, count } = await query;
   if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
@@ -426,23 +443,27 @@ export async function updateFollowUpStatus(
 export async function getProductPerformance(
   sb: SupabaseClient,
   pagination?: PaginationOptions,
+  teamId?: string,
 ): Promise<PaginatedResult<ProductPerformance>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
-  const { data, error, count } = await sb
+  let query = sb
     .from('v_product_performance')
     .select('*', { count: 'exact' })
     .order('times_shown', { ascending: false })
     .range(from, to);
+  if (teamId) query = query.eq('team_id', teamId);
 
+  const { data, error, count } = await query;
   if (error) throw new Error(mapDbError(error));
   return { data: data ?? [], count: count ?? 0 };
 }
 
 export async function getVisitsBySupplier(
   sb: SupabaseClient,
+  teamId?: string,
 ): Promise<VisitsBySupplierRow[]> {
-  const { data, error } = await sb
+  let query = sb
     .from('recap_products')
     .select(`
       outcome,
@@ -460,6 +481,8 @@ export async function getVisitsBySupplier(
       )
     `)
     .order('created_at', { ascending: false });
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query;
 
   if (error) throw new Error(mapDbError(error));
 
@@ -508,15 +531,20 @@ function isoWeekStart(dateStr: string): string {
   return monday.toISOString().slice(0, 10);
 }
 
-export async function getDashboardStats(sb: SupabaseClient): Promise<DashboardStats> {
+export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Promise<DashboardStats> {
   const now = new Date();
   const startOfMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
-  const [monthRes, convRes, openRes] = await Promise.all([
-    sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfMonth),
-    sb.from('v_product_performance').select('conversion_rate_pct'),
-    sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open'),
-  ]);
+  let monthQuery = sb.from('recaps').select('id', { count: 'exact', head: true }).gte('visit_date', startOfMonth);
+  if (teamId) monthQuery = monthQuery.eq('team_id', teamId);
+
+  let convQuery = sb.from('v_product_performance').select('conversion_rate_pct');
+  if (teamId) convQuery = convQuery.eq('team_id', teamId);
+
+  let openQuery = sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open');
+  if (teamId) openQuery = openQuery.eq('team_id', teamId);
+
+  const [monthRes, convRes, openRes] = await Promise.all([monthQuery, convQuery, openQuery]);
 
   const rates = (convRes.data ?? [])
     .map((r) => r.conversion_rate_pct as number | null)
@@ -527,10 +555,9 @@ export async function getDashboardStats(sb: SupabaseClient): Promise<DashboardSt
       : null;
 
   // total active accounts
-  const { count: totalAccounts } = await sb
-    .from('accounts')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_active', true);
+  let accountsQuery = sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true);
+  if (teamId) accountsQuery = accountsQuery.eq('team_id', teamId);
+  const { count: totalAccounts } = await accountsQuery;
 
   return {
     total_accounts:      totalAccounts ?? 0,
@@ -543,13 +570,16 @@ export async function getDashboardStats(sb: SupabaseClient): Promise<DashboardSt
 export async function getTopSkus(
   sb: SupabaseClient,
   limit = 5,
+  teamId?: string,
 ): Promise<ProductPerformance[]> {
-  const { data, error } = await sb
+  let query = sb
     .from('v_product_performance')
     .select('*')
     .gte('times_shown', 1)
     .order('times_shown', { ascending: false })
     .limit(limit);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
   return (data ?? []) as ProductPerformance[];
 }
@@ -557,10 +587,13 @@ export async function getTopSkus(
 export async function getTopAccounts(
   sb: SupabaseClient,
   limit = 5,
+  teamId?: string,
 ): Promise<TopAccount[]> {
-  const { data, error } = await sb
+  let query = sb
     .from('recaps')
     .select('account_id, visit_date, account:accounts(name)');
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
 
   const map = new Map<string, { account_name: string; visits: string[] }>();
@@ -590,7 +623,7 @@ export async function getTopAccounts(
 
 export async function getSalespersonStats(
   sb: SupabaseClient,
-  options?: { salesperson?: string },
+  options?: { salesperson?: string; teamId?: string },
 ): Promise<SalespersonStats[]> {
   let query = sb
     .from('recaps')
@@ -602,6 +635,7 @@ export async function getSalespersonStats(
       recap_products(outcome, order_probability)
     `);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
+  if (options?.teamId) query = query.eq('team_id', options.teamId);
 
   const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
@@ -649,7 +683,7 @@ export async function getSalespersonStats(
 
 export async function getSalespersonWeeklyTrend(
   sb: SupabaseClient,
-  options?: { salesperson?: string },
+  options?: { salesperson?: string; teamId?: string },
 ): Promise<SalespersonWeeklyTrend[]> {
   const cutoff = new Date();
   cutoff.setUTCDate(cutoff.getUTCDate() - 84); // 12 weeks
@@ -660,6 +694,7 @@ export async function getSalespersonWeeklyTrend(
     .select('visit_date, salesperson')
     .gte('visit_date', cutoffStr);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
+  if (options?.teamId) query = query.eq('team_id', options.teamId);
 
   const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
@@ -692,11 +727,15 @@ export async function getSalespersonWeeklyTrend(
 export async function getInactiveAccounts(
   sb: SupabaseClient,
   dayThreshold = 60,
+  teamId?: string,
 ): Promise<InactiveAccount[]> {
-  const [accountsRes, recapsRes] = await Promise.all([
-    sb.from('accounts').select('id, name, account_lead, value_tier').eq('is_active', true),
-    sb.from('recaps').select('account_id, visit_date').order('visit_date', { ascending: false }),
-  ]);
+  let accountsQuery = sb.from('accounts').select('id, name, account_lead, value_tier').eq('is_active', true);
+  if (teamId) accountsQuery = accountsQuery.eq('team_id', teamId);
+
+  let recapsQuery = sb.from('recaps').select('account_id, visit_date').order('visit_date', { ascending: false });
+  if (teamId) recapsQuery = recapsQuery.eq('team_id', teamId);
+
+  const [accountsRes, recapsRes] = await Promise.all([accountsQuery, recapsQuery]);
   if (accountsRes.error) throw new Error(mapDbError(accountsRes.error));
   if (recapsRes.error)   throw new Error(mapDbError(recapsRes.error));
 
@@ -726,11 +765,10 @@ export async function getInactiveAccounts(
   return results.sort((a, b) => (b.days_inactive ?? 9999) - (a.days_inactive ?? 9999));
 }
 
-export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHealth[]> {
-  const { data, error } = await sb
-    .from('v_follow_up_queue')
-    .select('outcome')
-    .eq('status', 'Open');
+export async function getPipelineHealth(sb: SupabaseClient, teamId?: string): Promise<PipelineHealth[]> {
+  let query = sb.from('v_follow_up_queue').select('outcome').eq('status', 'Open');
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
 
   const map = new Map<string, number>();
@@ -749,7 +787,7 @@ export async function getPipelineHealth(sb: SupabaseClient): Promise<PipelineHea
 
 export async function getExpenseRecaps(
   sb: SupabaseClient,
-  options?: { from?: string; to?: string; supplierId?: string },
+  options?: { from?: string; to?: string; supplierId?: string; teamId?: string },
 ): Promise<ExpenseRecap[]> {
   let query = sb
     .from('recaps')
@@ -771,6 +809,7 @@ export async function getExpenseRecaps(
 
   if (options?.from) query = query.gte('visit_date', options.from);
   if (options?.to)   query = query.lte('visit_date', options.to);
+  if (options?.teamId) query = query.eq('team_id', options.teamId);
 
   const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));

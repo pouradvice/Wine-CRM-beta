@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertAccount, getAccounts } from '@/lib/data';
+import { upsertAccount, getAccounts, archiveAccount } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -195,6 +195,20 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     }
   };
 
+  const handleDelete = async () => {
+    if (!editingClient) return;
+    if (!confirm(`Delete "${editingClient.name}"? This cannot be undone.`)) return;
+    const sb = createClient();
+    try {
+      await archiveAccount(sb, editingClient.id, teamId);
+      setClients((prev) => prev.filter((c) => c.id !== editingClient.id));
+      setSlideoverOpen(false);
+      router.refresh();
+    } catch {
+      setSaveError('Failed to delete account. Please try again.');
+    }
+  };
+
   const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K] | AccountStatus) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
@@ -328,6 +342,9 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         title={editingClient ? 'Edit Account' : 'Add Account'}
         footer={
           <>
+            {editingClient && (
+              <Button variant="danger" onClick={handleDelete} disabled={saving}>Delete</Button>
+            )}
             <Button variant="secondary" onClick={() => setSlideoverOpen(false)} disabled={saving}>Cancel</Button>
             <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
           </>

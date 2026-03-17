@@ -8,13 +8,12 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './Nav.module.css';
 
 const NAV_LINKS = [
-  { href: '/app/crm/clients',     label: 'Clients' },
-  { href: '/app/crm/buyers',      label: 'Buyers' },
+  { href: '/app/crm/clients',     label: 'Accounts' },
   { href: '/app/crm/products',    label: 'Products' },
   { href: '/app/crm/new-recap',   label: 'New Recap' },
   { href: '/app/crm/history',     label: 'History' },
   { href: '/app/crm/follow-ups',  label: 'Follow-Ups' },
-  { href: '/app/crm/reports', label: 'Reports' },
+  { href: '/app/crm/reports',     label: 'Reports' },
 ];
 
 const OWNER_NAV_LINKS = [
