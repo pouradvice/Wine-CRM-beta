@@ -399,7 +399,15 @@ export async function saveRecap(
 
   const { data, error } = await sb.rpc('save_recap', { p_recap, p_products });
   if (error) throw new Error(mapDbError(error));
-  return data as string;
+  const recapId = data as string;
+
+  // Store contact_name (free-text account lead) — separate update since it's
+  // not part of the save_recap RPC signature.
+  if (form.contact_name) {
+    await sb.from('recaps').update({ contact_name: form.contact_name }).eq('id', recapId);
+  }
+
+  return recapId;
 }
 
 // ── Follow-ups ────────────────────────────────────────────────

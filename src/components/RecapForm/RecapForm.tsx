@@ -15,7 +15,6 @@ import { createClient } from '@/lib/supabase/client';
 import { saveRecap } from '@/lib/data';
 import type {
   Account,
-  Contact,
   Product,
   RecapFormState,
   RecapFormProduct,
@@ -67,6 +66,7 @@ export function RecapForm({ clients, currentUser }: Props) {
     salesperson: currentUser,
     account_id: '',
     contact_id: null,
+    contact_name: '',
     nature: 'Sales Call',
     expense_receipt_url: null,
     notes: null,
@@ -85,26 +85,6 @@ export function RecapForm({ clients, currentUser }: Props) {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Contact lazy-load state ──────────────────────────────────
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [contactsLoading, setContactsLoading] = useState(false);
-
-  // ── Fetch contacts when account changes ──────────────────────
-  useEffect(() => {
-    if (!form.account_id) {
-      setContacts([]);
-      return;
-    }
-
-    setContactsLoading(true);
-    setContacts([]);
-
-    fetch(`/api/contacts?accountId=${form.account_id}`)
-      .then((res) => res.json())
-      .then((result) => setContacts(result.data ?? []))
-      .catch(() => setContacts([]))
-      .finally(() => setContactsLoading(false));
-  }, [form.account_id]);
 
   // ── Debounced product search ──────────────────────────────────
   useEffect(() => {
@@ -261,9 +241,15 @@ export function RecapForm({ clients, currentUser }: Props) {
               id="account_id"
               className={styles.select}
               value={form.account_id}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, account_id: e.target.value, contact_id: null }))
-              }
+              onChange={(e) => {
+                const acct = clients.find((c) => c.id === e.target.value);
+                setForm((f) => ({
+                  ...f,
+                  account_id: e.target.value,
+                  contact_id: null,
+                  contact_name: acct?.account_lead ?? '',
+                }));
+              }}
               required
             >
               <option value="">Select account…</option>
@@ -274,23 +260,15 @@ export function RecapForm({ clients, currentUser }: Props) {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="contact_id" className={styles.label}>Contact</label>
-            <select
-              id="contact_id"
-              className={styles.select}
-              value={form.contact_id ?? ''}
-              disabled={!form.account_id || contactsLoading}
-              onChange={(e) => setForm((f) => ({ ...f, contact_id: e.target.value || null }))}
-            >
-              <option value="">
-                {contactsLoading ? 'Loading contacts…' : 'Select contact…'}
-              </option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.first_name}{c.role ? ` — ${c.role}` : ''}
-                </option>
-              ))}
-            </select>
+            <label htmlFor="contact_name" className={styles.label}>Contact</label>
+            <input
+              id="contact_name"
+              type="text"
+              className={styles.input}
+              value={form.contact_name}
+              placeholder="Account lead or contact name"
+              onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
+            />
           </div>
         </div>
 

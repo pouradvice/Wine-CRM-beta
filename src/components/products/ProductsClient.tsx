@@ -87,6 +87,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [currentPage, setCurrentPage] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+
+  // Detail slideover
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+
+  // Edit slideover
   const [slideoverOpen, setSlideoverOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm());
@@ -121,6 +127,11 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     });
   }, [products, search, typeFilter]);
 
+  const openDetail = (p: Product) => {
+    setDetailProduct(p);
+    setDetailOpen(true);
+  };
+
   const openAdd = () => {
     setEditingProduct(null);
     setForm(emptyForm());
@@ -130,6 +141,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   };
 
   const openEdit = (p: Product) => {
+    setDetailOpen(false);
     setEditingProduct(p);
     setForm(productToForm(p));
     setErrors({});
@@ -154,7 +166,6 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
     const sb = createClient();
     try {
-      // Resolve brand: find existing by name+team or create a new one
       let brandId: string | null = null;
       if (form.brand_name.trim()) {
         const { data: existing } = await sb
@@ -298,38 +309,32 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
       ) : (
         <>
           <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Wine Name</th>
-                <th>Type</th>
-                <th>Brand / Distributor</th>
-                <th>BTG Cost</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className={styles.tableRow}>
-                  <td className={styles.skuCell}>{p.sku_number}</td>
-                  <td className={styles.wineNameCell}>{p.wine_name}</td>
-                  <td>{p.type ?? '—'}</td>
-                  <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
-                  <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
-                  <td className={styles.actionsCell}>
-                    <button
-                      type="button"
-                      className={styles.editBtn}
-                      onClick={() => openEdit(p)}
-                    >
-                      Edit
-                    </button>
-                  </td>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Wine Name</th>
+                  <th>Type</th>
+                  <th>Brand / Distributor</th>
+                  <th>BTG Cost</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr
+                    key={p.id}
+                    className={styles.tableRow}
+                    onClick={() => openDetail(p)}
+                  >
+                    <td className={styles.skuCell}>{p.sku_number}</td>
+                    <td className={styles.wineNameCell}>{p.wine_name}</td>
+                    <td>{p.type ?? '—'}</td>
+                    <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
+                    <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {totalPages > 1 && (
@@ -363,6 +368,86 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         </>
       )}
 
+      {/* ── Detail slideover ─────────────────────────────────────── */}
+      <Slideover
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title={detailProduct?.wine_name ?? 'Product'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDetailOpen(false)}>Close</Button>
+            <Button variant="primary" onClick={() => detailProduct && openEdit(detailProduct)}>Edit</Button>
+          </>
+        }
+      >
+        {detailProduct && (
+          <div className={styles.detailSection}>
+            <h3 className={styles.detailSectionTitle}>Product Info</h3>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>SKU</span>
+              <span>{detailProduct.sku_number}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Brand</span>
+              <span>{detailProduct.brand?.name || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Type</span>
+              <span>{detailProduct.type || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Varietal</span>
+              <span>{detailProduct.varietal || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Vintage</span>
+              <span>{detailProduct.vintage || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Country</span>
+              <span>{detailProduct.country || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Region</span>
+              <span>{detailProduct.region || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Appellation</span>
+              <span>{detailProduct.appellation || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Distributor</span>
+              <span>{detailProduct.distributor || '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>BTG Cost</span>
+              <span>{detailProduct.btg_cost != null ? `$${detailProduct.btg_cost.toFixed(2)}` : '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>3-Case Cost</span>
+              <span>{detailProduct.three_cs_cost != null ? `$${detailProduct.three_cs_cost.toFixed(2)}` : '—'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Frontline</span>
+              <span>{detailProduct.frontline_cost != null ? `$${detailProduct.frontline_cost.toFixed(2)}` : '—'}</span>
+            </div>
+            {detailProduct.tech_sheet_url && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Tech Sheet</span>
+                <a href={detailProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>
+                  View →
+                </a>
+              </div>
+            )}
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Notes</span>
+              <span>{detailProduct.notes || '—'}</span>
+            </div>
+          </div>
+        )}
+      </Slideover>
+
+      {/* ── Edit slideover ───────────────────────────────────────── */}
       <Slideover
         open={slideoverOpen}
         onClose={closeSlide}

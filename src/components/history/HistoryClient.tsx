@@ -6,12 +6,21 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getRecaps } from '@/lib/data';
 import { OutcomeBadge } from '@/components/ui/Badge';
-import type { Recap, Account, Contact, Product } from '@/types';
+import { Slideover } from '@/components/ui/Slideover';
+import { Button } from '@/components/ui/Button';
+import type { Recap, Account, Contact, Product, RecapNature } from '@/types';
 import styles from './HistoryClient.module.css';
 
 interface HistoryClientProps {
   initialRecaps: Recap[];
   totalCount: number;
+}
+
+interface EditForm {
+  visit_date: string;
+  nature: RecapNature;
+  contact_name: string;
+  notes: string;
 }
 
 export function HistoryClient({ initialRecaps }: HistoryClientProps) {
@@ -26,16 +35,21 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
   const [salespersonFilter, setSalespersonFilter] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingRecap, setEditingRecap] = useState<Recap | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ visit_date: '', nature: 'Sales Call', contact_name: '', notes: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to highlighted recap on mount
   useEffect(() => {
     if (highlightId && highlightRef.current) {
       highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [highlightId]);
 
-  // Build unique accounts list from recaps
   const accountsInList = useMemo(() => {
     const seen = new Map<string, string>();
     recaps.forEach((r) => {
@@ -80,6 +94,51 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
+  };
+
+  const openEdit = (e: React.MouseEvent, recap: Recap) => {
+    e.stopPropagation();
+    setEditingRecap(recap);
+    setEditForm({
+      visit_date: recap.visit_date,
+      nature: recap.nature,
+      contact_name: recap.contact_name ?? '',
+      notes: recap.notes ?? '',
+    });
+    setEditError(null);
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingRecap) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const sb = createClient();
+      const { error } = await sb
+        .from('recaps')
+        .update({
+          visit_date:   editForm.visit_date,
+          nature:       editForm.nature,
+          contact_name: editForm.contact_name || null,
+          notes:        editForm.notes || null,
+        })
+        .eq('id', editingRecap.id);
+      if (error) throw error;
+      setRecaps((prev) =>
+        prev.map((r) =>
+          r.id === editingRecap.id
+            ? { ...r, ...editForm, contact_name: editForm.contact_name || null, notes: editForm.notes || null }
+            : r,
+        ),
+      );
+      setEditOpen(false);
+    } catch (err) {
+      const e = err as { message?: string };
+      setEditError(e.message ?? 'Failed to save. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -183,8 +242,8 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                   <span className={styles.recapDate}>{recap.visit_date}</span>
                   <div className={styles.recapMeta}>
                     <span className={styles.recapClient}>{account?.name ?? '—'}</span>
-                    {contact && (
-                      <span className={styles.recapBuyer}>with {contact.first_name}</span>
+                    {(recap.contact_name || contact?.first_name) && (
+                      <span className={styles.recapBuyer}>with {recap.contact_name || contact?.first_name}</span>
                     )}
                     <span className={styles.recapSalesperson}>{recap.salesperson}</span>
                     <span className={styles.recapType}>{recap.nature}</span>
@@ -192,6 +251,14 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                       {products.length} product{products.length !== 1 ? 's' : ''}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className={styles.editRecapBtn}
+                    onClick={(e) => openEdit(e, recap)}
+                    aria-label="Edit recap"
+                  >
+                    Edit
+                  </button>
                   <span className={`${styles.chevron} ${isExpanded ? styles.chevronOpen : ''}`}>
                     ▼
                   </span>
@@ -243,6 +310,62 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
           })}
         </div>
       )}
+
+      {/* ── Edit recap slideover ─────────────────────────────── */}
+      <Slideover
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title="Edit Recap"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditOpen(false)} disabled={editSaving}>Cancel</Button>
+            <Button variant="primary" onClick={handleEditSave} loading={editSaving}>Save</Button>
+          </>
+        }
+      >
+        <div className={styles.editForm}>
+          <div className={styles.editField}>
+            <label className={styles.editLabel}>Date</label>
+            <input
+              type="date"
+              className={styles.editInput}
+              value={editForm.visit_date}
+              onChange={(e) => setEditForm((f) => ({ ...f, visit_date: e.target.value }))}
+            />
+          </div>
+          <div className={styles.editField}>
+            <label className={styles.editLabel}>Visit Type</label>
+            <select
+              className={styles.editSelect}
+              value={editForm.nature}
+              onChange={(e) => setEditForm((f) => ({ ...f, nature: e.target.value as RecapNature }))}
+            >
+              <option value="Sales Call">Sales Call</option>
+              <option value="Depletion Meeting">Depletion Meeting</option>
+            </select>
+          </div>
+          <div className={styles.editField}>
+            <label className={styles.editLabel}>Contact</label>
+            <input
+              type="text"
+              className={styles.editInput}
+              value={editForm.contact_name}
+              placeholder="Contact / account lead name"
+              onChange={(e) => setEditForm((f) => ({ ...f, contact_name: e.target.value }))}
+            />
+          </div>
+          <div className={styles.editField}>
+            <label className={styles.editLabel}>Notes</label>
+            <textarea
+              className={styles.editTextarea}
+              rows={4}
+              value={editForm.notes}
+              onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+            />
+          </div>
+          {editError && <p className={styles.editError}>{editError}</p>}
+        </div>
+      </Slideover>
     </>
   );
 }
