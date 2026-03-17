@@ -3,14 +3,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
   getProductPerformance,
-  getFollowUpQueue,
   getVisitsBySupplier,
-  getProductsByContact,
   getDashboardStats,
   getTopSkus,
   getTopAccounts,
-  getSalespersonStats,
-  getSalespersonWeeklyTrend,
   getInactiveAccounts,
   getPipelineHealth,
   getExpenseRecaps,
@@ -41,27 +37,19 @@ export default async function ReportsPage() {
 
   const [
     performanceResult,
-    followUpsResult,
     visitsBySupplier,
-    productsByContact,
     dashboardStats,
     topSkus,
     topAccounts,
-    salespersonStats,
-    salespersonTrend,
     inactiveAccounts,
     pipelineHealth,
     expenses,
   ] = await Promise.all([
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
-    safe(getFollowUpQueue(sb, { page: 0, pageSize: 100 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
-    safe(getProductsByContact(sb, teamId), []),
     safe(getDashboardStats(sb, teamId), DEFAULT_STATS),
     safe(getTopSkus(sb, 5, teamId), []),
     safe(getTopAccounts(sb, 5, teamId), []),
-    safe(getSalespersonStats(sb, { teamId }), []),
-    safe(getSalespersonWeeklyTrend(sb, { teamId }), []),
     safe(getInactiveAccounts(sb, 60, teamId), []),
     safe(getPipelineHealth(sb, teamId), []),
     safe(getExpenseRecaps(sb, { teamId }), []),
@@ -70,14 +58,10 @@ export default async function ReportsPage() {
   return (
     <ReportsClient
       performance={performanceResult.data}
-      followUps={followUpsResult.data}
       visitsBySupplier={visitsBySupplier}
-      productsByContact={productsByContact}
       dashboardStats={dashboardStats}
       topSkus={topSkus}
       topAccounts={topAccounts}
-      salespersonStats={salespersonStats}
-      salespersonTrend={salespersonTrend}
       inactiveAccounts={inactiveAccounts}
       pipelineHealth={pipelineHealth}
       expenses={expenses}
