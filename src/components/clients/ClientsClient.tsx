@@ -1,15 +1,15 @@
 'use client';
 // src/components/clients/ClientsClient.tsx
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertAccount, getAccounts, archiveAccount } from '@/lib/data';
+import { upsertAccount, getAccounts, archiveAccount, getAccountSkus, setAccountSkus } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier } from '@/types';
+import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier, Product } from '@/types';
 import styles from './ClientsClient.module.css';
 
 const STATUS_TABS: Array<{ label: string; value: AccountStatus | 'All' }> = [
@@ -94,7 +94,33 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [detailVisits, setDetailVisits] = useState<VisitRow[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Active SKUs
+  const [accountSkus, setAccountSkus_] = useState<Product[]>([]);
+  const [editSkus, setEditSkus] = useState<Product[]>([]);
+  const [skuSearch, setSkuSearch] = useState('');
+  const [skuResults, setSkuResults] = useState<Product[]>([]);
+  const [skuSearching, setSkuSearching] = useState(false);
+  const skuDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // ── Debounced SKU product search ──────────────────────────────
+  useEffect(() => {
+    if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
+    if (!skuSearch.trim()) { setSkuResults([]); setSkuSearching(false); return; }
+    setSkuSearching(true);
+    skuDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(skuSearch)}&limit=20`);
+        const result = await res.json();
+        const addedIds = new Set(editSkus.map((p) => p.id));
+        setSkuResults((result.data ?? []).filter((p: Product) => !addedIds.has(p.id)));
+      } catch { setSkuResults([]); }
+      finally { setSkuSearching(false); }
+    }, 300);
+    return () => { if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skuSearch]);
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -156,10 +182,18 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     }
   };
 
+  const loadAccountSkus_ = async (c: Account) => {
+    try {
+      const sb = createClient();
+      const skus = await getAccountSkus(sb, c.id);
+      setAccountSkus_(skus);
+    } catch { setAccountSkus_([]); }
+  };
+
   const openView = async (c: Account) => {
     setActiveClient(c);
     setMode('view');
-    await loadVisitHistory(c);
+    await Promise.all([loadVisitHistory(c), loadAccountSkus_(c)]);
   };
 
   const openAdd = () => {
@@ -167,15 +201,25 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     setForm(emptyForm());
     setErrors({});
     setSaveError(null);
+    setEditSkus([]);
+    setSkuSearch('');
+    setSkuResults([]);
     setMode('add');
   };
 
-  const openEdit = (c: Account) => {
+  const openEdit = async (c: Account) => {
     setActiveClient(c);
     setForm(clientToForm(c));
     setErrors({});
     setSaveError(null);
+    setSkuSearch('');
+    setSkuResults([]);
     setMode('edit');
+    try {
+      const sb = createClient();
+      const skus = await getAccountSkus(sb, c.id);
+      setEditSkus(skus);
+    } catch { setEditSkus([]); }
   };
 
   const closeSlide = () => {
@@ -235,6 +279,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
       };
 
       const saved = await upsertAccount(sb, payload);
+      await setAccountSkus(sb, saved.id, editSkus.map((p) => p.id), teamId);
 
       if (activeClient) {
         setClients((prev) => prev.map((c) => (c.id === saved.id ? saved : c)));
@@ -266,6 +311,16 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     } catch {
       setSaveError('Failed to archive account. Please try again.');
     }
+  };
+
+  const addEditSku = (p: Product) => {
+    setEditSkus((prev) => [...prev, p]);
+    setSkuSearch('');
+    setSkuResults([]);
+  };
+
+  const removeEditSku = (id: string) => {
+    setEditSkus((prev) => prev.filter((p) => p.id !== id));
   };
 
   const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K] | AccountStatus) => {
@@ -474,6 +529,22 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
             </div>
 
             <div className={styles.detailSection}>
+              <h3 className={styles.detailSectionTitle}>Active SKUs</h3>
+              {accountSkus.length === 0 ? (
+                <p className={styles.detailEmpty}>No active SKUs assigned.</p>
+              ) : (
+                <ul className={styles.skuList}>
+                  {accountSkus.map((p) => (
+                    <li key={p.id} className={styles.skuItem}>
+                      <span className={styles.skuItemName}>{p.wine_name}</span>
+                      <span className={styles.skuItemNumber}>{p.sku_number}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className={styles.detailSection}>
               <h3 className={styles.detailSectionTitle}>Visit History</h3>
               {detailLoading ? (
                 <p className={styles.detailEmpty}>Loading…</p>
@@ -567,6 +638,50 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
             <div className={`${styles.formField} ${styles.formGridFull}`}>
               <label className={styles.formLabel}>Notes</label>
               <textarea className={styles.formTextarea} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} />
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Active SKUs</label>
+              {editSkus.length > 0 && (
+                <div className={styles.skuChips}>
+                  {editSkus.map((p) => (
+                    <span key={p.id} className={styles.skuChip}>
+                      {p.wine_name}
+                      <span className={styles.skuChipSku}>{p.sku_number}</span>
+                      <button
+                        type="button"
+                        className={styles.skuChipRemove}
+                        onClick={() => removeEditSku(p.id)}
+                        aria-label={`Remove ${p.wine_name}`}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className={styles.skuSearchWrap}>
+                <input
+                  className={styles.formInput}
+                  placeholder="Search by wine name or SKU…"
+                  value={skuSearch}
+                  onChange={(e) => setSkuSearch(e.target.value)}
+                  autoComplete="off"
+                />
+                {skuSearching && <span className={styles.skuSearchSpinner}>Searching…</span>}
+                {skuResults.length > 0 && (
+                  <ul className={styles.skuDropdown}>
+                    {skuResults.map((p) => (
+                      <li
+                        key={p.id}
+                        className={styles.skuDropdownItem}
+                        onMouseDown={(e) => { e.preventDefault(); addEditSku(p); }}
+                      >
+                        <span>{p.wine_name}</span>
+                        <span className={styles.skuDropdownSku}>{p.sku_number}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
             {saveError && <p className={styles.saveError}>{saveError}</p>}

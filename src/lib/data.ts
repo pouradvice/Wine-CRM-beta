@@ -277,6 +277,37 @@ export async function archiveAccount(
   if (error) throw new Error(mapDbError(error));
 }
 
+export async function getAccountSkus(
+  sb: SupabaseClient,
+  accountId: string,
+): Promise<Product[]> {
+  const { data, error } = await sb
+    .from('account_skus')
+    .select('product:products(*, brand:brands(*, supplier:suppliers(*)))')
+    .eq('account_id', accountId)
+    .order('created_at');
+  if (error) throw new Error(mapDbError(error));
+  type Row = { product: Product };
+  return (data as unknown as Row[]).map((r) => r.product).filter(Boolean);
+}
+
+export async function setAccountSkus(
+  sb: SupabaseClient,
+  accountId: string,
+  productIds: string[],
+  teamId: string,
+): Promise<void> {
+  const { error: delErr } = await sb
+    .from('account_skus')
+    .delete()
+    .eq('account_id', accountId);
+  if (delErr) throw new Error(mapDbError(delErr));
+  if (productIds.length === 0) return;
+  const rows = productIds.map((pid) => ({ account_id: accountId, product_id: pid, team_id: teamId }));
+  const { error: insErr } = await sb.from('account_skus').insert(rows);
+  if (insErr) throw new Error(mapDbError(insErr));
+}
+
 // ── Contacts ──────────────────────────────────────────────────
 
 export async function getContacts(
