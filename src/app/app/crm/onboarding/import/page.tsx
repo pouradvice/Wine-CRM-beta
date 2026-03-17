@@ -18,7 +18,10 @@ export default async function OnboardingImportPage() {
     .select('team_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  const teamId: string = memberRow?.team_id ?? user.id;
+  if (!memberRow?.team_id) {
+    redirect('/app/onboarding');
+  }
+  const teamId: string = memberRow.team_id;
 
   return (
     <NarrowLayout

@@ -24,7 +24,10 @@ export default async function NewRecapPage() {
     .select('team_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  const teamId: string = memberRow?.team_id ?? user.id;
+  if (!memberRow?.team_id) {
+    redirect('/app/onboarding');
+  }
+  const teamId: string = memberRow.team_id;
 
   // Load all active clients for the account selector.
   // 200 is a safe ceiling for Phase 1; paginate this selector in Phase 2

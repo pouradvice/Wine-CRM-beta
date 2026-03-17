@@ -16,7 +16,10 @@ export default async function BuyersPage() {
     .select('team_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  const teamId: string = memberRow?.team_id ?? user.id;
+  if (!memberRow?.team_id) {
+    redirect('/app/onboarding');
+  }
+  const teamId: string = memberRow.team_id;
 
   const [{ data: contacts }, { data: activeClients }] = await Promise.all([
     getContacts(sb, undefined, { page: 0, pageSize: 50 }, teamId),
