@@ -85,9 +85,11 @@ CREATE POLICY "client_management_all_authenticated" ON client_management
 -- 3. Drop 5 columns from accounts
 -- ──────────────────────────────────────────────────────────────
 
+-- CASCADE drops any views that reference these columns (e.g. a legacy "clients" view).
+-- Re-create any needed views after this migration if applicable.
 ALTER TABLE accounts
-  DROP COLUMN IF EXISTS commission_pct,
-  DROP COLUMN IF EXISTS billback_pct,
-  DROP COLUMN IF EXISTS contract_length,
-  DROP COLUMN IF EXISTS date_active_from,
-  DROP COLUMN IF EXISTS date_active_to;
+  DROP COLUMN IF EXISTS commission_pct CASCADE,
+  DROP COLUMN IF EXISTS billback_pct CASCADE,
+  DROP COLUMN IF EXISTS contract_length CASCADE,
+  DROP COLUMN IF EXISTS date_active_from CASCADE,
+  DROP COLUMN IF EXISTS date_active_to CASCADE;
