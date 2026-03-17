@@ -174,6 +174,7 @@ export interface Account {
   state:        string | null;
   country:      string | null;
   account_lead: string | null;
+  primary_contact_id: string | null;
   status:       AccountStatus;
   notes:        string | null;
   is_active:    boolean;

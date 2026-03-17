@@ -271,6 +271,11 @@
   color: var(--wine);
 }
 
+.formHint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
 .saveError {
   color: var(--wine);
   font-size: var(--text-sm);
