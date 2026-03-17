@@ -43,7 +43,7 @@ export default async function OnboardingRoute() {
   let userRole: OnboardingRole;
   if (!memberRow) {
     // Edge case: no team row yet (pre-trigger accounts or provisioning gap).
-    // Treat as individual — full step set, data keyed to user.id.
+    // Treat as individual — full step set.
     userRole = 'individual';
   } else if (memberRow.role === 'owner' || memberRow.role === 'admin') {
     userRole = 'team_lead';
@@ -53,7 +53,8 @@ export default async function OnboardingRoute() {
   }
 
   // team_id used by CSVImporter for row ownership
-  const teamId: string = memberRow?.team_id ?? user.id;
+  if (!memberRow?.team_id) redirect('/login');
+  const teamId: string = memberRow.team_id;
 
   // 4. Display name
   const displayName: string =
