@@ -78,6 +78,8 @@ function productToForm(p: Product): ProductForm {
   };
 }
 
+type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
+
 const PAGE_SIZE = 25;
 
 export function ProductsClient({ initialProducts, totalCount: initialTotal, teamId }: ProductsClientProps) {
@@ -88,13 +90,9 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  // Detail slideover
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
-
-  // Edit slideover
-  const [slideoverOpen, setSlideoverOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // Unified slideover state
+  const [mode, setMode] = useState<SlideoverMode>('closed');
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -127,29 +125,28 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     });
   }, [products, search, typeFilter]);
 
-  const openDetail = (p: Product) => {
-    setDetailProduct(p);
-    setDetailOpen(true);
+  const openView = (p: Product) => {
+    setActiveProduct(p);
+    setMode('view');
   };
 
   const openAdd = () => {
-    setEditingProduct(null);
+    setActiveProduct(null);
     setForm(emptyForm());
     setErrors({});
     setSaveError(null);
-    setSlideoverOpen(true);
+    setMode('add');
   };
 
   const openEdit = (p: Product) => {
-    setDetailOpen(false);
-    setEditingProduct(p);
+    setActiveProduct(p);
     setForm(productToForm(p));
     setErrors({});
     setSaveError(null);
-    setSlideoverOpen(true);
+    setMode('edit');
   };
 
-  const closeSlide = () => setSlideoverOpen(false);
+  const closeSlide = () => setMode('closed');
 
   const validate = (): boolean => {
     const errs: Partial<ProductForm> = {};
@@ -161,6 +158,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
   const handleSave = async () => {
     if (!validate()) return;
+    if (!confirm('Save changes to this product?')) return;
     setSaving(true);
     setSaveError(null);
 
@@ -214,18 +212,18 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         description: null,
         tasting_notes: null,
         is_active: form.is_active,
-        ...(editingProduct ? { id: editingProduct.id } : {}),
+        ...(activeProduct ? { id: activeProduct.id } : {}),
       };
 
       const saved = await upsertProduct(sb, payload);
 
-      if (editingProduct) {
+      if (activeProduct) {
         setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
       } else {
         setProducts((prev) => [saved, ...prev]);
       }
 
-      setSlideoverOpen(false);
+      setMode('closed');
       router.refresh();
     } catch (err) {
       const e = err as { error?: string; message?: string };
@@ -236,13 +234,13 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   };
 
   const handleArchive = async () => {
-    if (!editingProduct) return;
-    if (!confirm(`Archive "${editingProduct.wine_name}"? It will no longer appear in lists.`)) return;
+    if (!activeProduct) return;
+    if (!confirm(`Archive "${activeProduct.wine_name}"? It will no longer appear in recap searches.`)) return;
     const sb = createClient();
     try {
-      await archiveProduct(sb, editingProduct.id);
-      setProducts((prev) => prev.filter((x) => x.id !== editingProduct.id));
-      setSlideoverOpen(false);
+      await archiveProduct(sb, activeProduct.id);
+      setProducts((prev) => prev.filter((x) => x.id !== activeProduct.id));
+      setMode('closed');
     } catch {
       alert('Failed to archive product. Please try again.');
     }
@@ -252,6 +250,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
+
+  const slideoverOpen = mode !== 'closed';
+  const slideoverTitle =
+    mode === 'add' ? 'Add Product' :
+    mode === 'edit' ? 'Edit Product' :
+    activeProduct?.wine_name ?? 'Product';
 
   return (
     <>
@@ -324,7 +328,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                   <tr
                     key={p.id}
                     className={styles.tableRow}
-                    onClick={() => openDetail(p)}
+                    onClick={() => openView(p)}
                   >
                     <td className={styles.skuCell}>{p.sku_number}</td>
                     <td className={styles.wineNameCell}>{p.wine_name}</td>
@@ -368,218 +372,210 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         </>
       )}
 
-      {/* ── Detail slideover ─────────────────────────────────────── */}
+      {/* ── Unified slideover ─────────────────────────────────────── */}
       <Slideover
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title={detailProduct?.wine_name ?? 'Product'}
+        open={slideoverOpen}
+        onClose={closeSlide}
+        title={slideoverTitle}
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setDetailOpen(false)}>Close</Button>
-            <Button variant="primary" onClick={() => detailProduct && openEdit(detailProduct)}>Edit</Button>
-          </>
+          mode === 'view' ? (
+            <>
+              <Button variant="secondary" onClick={closeSlide}>Close</Button>
+              <Button variant="danger" onClick={handleArchive}>Archive</Button>
+              <Button variant="primary" onClick={() => activeProduct && openEdit(activeProduct)}>Edit</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={mode === 'edit' ? () => activeProduct && openView(activeProduct) : closeSlide} disabled={saving}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+            </>
+          )
         }
       >
-        {detailProduct && (
+        {mode === 'view' && activeProduct ? (
           <div className={styles.detailSection}>
             <h3 className={styles.detailSectionTitle}>Product Info</h3>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>SKU</span>
-              <span>{detailProduct.sku_number}</span>
+              <span>{activeProduct.sku_number}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Brand</span>
-              <span>{detailProduct.brand?.name || '—'}</span>
+              <span>{activeProduct.brand?.name || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Type</span>
-              <span>{detailProduct.type || '—'}</span>
+              <span>{activeProduct.type || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Varietal</span>
-              <span>{detailProduct.varietal || '—'}</span>
+              <span>{activeProduct.varietal || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Vintage</span>
-              <span>{detailProduct.vintage || '—'}</span>
+              <span>{activeProduct.vintage || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Country</span>
-              <span>{detailProduct.country || '—'}</span>
+              <span>{activeProduct.country || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Region</span>
-              <span>{detailProduct.region || '—'}</span>
+              <span>{activeProduct.region || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Appellation</span>
-              <span>{detailProduct.appellation || '—'}</span>
+              <span>{activeProduct.appellation || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Distributor</span>
-              <span>{detailProduct.distributor || '—'}</span>
+              <span>{activeProduct.distributor || '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>BTG Cost</span>
-              <span>{detailProduct.btg_cost != null ? `$${detailProduct.btg_cost.toFixed(2)}` : '—'}</span>
+              <span>{activeProduct.btg_cost != null ? `$${activeProduct.btg_cost.toFixed(2)}` : '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>3-Case Cost</span>
-              <span>{detailProduct.three_cs_cost != null ? `$${detailProduct.three_cs_cost.toFixed(2)}` : '—'}</span>
+              <span>{activeProduct.three_cs_cost != null ? `$${activeProduct.three_cs_cost.toFixed(2)}` : '—'}</span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Frontline</span>
-              <span>{detailProduct.frontline_cost != null ? `$${detailProduct.frontline_cost.toFixed(2)}` : '—'}</span>
+              <span>{activeProduct.frontline_cost != null ? `$${activeProduct.frontline_cost.toFixed(2)}` : '—'}</span>
             </div>
-            {detailProduct.tech_sheet_url && (
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Tech Sheet</span>
-                <a href={detailProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Tech Sheet</span>
+              {activeProduct.tech_sheet_url ? (
+                <a href={activeProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>
                   View →
                 </a>
-              </div>
-            )}
+              ) : <span>—</span>}
+            </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Notes</span>
-              <span>{detailProduct.notes || '—'}</span>
+              <span>{activeProduct.notes || '—'}</span>
             </div>
           </div>
-        )}
-      </Slideover>
+        ) : (mode === 'edit' || mode === 'add') ? (
+          <div className={styles.formGrid}>
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>
+                SKU Number <span className={styles.required}>*</span>
+              </label>
+              <input
+                className={styles.formInput}
+                value={form.sku_number}
+                onChange={(e) => setField('sku_number', e.target.value)}
+                placeholder="e.g. 10042"
+              />
+              {errors.sku_number && <span className={styles.formError}>{errors.sku_number}</span>}
+            </div>
 
-      {/* ── Edit slideover ───────────────────────────────────────── */}
-      <Slideover
-        open={slideoverOpen}
-        onClose={closeSlide}
-        title={editingProduct ? 'Edit Product' : 'Add Product'}
-        footer={
-          <>
-            {editingProduct && (
-              <button type="button" className={styles.archiveBtn} onClick={handleArchive} disabled={saving}>
-                Archive
-              </button>
-            )}
-            <Button variant="secondary" onClick={closeSlide} disabled={saving}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
-          </>
-        }
-      >
-        <div className={styles.formGrid}>
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>
-              SKU Number <span className={styles.required}>*</span>
-            </label>
-            <input
-              className={styles.formInput}
-              value={form.sku_number}
-              onChange={(e) => setField('sku_number', e.target.value)}
-              placeholder="e.g. 10042"
-            />
-            {errors.sku_number && <span className={styles.formError}>{errors.sku_number}</span>}
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>
+                Wine Name <span className={styles.required}>*</span>
+              </label>
+              <input
+                className={styles.formInput}
+                value={form.wine_name}
+                onChange={(e) => setField('wine_name', e.target.value)}
+                placeholder="e.g. Château Margaux 2019"
+              />
+              {errors.wine_name && <span className={styles.formError}>{errors.wine_name}</span>}
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Brand</label>
+              <input
+                className={styles.formInput}
+                value={form.brand_name}
+                onChange={(e) => setField('brand_name', e.target.value)}
+                placeholder="Brand / supplier"
+              />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Type</label>
+              <select
+                className={styles.formSelect}
+                value={form.type}
+                onChange={(e) => setField('type', e.target.value)}
+              >
+                <option value="">Select type…</option>
+                {WINE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Varietal</label>
+              <input className={styles.formInput} value={form.varietal} onChange={(e) => setField('varietal', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Vintage</label>
+              <input className={styles.formInput} value={form.vintage} onChange={(e) => setField('vintage', e.target.value)} placeholder="e.g. 2021" />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Country</label>
+              <input className={styles.formInput} value={form.country} onChange={(e) => setField('country', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Region</label>
+              <input className={styles.formInput} value={form.region} onChange={(e) => setField('region', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Appellation</label>
+              <input className={styles.formInput} value={form.appellation} onChange={(e) => setField('appellation', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Distributor</label>
+              <input className={styles.formInput} value={form.distributor} onChange={(e) => setField('distributor', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>BTG Cost ($)</label>
+              <input type="number" step="0.01" className={styles.formInput} value={form.btg_cost} onChange={(e) => setField('btg_cost', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>3-Case Cost ($)</label>
+              <input type="number" step="0.01" className={styles.formInput} value={form.three_cs_cost} onChange={(e) => setField('three_cs_cost', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Frontline Cost ($)</label>
+              <input type="number" step="0.01" className={styles.formInput} value={form.frontline_cost} onChange={(e) => setField('frontline_cost', e.target.value)} />
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Tech Sheet URL</label>
+              <input type="url" className={styles.formInput} value={form.tech_sheet_url} onChange={(e) => setField('tech_sheet_url', e.target.value)} placeholder="https://…" />
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Notes</label>
+              <textarea className={styles.formTextarea} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} />
+            </div>
+
+            <div className={styles.toggleRow}>
+              <input
+                type="checkbox"
+                id="product-active"
+                checked={form.is_active}
+                onChange={(e) => setField('is_active', e.target.checked)}
+              />
+              <label htmlFor="product-active" className={styles.toggleLabel}>Active</label>
+            </div>
+
+            {saveError && <p className={`${styles.saveError} ${styles.formGridFull}`}>{saveError}</p>}
           </div>
-
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>
-              Wine Name <span className={styles.required}>*</span>
-            </label>
-            <input
-              className={styles.formInput}
-              value={form.wine_name}
-              onChange={(e) => setField('wine_name', e.target.value)}
-              placeholder="e.g. Château Margaux 2019"
-            />
-            {errors.wine_name && <span className={styles.formError}>{errors.wine_name}</span>}
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Brand</label>
-            <input
-              className={styles.formInput}
-              value={form.brand_name}
-              onChange={(e) => setField('brand_name', e.target.value)}
-              placeholder="Brand / supplier"
-            />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Type</label>
-            <select
-              className={styles.formSelect}
-              value={form.type}
-              onChange={(e) => setField('type', e.target.value)}
-            >
-              <option value="">Select type…</option>
-              {WINE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Varietal</label>
-            <input className={styles.formInput} value={form.varietal} onChange={(e) => setField('varietal', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Vintage</label>
-            <input className={styles.formInput} value={form.vintage} onChange={(e) => setField('vintage', e.target.value)} placeholder="e.g. 2021" />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Country</label>
-            <input className={styles.formInput} value={form.country} onChange={(e) => setField('country', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Region</label>
-            <input className={styles.formInput} value={form.region} onChange={(e) => setField('region', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Appellation</label>
-            <input className={styles.formInput} value={form.appellation} onChange={(e) => setField('appellation', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Distributor</label>
-            <input className={styles.formInput} value={form.distributor} onChange={(e) => setField('distributor', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>BTG Cost ($)</label>
-            <input type="number" step="0.01" className={styles.formInput} value={form.btg_cost} onChange={(e) => setField('btg_cost', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>3-Case Cost ($)</label>
-            <input type="number" step="0.01" className={styles.formInput} value={form.three_cs_cost} onChange={(e) => setField('three_cs_cost', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Frontline Cost ($)</label>
-            <input type="number" step="0.01" className={styles.formInput} value={form.frontline_cost} onChange={(e) => setField('frontline_cost', e.target.value)} />
-          </div>
-
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>Tech Sheet URL</label>
-            <input type="url" className={styles.formInput} value={form.tech_sheet_url} onChange={(e) => setField('tech_sheet_url', e.target.value)} placeholder="https://…" />
-          </div>
-
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>Notes</label>
-            <textarea className={styles.formTextarea} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} />
-          </div>
-
-          <div className={styles.toggleRow}>
-            <input
-              type="checkbox"
-              id="product-active"
-              checked={form.is_active}
-              onChange={(e) => setField('is_active', e.target.checked)}
-            />
-            <label htmlFor="product-active" className={styles.toggleLabel}>Active</label>
-          </div>
-
-          {saveError && <p className={`${styles.saveError} ${styles.formGridFull}`}>{saveError}</p>}
-        </div>
+        ) : null}
       </Slideover>
     </>
   );

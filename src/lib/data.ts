@@ -270,7 +270,7 @@ export async function archiveAccount(
 ): Promise<void> {
   let query = sb
     .from('accounts')
-    .update({ is_active: false })
+    .update({ status: 'Former' })
     .eq('id', id);
   if (teamId) query = query.eq('team_id', teamId);
   const { error } = await query;
