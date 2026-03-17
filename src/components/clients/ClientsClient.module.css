@@ -403,6 +403,141 @@
   margin: var(--space-2) 0;
 }
 
+/* ── Active SKUs — view mode ─────────────────────────────────── */
+.skuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.skuItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--mist);
+}
+
+.skuItem:last-child {
+  border-bottom: none;
+}
+
+.skuItemName {
+  flex: 1;
+  font-weight: 500;
+}
+
+.skuItemNumber {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Active SKUs — edit mode ─────────────────────────────────── */
+.skuChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.skuChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  background: var(--parchment);
+  border: 1px solid var(--mist-dark);
+  border-radius: var(--radius-full);
+  color: var(--text);
+}
+
+.skuChipSku {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.skuChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.skuChipRemove:hover {
+  color: var(--wine);
+  background: rgba(139, 26, 26, 0.1);
+}
+
+.skuSearchWrap {
+  position: relative;
+}
+
+.skuSearchSpinner {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+.skuDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--mist-dark);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.skuDropdownItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.skuDropdownItem:hover {
+  background: var(--parchment);
+}
+
+.skuDropdownSku {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 @media (max-width: 640px) {
   .formGrid {
     grid-template-columns: 1fr;
