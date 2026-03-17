@@ -94,8 +94,14 @@
   box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
 }
 
+.tableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -120,7 +126,6 @@
 }
 
 .tableRow {
-  cursor: pointer;
   transition: background 0.1s;
 }
 
@@ -144,20 +149,44 @@
   white-space: nowrap;
 }
 
-.archiveBtn {
+.editBtn {
   font-size: var(--text-xs);
   padding: var(--space-1) var(--space-2);
   background: none;
   border: 1px solid var(--mist);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--wine);
   cursor: pointer;
+  font-weight: 500;
   transition: color 0.15s, border-color 0.15s;
 }
 
-.archiveBtn:hover {
+.editBtn:hover {
+  border-color: var(--wine);
+}
+
+.archiveBtn {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: color 0.15s, border-color 0.15s;
+  margin-right: auto;
+}
+
+.archiveBtn:hover:not(:disabled) {
   color: var(--wine-dark);
   border-color: var(--wine-dark);
+}
+
+.archiveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .empty {
