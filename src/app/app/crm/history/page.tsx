@@ -11,6 +11,15 @@ export default async function HistoryPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
+  const { data: memberRow, error: memberError } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!memberError && !memberRow?.team_id) {
+    redirect('/app/onboarding');
+  }
+
   const { data: recaps, count } = await getRecaps(sb, { page: 0, pageSize: 25 });
 
   return <HistoryClient initialRecaps={recaps} totalCount={count} />;
