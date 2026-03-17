@@ -25,7 +25,7 @@ export default async function NewRecapPage() {
     .eq('user_id', user.id)
     .maybeSingle();
   if (!memberRow?.team_id) {
-    redirect('/login');
+    redirect('/app/onboarding');
   }
   const teamId: string = memberRow.team_id;
 
