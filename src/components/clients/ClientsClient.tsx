@@ -409,52 +409,38 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
           <>
             <div className={styles.detailSection}>
               <h3 className={styles.detailSectionTitle}>Account Info</h3>
-              {detailClient.type && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Type</span>
-                  <span>{detailClient.type}</span>
-                </div>
-              )}
-              {detailClient.value_tier && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Tier</span>
-                  <span>{detailClient.value_tier}</span>
-                </div>
-              )}
-              {detailClient.phone && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Phone</span>
-                  <span>{detailClient.phone}</span>
-                </div>
-              )}
-              {detailClient.email && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Email</span>
-                  <span>{detailClient.email}</span>
-                </div>
-              )}
-              {detailClient.address && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Address</span>
-                  <span>{detailClient.address}</span>
-                </div>
-              )}
-              {detailClient.account_lead && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Lead</span>
-                  <span>{detailClient.account_lead}</span>
-                </div>
-              )}
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Type</span>
+                <span>{detailClient.type || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Value Tier</span>
+                <span>{detailClient.value_tier || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Phone</span>
+                <span>{detailClient.phone || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Email</span>
+                <span>{detailClient.email || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Address</span>
+                <span>{detailClient.address || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Account Lead</span>
+                <span>{detailClient.account_lead || '—'}</span>
+              </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Status</span>
-                <span>{detailClient.status}</span>
+                <span>{detailClient.status || '—'}</span>
               </div>
-              {detailClient.notes && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Notes</span>
-                  <span>{detailClient.notes}</span>
-                </div>
-              )}
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Notes</span>
+                <span>{detailClient.notes || '—'}</span>
+              </div>
             </div>
 
             <div className={styles.detailSection}>
