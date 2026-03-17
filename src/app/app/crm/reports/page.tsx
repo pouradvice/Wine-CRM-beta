@@ -60,7 +60,7 @@ export default async function ReportsPage() {
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
     safe(getFollowUpQueue(sb, { page: 0, pageSize: 100 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
-    safe(getProductsByContact(sb), []),
+    safe(getProductsByContact(sb, teamId), []),
     safe(getDashboardStats(sb, teamId), DEFAULT_STATS),
     safe(getTopSkus(sb, 5, teamId), []),
     safe(getTopAccounts(sb, 5, teamId), []),

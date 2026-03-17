@@ -510,11 +510,12 @@ export async function getVisitsBySupplier(
 
 export async function getProductsByContact(
   sb: SupabaseClient,
+  teamId?: string,
 ): Promise<ProductsByContactRow[]> {
-  const { data, error } = await sb
-    .from('v_products_by_contact')
-    .select('*');
+  let query = sb.from('v_products_by_contact').select('*');
+  if (teamId) query = query.eq('team_id', teamId);
 
+  const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
   return (data ?? []) as ProductsByContactRow[];
 }

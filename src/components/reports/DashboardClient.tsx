@@ -100,28 +100,30 @@ export function DashboardClient({ stats, topSkus, topAccounts }: Props) {
           {topSkus.length === 0 ? (
             <p className={styles.empty}>No data yet.</p>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Wine</th>
-                  <th>Shown</th>
-                  <th>Orders</th>
-                  <th>Conv %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topSkus.map((p) => (
-                  <tr key={p.product_id}>
-                    <td className={styles.mono}>{p.sku_number}</td>
-                    <td>{p.wine_name}</td>
-                    <td>{p.times_shown}</td>
-                    <td>{p.orders_placed}</td>
-                    <td>{p.conversion_rate_pct !== null ? `${p.conversion_rate_pct}%` : '—'}</td>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Wine</th>
+                    <th>Shown</th>
+                    <th>Orders</th>
+                    <th>Conv %</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topSkus.map((p) => (
+                    <tr key={p.product_id}>
+                      <td className={styles.mono}>{p.sku_number}</td>
+                      <td>{p.wine_name}</td>
+                      <td>{p.times_shown}</td>
+                      <td>{p.orders_placed}</td>
+                      <td>{p.conversion_rate_pct !== null ? `${p.conversion_rate_pct}%` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -131,24 +133,26 @@ export function DashboardClient({ stats, topSkus, topAccounts }: Props) {
           {topAccounts.length === 0 ? (
             <p className={styles.empty}>No data yet.</p>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Account</th>
-                  <th>Visits</th>
-                  <th>Orders</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topAccounts.map((a) => (
-                  <tr key={a.account_id}>
-                    <td>{a.account_name}</td>
-                    <td>{a.total_visits}</td>
-                    <td>{a.orders_placed}</td>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Visits</th>
+                    <th>Orders</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topAccounts.map((a) => (
+                    <tr key={a.account_id}>
+                      <td>{a.account_name}</td>
+                      <td>{a.total_visits}</td>
+                      <td>{a.orders_placed}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

@@ -32,14 +32,17 @@ interface ClientForm {
   phone: string;
   email: string;
   address: string;
-  commission_pct: string;
-  billback_pct: string;
-  contract_length: string;
-  date_active_from: string;
-  date_active_to: string;
   account_lead: string;
   status: AccountStatus;
   notes: string;
+}
+
+interface VisitRow {
+  visit_date: string;
+  salesperson: string;
+  wine_name: string | null;
+  sku_number: string | null;
+  outcome: string | null;
 }
 
 const emptyForm = (): ClientForm => ({
@@ -49,11 +52,6 @@ const emptyForm = (): ClientForm => ({
   phone: '',
   email: '',
   address: '',
-  commission_pct: '',
-  billback_pct: '',
-  contract_length: '',
-  date_active_from: '',
-  date_active_to: '',
   account_lead: '',
   status: 'Active',
   notes: '',
@@ -67,11 +65,6 @@ function clientToForm(c: Account): ClientForm {
     phone: c.phone ?? '',
     email: c.email ?? '',
     address: c.address ?? '',
-    commission_pct: c.commission_pct != null ? String(c.commission_pct) : '',
-    billback_pct: c.billback_pct != null ? String(c.billback_pct) : '',
-    contract_length: c.contract_length ?? '',
-    date_active_from: c.date_active_from ?? '',
-    date_active_to: c.date_active_to ?? '',
     account_lead: c.account_lead ?? '',
     status: c.status,
     notes: c.notes ?? '',
@@ -87,12 +80,20 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [currentPage, setCurrentPage] = useState(0);
   const [statusTab, setStatusTab] = useState<AccountStatus | 'All'>('All');
   const [search, setSearch] = useState('');
+
+  // Edit slideover
   const [slideoverOpen, setSlideoverOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Account | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ClientForm>>({});
+
+  // Detail slideover
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailClient, setDetailClient] = useState<Account | null>(null);
+  const [detailVisits, setDetailVisits] = useState<VisitRow[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -119,6 +120,60 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     setErrors({});
     setSaveError(null);
     setSlideoverOpen(true);
+  };
+
+  const openDetail = async (c: Account) => {
+    setDetailClient(c);
+    setDetailVisits([]);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const sb = createClient();
+      const { data } = await sb
+        .from('recaps')
+        .select(`
+          visit_date,
+          salesperson,
+          recap_products (
+            outcome,
+            product:products ( wine_name, sku_number )
+          )
+        `)
+        .eq('account_id', c.id)
+        .order('visit_date', { ascending: false })
+        .limit(50);
+
+      type RawRecap = {
+        visit_date: string;
+        salesperson: string;
+        recap_products: Array<{
+          outcome: string;
+          product: { wine_name: string; sku_number: string } | null;
+        }>;
+      };
+
+      const rows: VisitRow[] = [];
+      for (const r of (data ?? []) as unknown as RawRecap[]) {
+        if (!r.recap_products || r.recap_products.length === 0) {
+          rows.push({ visit_date: r.visit_date, salesperson: r.salesperson, wine_name: null, sku_number: null, outcome: null });
+        } else {
+          for (const rp of r.recap_products) {
+            rows.push({
+              visit_date: r.visit_date,
+              salesperson: r.salesperson,
+              wine_name: rp.product?.wine_name ?? null,
+              sku_number: rp.product?.sku_number ?? null,
+              outcome: rp.outcome,
+            });
+          }
+        }
+      }
+      setDetailVisits(rows);
+    } catch {
+      setDetailVisits([]);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const fetchPage = useCallback(async (page: number, tab: AccountStatus | 'All') => {
@@ -161,11 +216,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         phone: form.phone || null,
         email: form.email || null,
         address: form.address || null,
-        commission_pct: form.commission_pct ? Number(form.commission_pct) : null,
-        billback_pct: form.billback_pct ? Number(form.billback_pct) : null,
-        contract_length: form.contract_length || null,
-        date_active_from: form.date_active_from || null,
-        date_active_to: form.date_active_to || null,
         account_lead: form.account_lead || null,
         city: null,
         state: null,
@@ -276,34 +326,46 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         </div>
       ) : (
         <>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Company</th>
-                <th>Type</th>
-                <th>Tier</th>
-                <th>Account Lead</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className={styles.tableRow} onClick={() => openEdit(c)}>
-                  <td className={styles.companyCell}>{c.name}</td>
-                  <td>{c.type ?? '—'}</td>
-                  <td>
-                    {c.value_tier ? (
-                      <span className={`${styles.tierBadge} ${tierClass(c.value_tier)}`}>
-                        {c.value_tier}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td>{c.account_lead ?? '—'}</td>
-                  <td><StatusBadge status={c.status} /></td>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Type</th>
+                  <th>Tier</th>
+                  <th>Account Lead</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((c) => (
+                  <tr key={c.id} className={styles.tableRow} onClick={() => openDetail(c)}>
+                    <td className={styles.companyCell}>{c.name}</td>
+                    <td>{c.type ?? '—'}</td>
+                    <td>
+                      {c.value_tier ? (
+                        <span className={`${styles.tierBadge} ${tierClass(c.value_tier)}`}>
+                          {c.value_tier}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>{c.account_lead ?? '—'}</td>
+                    <td><StatusBadge status={c.status} /></td>
+                    <td className={styles.actionsCell}>
+                      <button
+                        type="button"
+                        className={styles.editBtn}
+                        onClick={(e) => { e.stopPropagation(); openEdit(c); }}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {totalPages > 1 && (
             <div className={styles.pagination}>
@@ -336,6 +398,103 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         </>
       )}
 
+      {/* ── Detail slideover ─────────────────────────────────────── */}
+      <Slideover
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title={detailClient?.name ?? 'Account'}
+        footer={
+          <Button variant="secondary" onClick={() => setDetailOpen(false)}>Close</Button>
+        }
+      >
+        {detailClient && (
+          <>
+            <div className={styles.detailSection}>
+              <h3 className={styles.detailSectionTitle}>Account Info</h3>
+              {detailClient.type && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Type</span>
+                  <span>{detailClient.type}</span>
+                </div>
+              )}
+              {detailClient.value_tier && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Tier</span>
+                  <span>{detailClient.value_tier}</span>
+                </div>
+              )}
+              {detailClient.phone && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Phone</span>
+                  <span>{detailClient.phone}</span>
+                </div>
+              )}
+              {detailClient.email && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Email</span>
+                  <span>{detailClient.email}</span>
+                </div>
+              )}
+              {detailClient.address && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Address</span>
+                  <span>{detailClient.address}</span>
+                </div>
+              )}
+              {detailClient.account_lead && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Lead</span>
+                  <span>{detailClient.account_lead}</span>
+                </div>
+              )}
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Status</span>
+                <span>{detailClient.status}</span>
+              </div>
+              {detailClient.notes && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Notes</span>
+                  <span>{detailClient.notes}</span>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.detailSection}>
+              <h3 className={styles.detailSectionTitle}>Visit History</h3>
+              {detailLoading ? (
+                <p className={styles.detailEmpty}>Loading…</p>
+              ) : detailVisits.length === 0 ? (
+                <p className={styles.detailEmpty}>No visits recorded yet.</p>
+              ) : (
+                <div className={styles.visitTableWrapper}>
+                  <table className={styles.visitTable}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Salesperson</th>
+                        <th>Wine</th>
+                        <th>Outcome</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailVisits.map((v, i) => (
+                        <tr key={i}>
+                          <td>{v.visit_date}</td>
+                          <td>{v.salesperson}</td>
+                          <td>{v.wine_name ? `${v.sku_number} ${v.wine_name}` : '—'}</td>
+                          <td>{v.outcome ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </Slideover>
+
+      {/* ── Edit slideover ───────────────────────────────────────── */}
       <Slideover
         open={slideoverOpen}
         onClose={() => setSlideoverOpen(false)}
@@ -395,33 +554,8 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
           </div>
 
           <div className={styles.formField}>
-            <label className={styles.formLabel}>Commission %</label>
-            <input type="number" step="0.1" className={styles.formInput} value={form.commission_pct} onChange={(e) => setField('commission_pct', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Billback %</label>
-            <input type="number" step="0.1" className={styles.formInput} value={form.billback_pct} onChange={(e) => setField('billback_pct', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Contract Length</label>
-            <input className={styles.formInput} value={form.contract_length} onChange={(e) => setField('contract_length', e.target.value)} placeholder="e.g. 12 months" />
-          </div>
-
-          <div className={styles.formField}>
             <label className={styles.formLabel}>Account Lead</label>
             <input className={styles.formInput} value={form.account_lead} onChange={(e) => setField('account_lead', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Date Active From</label>
-            <input type="date" className={styles.formInput} value={form.date_active_from} onChange={(e) => setField('date_active_from', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Date Active To</label>
-            <input type="date" className={styles.formInput} value={form.date_active_to} onChange={(e) => setField('date_active_to', e.target.value)} />
           </div>
 
           <div className={styles.formField}>

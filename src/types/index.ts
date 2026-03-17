@@ -162,28 +162,23 @@ export type ProductUpdate = Partial<ProductInsert>;
 // ── CRM ──────────────────────────────────────────────────────
 
 export interface Account {
-  id:               string;
-  team_id:          string;
-  name:             string;
-  type:             AccountType | null;
-  value_tier:       ValueTier | null;
-  phone:            string | null;
-  email:            string | null;
-  address:          string | null;
-  city:             string | null;
-  state:            string | null;
-  country:          string | null;
-  commission_pct:   number | null;
-  billback_pct:     number | null;
-  contract_length:  string | null;
-  date_active_from: string | null;
-  date_active_to:   string | null;
-  account_lead:     string | null;
-  status:           AccountStatus;
-  notes:            string | null;
-  is_active:        boolean;
-  created_at:       string;
-  updated_at:       string;
+  id:           string;
+  team_id:      string;
+  name:         string;
+  type:         AccountType | null;
+  value_tier:   ValueTier | null;
+  phone:        string | null;
+  email:        string | null;
+  address:      string | null;
+  city:         string | null;
+  state:        string | null;
+  country:      string | null;
+  account_lead: string | null;
+  status:       AccountStatus;
+  notes:        string | null;
+  is_active:    boolean;
+  created_at:   string;
+  updated_at:   string;
 }
 
 export type AccountInsert = Omit<Account, 'id' | 'created_at' | 'updated_at'>;
@@ -333,6 +328,7 @@ export interface SupplierPlacementRow {
 }
 
 export interface ProductsByContactRow {
+  team_id:         string;
   contact_id:      string;
   contact_name:    string;
   account_name:    string;
