@@ -70,6 +70,8 @@ function clientToForm(c: Account): ClientForm {
   };
 }
 
+type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
+
 const PAGE_SIZE = 25;
 
 export function ClientsClient({ initialClients, totalCount: initialTotal, teamId }: ClientsClientProps) {
@@ -80,17 +82,15 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [statusTab, setStatusTab] = useState<AccountStatus | 'All'>('All');
   const [search, setSearch] = useState('');
 
-  // Edit slideover
-  const [slideoverOpen, setSlideoverOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Account | null>(null);
+  // Unified slideover state
+  const [mode, setMode] = useState<SlideoverMode>('closed');
+  const [activeClient, setActiveClient] = useState<Account | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ClientForm>>({});
 
-  // Detail slideover
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailClient, setDetailClient] = useState<Account | null>(null);
+  // Visit history (detail view)
   const [detailVisits, setDetailVisits] = useState<VisitRow[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -105,26 +105,8 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     });
   }, [clients, search, statusTab]);
 
-  const openAdd = () => {
-    setEditingClient(null);
-    setForm(emptyForm());
-    setErrors({});
-    setSaveError(null);
-    setSlideoverOpen(true);
-  };
-
-  const openEdit = (c: Account) => {
-    setEditingClient(c);
-    setForm(clientToForm(c));
-    setErrors({});
-    setSaveError(null);
-    setSlideoverOpen(true);
-  };
-
-  const openDetail = async (c: Account) => {
-    setDetailClient(c);
+  const loadVisitHistory = async (c: Account) => {
     setDetailVisits([]);
-    setDetailOpen(true);
     setDetailLoading(true);
     try {
       const sb = createClient();
@@ -174,6 +156,32 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     }
   };
 
+  const openView = async (c: Account) => {
+    setActiveClient(c);
+    setMode('view');
+    await loadVisitHistory(c);
+  };
+
+  const openAdd = () => {
+    setActiveClient(null);
+    setForm(emptyForm());
+    setErrors({});
+    setSaveError(null);
+    setMode('add');
+  };
+
+  const openEdit = (c: Account) => {
+    setActiveClient(c);
+    setForm(clientToForm(c));
+    setErrors({});
+    setSaveError(null);
+    setMode('edit');
+  };
+
+  const closeSlide = () => {
+    setMode('closed');
+  };
+
   const fetchPage = useCallback(async (page: number, tab: AccountStatus | 'All') => {
     try {
       const sb = createClient();
@@ -202,6 +210,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
 
   const handleSave = async () => {
     if (!validate()) return;
+    if (!confirm('Save changes to this account?')) return;
     setSaving(true);
     setSaveError(null);
 
@@ -222,18 +231,18 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         status: form.status,
         notes: form.notes || null,
         is_active: true,
-        ...(editingClient ? { id: editingClient.id } : {}),
+        ...(activeClient ? { id: activeClient.id } : {}),
       };
 
       const saved = await upsertAccount(sb, payload);
 
-      if (editingClient) {
+      if (activeClient) {
         setClients((prev) => prev.map((c) => (c.id === saved.id ? saved : c)));
       } else {
         setClients((prev) => [saved, ...prev]);
       }
 
-      setSlideoverOpen(false);
+      setMode('closed');
       router.refresh();
     } catch (err) {
       const e = err as { error?: string; message?: string };
@@ -243,17 +252,19 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingClient) return;
-    if (!confirm(`Delete "${editingClient.name}"? This cannot be undone.`)) return;
+  const handleArchive = async () => {
+    if (!activeClient) return;
+    if (!confirm(`Archive "${activeClient.name}"? It will be moved to Former status and excluded from new recaps.`)) return;
     const sb = createClient();
     try {
-      await archiveAccount(sb, editingClient.id, teamId);
-      setClients((prev) => prev.filter((c) => c.id !== editingClient.id));
-      setSlideoverOpen(false);
+      await archiveAccount(sb, activeClient.id, teamId);
+      setClients((prev) =>
+        prev.map((c) => (c.id === activeClient.id ? { ...c, status: 'Former' as AccountStatus } : c)),
+      );
+      setMode('closed');
       router.refresh();
     } catch {
-      setSaveError('Failed to delete account. Please try again.');
+      setSaveError('Failed to archive account. Please try again.');
     }
   };
 
@@ -267,6 +278,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     if (tier === 'B') return styles.tierB;
     return styles.tierC;
   };
+
+  const slideoverOpen = mode !== 'closed';
+  const slideoverTitle =
+    mode === 'add' ? 'Add Account' :
+    mode === 'edit' ? 'Edit Account' :
+    activeClient?.name ?? 'Account';
 
   return (
     <>
@@ -333,12 +350,11 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                   <th>Tier</th>
                   <th>Account Lead</th>
                   <th>Status</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className={styles.tableRow} onClick={() => openDetail(c)}>
+                  <tr key={c.id} className={styles.tableRow} onClick={() => openView(c)}>
                     <td className={styles.companyCell}>{c.name}</td>
                     <td>{c.type ?? '—'}</td>
                     <td>
@@ -350,15 +366,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                     </td>
                     <td>{c.account_lead ?? '—'}</td>
                     <td><StatusBadge status={c.status} /></td>
-                    <td className={styles.actionsCell}>
-                      <button
-                        type="button"
-                        className={styles.editBtn}
-                        onClick={(e) => { e.stopPropagation(); openEdit(c); }}
-                      >
-                        Edit
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -396,50 +403,67 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         </>
       )}
 
-      {/* ── Detail slideover ─────────────────────────────────────── */}
+      {/* ── Unified slideover ─────────────────────────────────────── */}
       <Slideover
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title={detailClient?.name ?? 'Account'}
+        open={slideoverOpen}
+        onClose={closeSlide}
+        title={slideoverTitle}
         footer={
-          <Button variant="secondary" onClick={() => setDetailOpen(false)}>Close</Button>
+          mode === 'view' ? (
+            <>
+              <Button variant="secondary" onClick={closeSlide}>Close</Button>
+              <Button variant="danger" onClick={handleArchive}>Archive</Button>
+              <Button variant="primary" onClick={() => activeClient && openEdit(activeClient)}>Edit</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={mode === 'edit' ? () => activeClient && openView(activeClient) : closeSlide} disabled={saving}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
+            </>
+          )
         }
       >
-        {detailClient && (
+        {mode === 'view' && activeClient ? (
           <>
             <div className={styles.detailSection}>
               <h3 className={styles.detailSectionTitle}>Account Info</h3>
               <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Company Name</span>
+                <span>{activeClient.name || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Type</span>
-                <span>{detailClient.type || '—'}</span>
+                <span>{activeClient.type || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Value Tier</span>
-                <span>{detailClient.value_tier || '—'}</span>
+                <span>{activeClient.value_tier || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Phone</span>
-                <span>{detailClient.phone || '—'}</span>
+                <span>{activeClient.phone || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Email</span>
-                <span>{detailClient.email || '—'}</span>
+                <span>{activeClient.email || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Address</span>
-                <span>{detailClient.address || '—'}</span>
+                <span>{activeClient.address || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Account Lead</span>
-                <span>{detailClient.account_lead || '—'}</span>
+                <span>{activeClient.account_lead || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Status</span>
-                <span>{detailClient.status || '—'}</span>
+                <span>{activeClient.status || '—'}</span>
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Notes</span>
-                <span>{detailClient.notes || '—'}</span>
+                <span>{activeClient.notes || '—'}</span>
               </div>
             </div>
 
@@ -475,89 +499,73 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
               )}
             </div>
           </>
-        )}
-      </Slideover>
+        ) : (mode === 'edit' || mode === 'add') ? (
+          <div className={styles.formGrid}>
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>
+                Company Name <span className={styles.required}>*</span>
+              </label>
+              <input
+                className={styles.formInput}
+                value={form.name}
+                onChange={(e) => setField('name', e.target.value)}
+              />
+              {errors.name && <span className={styles.formError}>{errors.name}</span>}
+            </div>
 
-      {/* ── Edit slideover ───────────────────────────────────────── */}
-      <Slideover
-        open={slideoverOpen}
-        onClose={() => setSlideoverOpen(false)}
-        title={editingClient ? 'Edit Account' : 'Add Account'}
-        footer={
-          <>
-            {editingClient && (
-              <Button variant="danger" onClick={handleDelete} disabled={saving}>Delete</Button>
-            )}
-            <Button variant="secondary" onClick={() => setSlideoverOpen(false)} disabled={saving}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>Save</Button>
-          </>
-        }
-      >
-        <div className={styles.formGrid}>
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>
-              Company Name <span className={styles.required}>*</span>
-            </label>
-            <input
-              className={styles.formInput}
-              value={form.name}
-              onChange={(e) => setField('name', e.target.value)}
-            />
-            {errors.name && <span className={styles.formError}>{errors.name}</span>}
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Type</label>
+              <select className={styles.formSelect} value={form.type} onChange={(e) => setField('type', e.target.value)}>
+                <option value="">Select type…</option>
+                {['Restaurant', 'Retail', 'Hotel', 'Bar', 'Other'].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Value Tier</label>
+              <select className={styles.formSelect} value={form.value_tier} onChange={(e) => setField('value_tier', e.target.value)}>
+                <option value="">Select tier…</option>
+                {['A', 'B', 'C'].map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Phone</label>
+              <input type="tel" className={styles.formInput} value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Email</label>
+              <input type="email" className={styles.formInput} value={form.email} onChange={(e) => setField('email', e.target.value)} />
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Address</label>
+              <input className={styles.formInput} value={form.address} onChange={(e) => setField('address', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Account Lead</label>
+              <input className={styles.formInput} value={form.account_lead} onChange={(e) => setField('account_lead', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Status</label>
+              <select className={styles.formSelect} value={form.status} onChange={(e) => setField('status', e.target.value as AccountStatus)}>
+                {(['Active', 'Prospective', 'Former'] as AccountStatus[]).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Notes</label>
+              <textarea className={styles.formTextarea} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} />
+            </div>
+
+            {saveError && <p className={styles.saveError}>{saveError}</p>}
           </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Type</label>
-            <select className={styles.formSelect} value={form.type} onChange={(e) => setField('type', e.target.value)}>
-              <option value="">Select type…</option>
-              {['Restaurant', 'Retail', 'Hotel', 'Bar', 'Other'].map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Value Tier</label>
-            <select className={styles.formSelect} value={form.value_tier} onChange={(e) => setField('value_tier', e.target.value)}>
-              <option value="">Select tier…</option>
-              {['A', 'B', 'C'].map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Phone</label>
-            <input type="tel" className={styles.formInput} value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Email</label>
-            <input type="email" className={styles.formInput} value={form.email} onChange={(e) => setField('email', e.target.value)} />
-          </div>
-
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>Address</label>
-            <input className={styles.formInput} value={form.address} onChange={(e) => setField('address', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Account Lead</label>
-            <input className={styles.formInput} value={form.account_lead} onChange={(e) => setField('account_lead', e.target.value)} />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.formLabel}>Status</label>
-            <select className={styles.formSelect} value={form.status} onChange={(e) => setField('status', e.target.value as AccountStatus)}>
-              {(['Active', 'Prospective', 'Former'] as AccountStatus[]).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className={`${styles.formField} ${styles.formGridFull}`}>
-            <label className={styles.formLabel}>Notes</label>
-            <textarea className={styles.formTextarea} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} />
-          </div>
-
-          {saveError && <p className={styles.saveError}>{saveError}</p>}
-        </div>
+        ) : null}
       </Slideover>
     </>
   );
