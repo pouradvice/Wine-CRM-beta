@@ -15,12 +15,14 @@ import { createClient } from '@/lib/supabase/client';
 import { saveRecap } from '@/lib/data';
 import type {
   Account,
+  Contact,
   Product,
   RecapFormState,
   RecapFormProduct,
   RecapOutcome,
   RecapNature,
 } from '@/types';
+import { contactFullName } from '@/types';
 import styles from './RecapForm.module.css';
 
 const OUTCOMES: RecapOutcome[] = [
@@ -243,12 +245,26 @@ export function RecapForm({ clients, currentUser }: Props) {
               value={form.account_id}
               onChange={(e) => {
                 const acct = clients.find((c) => c.id === e.target.value);
+                const accountId = e.target.value;
                 setForm((f) => ({
                   ...f,
-                  account_id: e.target.value,
+                  account_id: accountId,
                   contact_id: null,
                   contact_name: acct?.account_lead ?? '',
                 }));
+                // Pre-fill contact name from primary contact if set
+                if (acct?.primary_contact_id && accountId) {
+                  fetch(`/api/contacts?accountId=${accountId}&pageSize=100`)
+                    .then((res) => res.json())
+                    .then((result) => {
+                      const contacts: Contact[] = result.data ?? [];
+                      const primary = contacts.find((c) => c.id === acct.primary_contact_id);
+                      if (primary) {
+                        setForm((f) => ({ ...f, contact_name: contactFullName(primary) }));
+                      }
+                    })
+                    .catch((err) => { console.error('Failed to fetch primary contact:', err); });
+                }
               }}
               required
             >

@@ -15,10 +15,11 @@ import type {
 } from '@/types';
 import styles from './ReportsClient.module.css';
 
-type TabId = 'dashboard' | 'performance' | 'by-supplier' | 'expenses';
+type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'dashboard',   label: 'Dashboard' },
+  { id: 'by-accounts', label: 'By Accounts' },
   { id: 'performance', label: 'Performance' },
   { id: 'by-supplier', label: 'By Supplier' },
   { id: 'expenses',    label: 'Expenses' },
@@ -77,6 +78,39 @@ export function ReportsClient({
             inactiveAccounts={inactiveAccounts}
             pipelineHealth={pipelineHealth}
           />
+        )}
+
+        {activeTab === 'by-accounts' && (
+          <>
+            {inactiveAccounts.length === 0 ? (
+              <Empty title="No inactive accounts found." desc="All accounts have been visited recently, or no accounts exist yet." />
+            ) : (
+              <>
+                <div className={styles.sectionHeader}>
+                  <span className={styles.sectionTitle}>Accounts</span>
+                  <span className={styles.sectionMeta}>{inactiveAccounts.length} accounts</span>
+                </div>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Account</th>
+                      <th>Last Visit</th>
+                      <th className={styles.numCell}>Days Inactive</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inactiveAccounts.map((a) => (
+                      <tr key={a.account_id}>
+                        <td>{a.account_name}</td>
+                        <td>{a.last_visit_date ?? '—'}</td>
+                        <td className={styles.numCell}>{a.days_inactive}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </>
         )}
 
         {activeTab === 'performance' && (

@@ -9,7 +9,8 @@ import { upsertAccount, getAccounts, archiveAccount, getAccountSkus, setAccountS
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier, Product } from '@/types';
+import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier, Product, Contact } from '@/types';
+import { contactFullName } from '@/types';
 import styles from './ClientsClient.module.css';
 
 const STATUS_TABS: Array<{ label: string; value: AccountStatus | 'All' }> = [
@@ -33,6 +34,7 @@ interface ClientForm {
   email: string;
   address: string;
   account_lead: string;
+  primary_contact_id: string;
   status: AccountStatus;
   notes: string;
 }
@@ -52,6 +54,7 @@ const emptyForm = (): ClientForm => ({
   email: '',
   address: '',
   account_lead: '',
+  primary_contact_id: '',
   status: 'Active',
   notes: '',
 });
@@ -65,6 +68,7 @@ function clientToForm(c: Account): ClientForm {
     email: c.email ?? '',
     address: c.address ?? '',
     account_lead: c.account_lead ?? '',
+    primary_contact_id: c.primary_contact_id ?? '',
     status: c.status,
     notes: c.notes ?? '',
   };
@@ -101,6 +105,9 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [skuResults, setSkuResults] = useState<Product[]>([]);
   const [skuSearching, setSkuSearching] = useState(false);
   const skuDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Primary contact
+  const [accountContacts, setAccountContacts] = useState<Contact[]>([]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -190,10 +197,18 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     } catch { setAccountSkus_([]); }
   };
 
+  const loadAccountContacts = async (c: Account) => {
+    try {
+      const res = await fetch(`/api/contacts?accountId=${c.id}&pageSize=100`);
+      const result = await res.json();
+      setAccountContacts(result.data ?? []);
+    } catch { setAccountContacts([]); }
+  };
+
   const openView = async (c: Account) => {
     setActiveClient(c);
     setMode('view');
-    await Promise.all([loadVisitHistory(c), loadAccountSkus_(c)]);
+    await Promise.all([loadVisitHistory(c), loadAccountSkus_(c), loadAccountContacts(c)]);
   };
 
   const openAdd = () => {
@@ -204,6 +219,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     setEditSkus([]);
     setSkuSearch('');
     setSkuResults([]);
+    setAccountContacts([]);
     setMode('add');
   };
 
@@ -220,6 +236,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
       const skus = await getAccountSkus(sb, c.id);
       setEditSkus(skus);
     } catch { setEditSkus([]); }
+    await loadAccountContacts(c);
   };
 
   const closeSlide = () => {
@@ -268,6 +285,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         email: form.email || null,
         address: form.address || null,
         account_lead: form.account_lead || null,
+        primary_contact_id: form.primary_contact_id || null,
         city: null,
         state: null,
         country: null,
@@ -519,6 +537,17 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 <span>{activeClient.account_lead || '—'}</span>
               </div>
               <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Primary Contact</span>
+                <span>
+                  {(() => {
+                    const pc = activeClient.primary_contact_id
+                      ? accountContacts.find((c) => c.id === activeClient.primary_contact_id)
+                      : undefined;
+                    return pc ? contactFullName(pc) : '—';
+                  })()}
+                </span>
+              </div>
+              <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Status</span>
                 <span>{activeClient.status || '—'}</span>
               </div>
@@ -624,6 +653,24 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
             <div className={styles.formField}>
               <label className={styles.formLabel}>Account Lead</label>
               <input className={styles.formInput} value={form.account_lead} onChange={(e) => setField('account_lead', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Primary Contact</label>
+              <select
+                className={styles.formSelect}
+                value={form.primary_contact_id}
+                onChange={(e) => setField('primary_contact_id', e.target.value)}
+                disabled={mode === 'add'}
+              >
+                <option value="">None</option>
+                {accountContacts.map((c) => (
+                  <option key={c.id} value={c.id}>{contactFullName(c)}</option>
+                ))}
+              </select>
+              {mode === 'add' && (
+                <span className={styles.formHint}>Save the account first, then add contacts to set a primary contact.</span>
+              )}
             </div>
 
             <div className={styles.formField}>
