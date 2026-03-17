@@ -41,7 +41,6 @@ interface VisitRow {
   visit_date: string;
   salesperson: string;
   wine_name: string | null;
-  sku_number: string | null;
   outcome: string | null;
 }
 
@@ -136,7 +135,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
           salesperson,
           recap_products (
             outcome,
-            product:products ( wine_name, sku_number )
+            product:products ( wine_name )
           )
         `)
         .eq('account_id', c.id)
@@ -148,21 +147,20 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         salesperson: string;
         recap_products: Array<{
           outcome: string;
-          product: { wine_name: string; sku_number: string } | null;
+          product: { wine_name: string } | null;
         }>;
       };
 
       const rows: VisitRow[] = [];
       for (const r of (data ?? []) as unknown as RawRecap[]) {
         if (!r.recap_products || r.recap_products.length === 0) {
-          rows.push({ visit_date: r.visit_date, salesperson: r.salesperson, wine_name: null, sku_number: null, outcome: null });
+          rows.push({ visit_date: r.visit_date, salesperson: r.salesperson, wine_name: null, outcome: null });
         } else {
           for (const rp of r.recap_products) {
             rows.push({
               visit_date: r.visit_date,
               salesperson: r.salesperson,
               wine_name: rp.product?.wine_name ?? null,
-              sku_number: rp.product?.sku_number ?? null,
               outcome: rp.outcome,
             });
           }
@@ -481,7 +479,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                         <tr key={i}>
                           <td>{v.visit_date}</td>
                           <td>{v.salesperson}</td>
-                          <td>{v.wine_name ? `${v.sku_number} ${v.wine_name}` : '—'}</td>
+                          <td>{v.wine_name ?? '—'}</td>
                           <td>{v.outcome ?? '—'}</td>
                         </tr>
                       ))}
