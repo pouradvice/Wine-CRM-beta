@@ -49,7 +49,29 @@ export async function POST(req: NextRequest) {
 
   console.log(`[team] added ${email} to team ${callerRow.team_id}`);
 
-  return NextResponse.json({ ok: true });
+  // Look up the newly added user so the UI can append them immediately
+  const { data: memberRow } = await svc
+    .from('team_members')
+    .select('user_id, role')
+    .eq('team_id', callerRow.team_id)
+    .eq('role', role)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let newMember: { user_id: string; role: string; email: string; display_name: string } | null = null;
+  if (memberRow) {
+    const { data: userData } = await svc.auth.admin.getUserById(memberRow.user_id);
+    const authUser = userData?.user;
+    newMember = {
+      user_id:      memberRow.user_id,
+      role:         memberRow.role,
+      email:        authUser?.email ?? email,
+      display_name: (authUser?.user_metadata?.full_name as string | undefined) ?? '',
+    };
+  }
+
+  return NextResponse.json({ ok: true, member: newMember });
 }
 
 // ── DELETE /api/team  — remove a member ─────────────────────

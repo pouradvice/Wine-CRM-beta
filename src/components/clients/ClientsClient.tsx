@@ -323,14 +323,20 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
       {filtered.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {search ? 'No accounts match your search' : 'No accounts yet'}
+            {search
+              ? 'No accounts match your search'
+              : statusTab === 'Prospective' ? 'No prospective accounts'
+              : statusTab === 'Former' ? 'No former accounts'
+              : 'No accounts yet'}
           </p>
           <p className={styles.emptyDesc}>
             {search
               ? 'Try a different name.'
+              : statusTab === 'Prospective' ? 'Accounts marked as Prospective will appear here.'
+              : statusTab === 'Former' ? 'Accounts moved to Former status will appear here.'
               : 'Add your first account to get started with sales recaps.'}
           </p>
-          {!search && (
+          {!search && statusTab !== 'Prospective' && statusTab !== 'Former' && (
             <div className={styles.emptyActions}>
               <Button variant="primary" onClick={openAdd}>Add Account</Button>
               <Link href="/app/crm/onboarding/import" className={styles.importLink}>
