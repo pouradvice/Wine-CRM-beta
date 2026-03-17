@@ -3,6 +3,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamId } from '@/lib/team';
 import { NarrowLayout } from '@/components/layout/NarrowLayout';
 import { ImportHub } from './ImportHub';
 
@@ -13,12 +14,7 @@ export default async function OnboardingImportPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: memberRow } = await sb
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const teamId: string = memberRow?.team_id ?? user.id;
+  const teamId = await resolveTeamId(sb, user);
 
   return (
     <NarrowLayout

@@ -9,6 +9,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getAccounts } from '@/lib/data';
+import { resolveTeamId } from '@/lib/team';
 import { RecapForm } from '@/components/RecapForm/RecapForm';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +20,7 @@ export default async function NewRecapPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: memberRow } = await sb
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const teamId: string = memberRow?.team_id ?? user.id;
+  const teamId = await resolveTeamId(sb, user);
 
   // Load all active clients for the account selector.
   // 200 is a safe ceiling for Phase 1; paginate this selector in Phase 2

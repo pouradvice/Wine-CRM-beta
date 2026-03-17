@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { OnboardingPage } from '@/components/Onboarding/OnboardingPage';
+import { resolveTeamId } from '@/lib/team';
 import type { OnboardingRole } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -35,29 +36,24 @@ export default async function OnboardingRoute() {
   //    every self-signup user as 'owner' of a fresh team, so memberRow
   //    should always be present.  The 'individual' fallback is a safety
   //    net for edge cases (e.g. users created before the trigger existed).
+  const teamId = await resolveTeamId(sb, user);
+
+  // Determine onboarding role from the resolved team membership
   const { data: memberRow } = await sb
     .from('team_members')
-    .select('role, team_id')
+    .select('role')
     .eq('user_id', user.id)
+    .eq('team_id', teamId)
     .maybeSingle();
 
   let userRole: OnboardingRole;
   if (!memberRow) {
-    // Edge case: no team row yet (pre-trigger accounts or provisioning gap).
-    // Treat as individual — full step set.
     userRole = 'individual';
   } else if (memberRow.role === 'owner' || memberRow.role === 'admin') {
     userRole = 'team_lead';
   } else {
-    // 'member' — invited into an existing team
     userRole = 'team_member';
   }
-
-  // team_id used by CSVImporter for row ownership.
-  // Fall back to user.id for edge-case accounts with no team row yet
-  // (pre-trigger signups or provisioning gaps) so they can complete onboarding
-  // without hitting a redirect loop.
-  const teamId: string = memberRow?.team_id ?? user.id;
 
   // 4. Display name
   const displayName: string =

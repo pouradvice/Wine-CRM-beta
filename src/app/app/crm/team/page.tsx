@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { TeamClient, type TeamMember } from '@/components/team/TeamClient';
+import { resolveTeamId } from '@/lib/team';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,18 +14,19 @@ export default async function TeamPage() {
   } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
+  const teamId = await resolveTeamId(sb, user);
+
   // Only owners can access this page
   const { data: callerRow } = await sb
     .from('team_members')
-    .select('team_id, role')
+    .select('role')
     .eq('user_id', user.id)
+    .eq('team_id', teamId)
     .maybeSingle();
 
   if (!callerRow || callerRow.role !== 'owner') {
     redirect('/app/crm/clients');
   }
-
-  const teamId: string = callerRow.team_id;
 
   // Fetch all members of this team
   const { data: rows } = await sb

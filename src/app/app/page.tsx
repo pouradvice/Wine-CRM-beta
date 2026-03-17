@@ -3,6 +3,7 @@
 // otherwise redirect to onboarding.
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamId } from '@/lib/team';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,19 +12,10 @@ export default async function AppRootPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: memberRow } = await sb
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const teamId = memberRow?.team_id;
+  const teamId = await resolveTeamId(sb, user);
 
-  let accountsQuery = sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true);
-  let productsQuery = sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
-  if (teamId) {
-    accountsQuery = accountsQuery.eq('team_id', teamId);
-    productsQuery = productsQuery.eq('team_id', teamId);
-  }
+  const accountsQuery = sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('team_id', teamId);
+  const productsQuery = sb.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('team_id', teamId);
 
   const [accountsRes, productsRes] = await Promise.all([accountsQuery, productsQuery]);
 
