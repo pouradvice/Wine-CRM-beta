@@ -47,16 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Set the invited user's active team to the shared team so the app
-  // doesn't non-deterministically pick their solo auto-provisioned team.
-  try {
-    await svc.rpc('set_active_team', {
-      p_email:   email,
-      p_team_id: callerRow.team_id,
-    });
-  } catch (setTeamErr) {
-    console.error('set_active_team failed (non-fatal):', setTeamErr);
-  }
+  console.log(`[team] added ${email} to team ${callerRow.team_id}`);
 
   return NextResponse.json({ ok: true });
 }
