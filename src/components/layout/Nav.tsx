@@ -44,7 +44,7 @@ export function Nav({ displayName, isOwner }: NavProps) {
     <>
       <nav className={styles.nav}>
         <div className={styles.inner}>
-          <Link href="/app/crm/clients" className={styles.wordmark}>
+          <Link href="/app/crm/new-recap" className={styles.wordmark}>
             Pour Advice
           </Link>
 

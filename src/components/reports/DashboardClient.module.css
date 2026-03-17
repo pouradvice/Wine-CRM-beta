@@ -151,10 +151,17 @@
   margin: 0;
 }
 
+.tableWrapper {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  min-width: 320px;
 }
 
 .table th {

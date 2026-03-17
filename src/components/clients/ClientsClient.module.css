@@ -106,10 +106,17 @@
   border-bottom-color: var(--wine);
 }
 
+.tableWrapper {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--text-sm);
+  min-width: 480px;
 }
 
 .table th {
@@ -138,6 +145,31 @@
 
 .tableRow:hover {
   background: var(--parchment);
+}
+
+.actionsCell {
+  text-align: right;
+  white-space: nowrap;
+  padding-right: var(--space-3) !important;
+}
+
+.editBtn {
+  padding: 0.25rem 0.625rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--wine);
+  background: var(--surface);
+  border: 1px solid var(--mist-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.editBtn:hover {
+  background: var(--parchment);
+  border-color: var(--wine);
 }
 
 .companyCell {
@@ -295,6 +327,80 @@
   font-weight: 500;
   min-width: 90px;
   text-align: center;
+}
+
+/* Detail slideover */
+.detailSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+}
+
+.detailSectionTitle {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--mist);
+}
+
+.detailRow {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.detailLabel {
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.visitTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+
+.visitTable th {
+  text-align: left;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--mist-dark);
+  white-space: nowrap;
+}
+
+.visitTable td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--mist);
+  color: var(--text);
+  vertical-align: top;
+}
+
+.visitTable tr:last-child td {
+  border-bottom: none;
+}
+
+.visitTableWrapper {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.detailEmpty {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: var(--space-2) 0;
 }
 
 @media (max-width: 640px) {

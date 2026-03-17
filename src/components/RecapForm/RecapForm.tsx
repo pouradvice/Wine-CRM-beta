@@ -389,9 +389,14 @@ export function RecapForm({ clients, currentUser }: Props) {
                         ? { background: OUTCOME_COLORS[outcome] }
                         : {}
                     }
-                    onClick={() =>
-                      updateProductField(product.id, 'outcome', outcome)
-                    }
+                    onClick={() => {
+                      updateProductField(product.id, 'outcome', outcome);
+                      if (outcome === 'Yes Today') {
+                        updateProductField(product.id, 'order_probability', 100);
+                      } else if (outcome === 'No') {
+                        updateProductField(product.id, 'order_probability', 0);
+                      }
+                    }}
                   >
                     {outcome}
                   </button>
@@ -442,6 +447,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                     step={5}
                     className={styles.range}
                     value={fp.order_probability ?? 0}
+                    disabled={fp.outcome === 'Yes Today' || fp.outcome === 'No'}
                     onChange={(e) =>
                       updateProductField(
                         product.id,
