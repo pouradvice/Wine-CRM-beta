@@ -29,7 +29,7 @@
 
 .no {
   background: rgba(139, 26, 26, 0.12);
-  color: var(--wine-dark);
+  color: var(--outcome-no);
 }
 
 .discussed {

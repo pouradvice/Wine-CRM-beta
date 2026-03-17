@@ -1,27 +1,27 @@
 /* src/app/globals.css */
-/* Design token system — matches beta verbatim */
+/* Design token system — monochromatic palette */
 
 :root {
   /* Core palette */
-  --ink:        #1a1a1a;
-  --wine:       #8b1a1a;
-  --wine-light: #b32020;
-  --wine-dark:  #5c0f0f;
-  --gold:       #c9a84c;
-  --gold-light: #e0c47a;
-  --sage:       #6b7c5e;
-  --sage-light: #8d9e7f;
-  --parchment:  #f5f0e8;
-  --cream:      #faf8f4;
-  --mist:       #e5e0d8;
-  --mist-dark:  #c8c0b4;
+  --ink:        #0a0a0a;
+  --wine:       #111111;
+  --wine-light: #333333;
+  --wine-dark:  #222222;
+  --gold:       #555555;
+  --gold-light: #e0e0e0;
+  --sage:       #777777;
+  --sage-light: #999999;
+  --parchment:  #f0f0f0;
+  --cream:      #fafafa;
+  --mist:       #d8d8d8;
+  --mist-dark:  #bbbbbb;
 
   /* Semantic */
   --bg:         var(--cream);
   --surface:    #ffffff;
   --border:     var(--mist);
   --text:       var(--ink);
-  --text-muted: #666;
+  --text-muted: #777;
 
   /* Typography */
   --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -49,8 +49,9 @@
   --space-12: 3rem;
 
   /* Shadows */
+  --shadow:    rgba(0, 0, 0, 0.10);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
 
   /* Radius */
@@ -84,7 +85,7 @@ body {
 }
 
 a {
-  color: var(--wine);
+  color: var(--ink);
   text-decoration: none;
 }
 

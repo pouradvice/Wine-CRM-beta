@@ -21,6 +21,12 @@
   background: var(--parchment);
   border: 1px solid var(--mist);
   border-radius: 7px;
+  gap: 0.375rem;
+}
+
+.tileAccent {
+  border-left: 4px solid var(--ink);
+  background: #f5f5f5;
 }
 
 .kpiValue {
