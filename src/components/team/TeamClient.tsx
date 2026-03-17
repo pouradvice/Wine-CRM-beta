@@ -28,9 +28,14 @@ export function TeamClient({ members: initialMembers, currentUserId }: TeamClien
   const router = useRouter();
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
 
-  // Sync state when server re-renders after router.refresh()
+  // Sync state when server re-renders after router.refresh(), but preserve
+  // any optimistically-added members the server hasn't reflected yet.
   useEffect(() => {
-    setMembers(initialMembers);
+    setMembers((prev) => {
+      const serverIds = new Set(initialMembers.map((m) => m.user_id));
+      const optimistic = prev.filter((m) => !serverIds.has(m.user_id));
+      return [...initialMembers, ...optimistic];
+    });
   }, [initialMembers]);
   const [email, setEmail] = useState('');
   const [role, setRole]   = useState<'member' | 'admin' | 'owner'>('member');
