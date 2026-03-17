@@ -73,7 +73,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--wine, #8b1a1a);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .textarea {
@@ -194,7 +194,7 @@
 
 .removeBtn:hover {
   color: var(--wine, #8b1a1a);
-  background: rgba(139, 26, 26, 0.06);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* Outcome buttons */

@@ -2,22 +2,20 @@
 
 .shell {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   background: var(--bg);
 }
 
 .main {
-  flex: 1;
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  margin-left: 210px;
   padding: var(--space-8) var(--space-6);
+  min-height: 100vh;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .main {
+    margin-left: 0;
     padding: var(--space-5) var(--space-4);
+    padding-top: calc(48px + var(--space-5));
   }
 }
 
