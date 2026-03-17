@@ -263,7 +263,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                         setForm((f) => ({ ...f, contact_name: contactFullName(primary) }));
                       }
                     })
-                    .catch(() => {/* keep account_lead fallback */});
+                    .catch((err) => { console.error('Failed to fetch primary contact:', err); });
                 }
               }}
               required

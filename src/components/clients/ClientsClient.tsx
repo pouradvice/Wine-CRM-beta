@@ -539,11 +539,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Primary Contact</span>
                 <span>
-                  {activeClient.primary_contact_id
-                    ? (accountContacts.find((c) => c.id === activeClient.primary_contact_id)
-                        ? contactFullName(accountContacts.find((c) => c.id === activeClient.primary_contact_id)!)
-                        : '—')
-                    : '—'}
+                  {(() => {
+                    const pc = activeClient.primary_contact_id
+                      ? accountContacts.find((c) => c.id === activeClient.primary_contact_id)
+                      : undefined;
+                    return pc ? contactFullName(pc) : '—';
+                  })()}
                 </span>
               </div>
               <div className={styles.detailRow}>
