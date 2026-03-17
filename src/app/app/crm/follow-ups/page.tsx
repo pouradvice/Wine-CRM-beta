@@ -11,15 +11,6 @@ export default async function FollowUpsPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: memberRow, error: memberError } = await sb
-    .from('team_members')
-    .select('team_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!memberError && !memberRow?.team_id) {
-    redirect('/app/onboarding');
-  }
-
   const { data: followUps, count } = await getFollowUpQueue(sb, { page: 0, pageSize: 50 });
 
   return <FollowUpsClient initialFollowUps={followUps} totalCount={count} />;
