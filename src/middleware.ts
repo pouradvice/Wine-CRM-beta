@@ -52,11 +52,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Onboarding gate — authenticated users on /app/* routes only.
-  // Skips the gate for the /app/onboarding page itself to prevent a redirect loop.
+  // Skips the gate for onboarding pages themselves to prevent redirect loops.
+  // Excludes /app/onboarding (wizard) and /app/crm/onboarding/* (CSV import and
+  // any future pages under that hub) so none of them are caught by the gate.
   if (
     user &&
     pathname.startsWith('/app') &&
-    !pathname.startsWith('/app/onboarding')
+    !pathname.startsWith('/app/onboarding') &&
+    !pathname.startsWith('/app/crm/onboarding')
   ) {
     // Fast path: cookie value must match the current user's ID.
     // A stale cookie from a different user's session on the same browser
@@ -87,8 +90,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Set the cookie with this user's ID as the value so future requests
-    // for THIS user skip the DB query without affecting other users.
+    // Write the cookie to the CURRENT supabaseResponse object.
+    // The Supabase SSR setAll() callback (above) may replace supabaseResponse
+    // with a fresh NextResponse during auth.getUser(); writing the cookie here,
+    // after all awaits, ensures it lands on whichever response is returned.
     supabaseResponse.cookies.set(ONBOARDING_DONE_COOKIE, user.id, {
       path:     '/',
       httpOnly: false,

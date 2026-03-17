@@ -16,10 +16,7 @@ export default async function ProductsPage() {
     .select('team_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  if (!memberRow?.team_id) {
-    redirect('/app/onboarding');
-  }
-  const teamId: string = memberRow.team_id;
+  const teamId: string = memberRow?.team_id ?? user.id;
 
   const { data: products, count } = await getProducts(sb, { page: 0, pageSize: 25, teamId });
 
