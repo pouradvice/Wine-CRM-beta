@@ -16,8 +16,20 @@ import {
   getExpenseRecaps,
 } from '@/lib/data';
 import { ReportsClient } from '@/components/reports/ReportsClient';
+import type { DashboardStats } from '@/types';
 
 export const dynamic = 'force-dynamic';
+
+const DEFAULT_STATS: DashboardStats = {
+  total_accounts: 0,
+  active_follow_ups: 0,
+  visits_this_month: 0,
+  conversion_rate_pct: null,
+};
+
+async function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  try { return await promise; } catch { return fallback; }
+}
 
 export default async function ReportsPage() {
   const sb = await createClient();
@@ -28,12 +40,12 @@ export default async function ReportsPage() {
     .from('team_members')
     .select('team_id')
     .eq('user_id', user.id)
-    .single();
-  const teamId = memberRow?.team_id as string | undefined;
+    .maybeSingle();
+  const teamId: string = memberRow?.team_id ?? user.id;
 
   const [
-    { data: performance },
-    { data: followUps },
+    performanceResult,
+    followUpsResult,
     visitsBySupplier,
     productsByContact,
     dashboardStats,
@@ -45,24 +57,24 @@ export default async function ReportsPage() {
     pipelineHealth,
     expenses,
   ] = await Promise.all([
-    getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId),
-    getFollowUpQueue(sb, { page: 0, pageSize: 100 }, teamId),
-    getVisitsBySupplier(sb, teamId),
-    getProductsByContact(sb),
-    getDashboardStats(sb, teamId),
-    getTopSkus(sb, 5, teamId),
-    getTopAccounts(sb, 5, teamId),
-    getSalespersonStats(sb, { teamId }),
-    getSalespersonWeeklyTrend(sb, { teamId }),
-    getInactiveAccounts(sb, 60, teamId),
-    getPipelineHealth(sb, teamId),
-    getExpenseRecaps(sb, { teamId }),
+    safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
+    safe(getFollowUpQueue(sb, { page: 0, pageSize: 100 }, teamId), { data: [], count: 0 }),
+    safe(getVisitsBySupplier(sb, teamId), []),
+    safe(getProductsByContact(sb), []),
+    safe(getDashboardStats(sb, teamId), DEFAULT_STATS),
+    safe(getTopSkus(sb, 5, teamId), []),
+    safe(getTopAccounts(sb, 5, teamId), []),
+    safe(getSalespersonStats(sb, { teamId }), []),
+    safe(getSalespersonWeeklyTrend(sb, { teamId }), []),
+    safe(getInactiveAccounts(sb, 60, teamId), []),
+    safe(getPipelineHealth(sb, teamId), []),
+    safe(getExpenseRecaps(sb, { teamId }), []),
   ]);
 
   return (
     <ReportsClient
-      performance={performance}
-      followUps={followUps}
+      performance={performanceResult.data}
+      followUps={followUpsResult.data}
       visitsBySupplier={visitsBySupplier}
       productsByContact={productsByContact}
       dashboardStats={dashboardStats}
