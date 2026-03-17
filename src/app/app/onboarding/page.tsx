@@ -52,9 +52,11 @@ export default async function OnboardingRoute() {
     userRole = 'team_member';
   }
 
-  // team_id used by CSVImporter for row ownership
-  if (!memberRow?.team_id) redirect('/login');
-  const teamId: string = memberRow.team_id;
+  // team_id used by CSVImporter for row ownership.
+  // Fall back to user.id for edge-case accounts with no team row yet
+  // (pre-trigger signups or provisioning gaps) so they can complete onboarding
+  // without hitting a redirect loop.
+  const teamId: string = memberRow?.team_id ?? user.id;
 
   // 4. Display name
   const displayName: string =
