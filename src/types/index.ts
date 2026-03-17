@@ -215,6 +215,7 @@ export interface Recap {
   team_id:             string;
   account_id:          string;
   contact_id:          string | null;
+  contact_name:        string | null;
   user_id:             string | null;
   visit_date:          string;
   salesperson:         string;
@@ -441,6 +442,7 @@ export interface RecapFormState {
   salesperson:         string;
   account_id:          string;
   contact_id:          string | null;
+  contact_name:        string;
   nature:              RecapNature;
   expense_receipt_url: string | null;
   notes:               string | null;

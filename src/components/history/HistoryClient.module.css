@@ -220,3 +220,74 @@
   font-size: var(--text-sm);
   margin: 0;
 }
+
+.editRecapBtn {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-sm);
+  color: var(--wine);
+  cursor: pointer;
+  font-weight: 500;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+
+.editRecapBtn:hover {
+  border-color: var(--wine);
+}
+
+/* Edit slideover form */
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.editLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.editInput,
+.editSelect,
+.editTextarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.editInput:focus,
+.editSelect:focus,
+.editTextarea:focus {
+  outline: none;
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+}
+
+.editTextarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.editError {
+  font-size: var(--text-sm);
+  color: var(--wine);
+  padding: var(--space-2) 0;
+}
