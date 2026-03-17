@@ -42,7 +42,7 @@
 .searchInput:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .filterSelect {
@@ -59,7 +59,7 @@
 .filterSelect:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .table {
@@ -165,7 +165,7 @@
 .formTextarea:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .formTextarea {

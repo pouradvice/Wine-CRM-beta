@@ -70,8 +70,8 @@
 }
 
 .tileAccent {
-  border-left: 4px solid var(--wine);
-  background: #fff5f5;
+  border-left: 4px solid var(--ink);
+  background: #f5f5f5;
 }
 
 .tileValue {

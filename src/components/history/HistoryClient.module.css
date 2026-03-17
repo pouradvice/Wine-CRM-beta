@@ -50,7 +50,7 @@
 .filterSelect:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .recapList {
@@ -73,13 +73,13 @@
 
 .highlighted {
   border-color: var(--wine);
-  box-shadow: 0 0 0 2px rgba(139, 26, 26, 0.15);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
   animation: highlightPulse 1.5s ease;
 }
 
 @keyframes highlightPulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(139, 26, 26, 0.15); }
-  50%       { box-shadow: 0 0 0 4px rgba(139, 26, 26, 0.25); }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12); }
+  50%       { box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.20); }
 }
 
 .recapHeader {
@@ -278,7 +278,7 @@
 .editTextarea:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .editTextarea {

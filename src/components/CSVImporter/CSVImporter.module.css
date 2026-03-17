@@ -135,7 +135,7 @@
 .dropZone:hover,
 .dropZoneActive {
   border-color: var(--wine);
-  background: rgba(139, 26, 26, 0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .dropIcon {
@@ -201,7 +201,7 @@
   font-size: var(--text-sm);
   color: var(--wine);
   padding: var(--space-3);
-  background: rgba(139, 26, 26, 0.06);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: var(--radius-md);
   margin: 0;
 }
@@ -359,7 +359,7 @@
 .select:focus {
   outline: none;
   border-color: var(--wine);
-  box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .selectAuto {
@@ -373,8 +373,8 @@
 }
 
 .validationError {
-  background: rgba(139, 26, 26, 0.06);
-  border: 1px solid rgba(139, 26, 26, 0.2);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   display: flex;
@@ -485,9 +485,9 @@
 
 .failureBadge {
   display: inline-block;
-  background: rgba(139, 26, 26, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   color: var(--wine);
-  border: 1px solid rgba(139, 26, 26, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
