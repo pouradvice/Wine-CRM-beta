@@ -1,7 +1,7 @@
 'use client';
 // src/components/team/TeamClient.tsx
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import styles from './TeamClient.module.css';
@@ -27,6 +27,11 @@ const ROLE_LABELS: Record<string, string> = {
 export function TeamClient({ members: initialMembers, currentUserId }: TeamClientProps) {
   const router = useRouter();
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
+
+  // Sync state when server re-renders after router.refresh()
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
   const [email, setEmail] = useState('');
   const [role, setRole]   = useState<'member' | 'admin' | 'owner'>('member');
   const [addError, setAddError] = useState('');
@@ -53,6 +58,13 @@ export function TeamClient({ members: initialMembers, currentUserId }: TeamClien
     }
     setAddSuccess(`${email.trim()} has been added to the team.`);
     setEmail('');
+    if (data.member) {
+      setMembers((prev) => {
+        // Avoid duplicates if the member is already in the list
+        if (prev.some((m) => m.user_id === data.member.user_id)) return prev;
+        return [...prev, data.member];
+      });
+    }
     startTransition(() => refresh());
   };
 
