@@ -1,78 +1,92 @@
 // src/app/api/plan/save/route.ts
-// POST /api/plan/save
-//
-// Inserts a daily_plan_sessions row and sets a plan_session_id cookie
-// so subsequent Server Components (plan/review) can load the session
-// without a query-param.
-//
-// Security: team_id is always resolved server-side via resolveTeamId —
-// never trusted from the request body. See SECURITY.md for the
-// two-surface protection model.
+// POST /api/plan/save — creates (or replaces) a daily plan session and sets the plan_session_id cookie.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { resolveTeamId } from '@/lib/team';
 import { todayLocal } from '@/lib/dateUtils';
-import { mapDbError } from '@/types';
 
-export async function POST(request: NextRequest) {
-  try {
-    const sb = await createClient();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+interface SavePlanBody {
+  account_ids: string[];
+  product_ids: string[];
+}
 
-    // team_id resolved server-side via resolveTeamId — not trusted from client payload.
-    // See SECURITY.md for the two-surface protection model.
-    const teamId = await resolveTeamId(sb, user);
-
-    let body: { account_ids?: string[]; product_ids?: string[] };
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-    }
-
-    const accountIds = body.account_ids ?? [];
-    const productIds = body.product_ids ?? [];
-
-    if (!Array.isArray(accountIds) || accountIds.length === 0) {
-      return NextResponse.json({ error: 'account_ids must be a non-empty array' }, { status: 400 });
-    }
-    if (!Array.isArray(productIds) || productIds.length === 0) {
-      return NextResponse.json({ error: 'product_ids must be a non-empty array' }, { status: 400 });
-    }
-
-    const { data, error } = await sb
-      .from('daily_plan_sessions')
-      .insert({
-        team_id:     teamId,
-        user_id:     user.id,
-        plan_date:   todayLocal(),
-        account_ids: accountIds,
-        product_ids: productIds,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: mapDbError(error) }, { status: 500 });
-    }
-
-    const sessionId: string = data.id;
-
-    const response = NextResponse.json({ ok: true, session_id: sessionId });
-    response.cookies.set('plan_session_id', sessionId, {
-      path:     '/app',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge:   60 * 60 * 20,
-    });
-
-    return response;
-  } catch (err) {
-    const e = err as { code?: string; message?: string };
-    return NextResponse.json({ error: mapDbError(e) }, { status: 500 });
+export async function POST(req: NextRequest) {
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_REQUIRED' }, { status: 401 });
   }
+
+  let body: SavePlanBody;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON', code: 'BAD_REQUEST' }, { status: 400 });
+  }
+
+  const { account_ids, product_ids } = body;
+
+  if (!Array.isArray(account_ids) || account_ids.length === 0) {
+    return NextResponse.json(
+      { error: 'account_ids must be a non-empty array', code: 'VALIDATION_ERROR' },
+      { status: 422 },
+    );
+  }
+
+  if (!Array.isArray(product_ids)) {
+    return NextResponse.json(
+      { error: 'product_ids must be an array', code: 'VALIDATION_ERROR' },
+      { status: 422 },
+    );
+  }
+
+  // Resolve team_id for the current user
+  const { data: membership } = await sb
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return NextResponse.json({ error: 'No team found', code: 'NO_TEAM' }, { status: 403 });
+  }
+
+  const plan_date = todayLocal();
+
+  // Upsert: one active plan per user per day
+  const { data: session, error } = await sb
+    .from('daily_plan_sessions')
+    .upsert(
+      {
+        user_id:               user.id,
+        team_id:               membership.team_id,
+        plan_date,
+        account_ids,
+        product_ids,
+        completed_account_ids: [],
+      },
+      { onConflict: 'user_id,plan_date' },
+    )
+    .select('id')
+    .single();
+
+  if (error || !session) {
+    console.error('[plan/save] upsert error:', error);
+    return NextResponse.json(
+      { error: 'Failed to save plan session', code: 'DB_ERROR' },
+      { status: 500 },
+    );
+  }
+
+  // Set the plan_session_id cookie so the review page can read it
+  const cookieStore = await cookies();
+  cookieStore.set('plan_session_id', session.id, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    // No maxAge — session cookie; cleared on all-done or stale-date
+  });
+
+  return NextResponse.json({ ok: true, session_id: session.id });
 }

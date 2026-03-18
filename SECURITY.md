@@ -1,61 +1,53 @@
-# SECURITY.md
+# Security Policy
 
-## Two-Surface Protection Model
+## Reporting a Vulnerability
 
-The daily planning feature enforces authorization at two distinct surfaces.
-This document explains why each surface uses a different mechanism.
+If you discover a security vulnerability in this project, please open a private security advisory on GitHub or email the maintainers directly. Do not open a public issue for security vulnerabilities.
 
 ---
 
-### Surface 1 — Server Component reads
+## Security Surfaces
 
-**Affected routes:** `new-recap/page.tsx`, `plan/review/page.tsx`
+### Surface 1 — daily_plan_sessions (Row-Level Security)
 
-Server Components that read a user's own session use the **anon Supabase client**.
-The `daily_plan_sessions` table has an RLS policy:
+**Table:** `daily_plan_sessions`
 
-```sql
-CREATE POLICY "daily_plan_sessions_own_rows"
-  ON daily_plan_sessions FOR ALL
-  TO authenticated
-  USING  (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+**RLS policy:** `user_id = auth.uid()`
+
+**Why no additional server-side check is needed:**  
+When the review page fetches a session by its `id` (read from the `plan_session_id` cookie), the query runs through Supabase's anon client with the authenticated user's JWT. Postgres enforces the RLS policy at the database layer — a row is only returned if `user_id` matches the requesting user's `auth.uid()`. This means a user who somehow obtains another user's session UUID cannot read that session; the database will return no rows and the page will redirect to `/app/crm/plan` as a stale-cookie fallback.
+
+**Result:** No redundant `eq('user_id', user.id)` filter is needed in application code because the database enforces it unconditionally.
+
+---
+
+### Surface 2 — plan_session_id Cookie
+
+**Cookie name:** `plan_session_id`
+
+**Set by:** `POST /api/plan/save`
+
+**Read by:** `/app/crm/plan/review` (server component) and `/app/crm/new-recap` (future sprint)
+
+**Security properties:**
+- `HttpOnly: true` — not accessible to client-side JavaScript
+- `SameSite: Lax` — prevents CSRF from cross-site requests
+- `Path: /` — scoped to the application root
+- `Secure: true` in production (enforced by the Next.js cookie API when the request is HTTPS)
+
+**Session lifetime:** The cookie is deleted by the review page when all accounts in `account_ids` have corresponding entries in `completed_account_ids` (all-done detection). It is also deleted if the `plan_date` does not match today's local date (stale session).
+
+---
+
+### Surface 3 — Account Context Query (no N+1)
+
+The review page fetches all account context in a single PostgREST query using nested selects:
+
+```
+sb.from('accounts')
+  .select('id, name, value_tier, recaps(visit_date), follow_ups!follow_ups_account_id_fkey(id, status)')
+  .in('id', session.account_ids)
+  .eq('team_id', session.team_id)
 ```
 
-Postgres rejects any read or write whose `user_id` does not match `auth.uid()`.
-**No additional application-layer team check is needed on reads** because
-protection is on row identity (a session UUID that the calling user must own).
-
----
-
-### Surface 2 — Route Handler writes/queries
-
-**Affected routes:** `/api/plan/suggest-products`, `/api/plan/suggest-accounts`, `/api/plan/save`
-
-Route Handlers that query or write by **team identity** call
-`resolveTeamId(sb, user)` before passing `p_team_id` to any scoring RPC or
-inserting into `daily_plan_sessions`.
-
-Without server-side resolution a client could POST an arbitrary `team_id` and
-receive suggestions scoped to a team they don't belong to.
-The RPCs are `SECURITY DEFINER`, so the caller's RLS context is not applied
-inside them. `resolveTeamId` derives `team_id` from
-`team_members WHERE user_id = auth.uid()` — itself an RLS-protected table — so
-the team can never be spoofed from the client payload.
-
-> **Rule:** `team_id` is **always** resolved server-side in Route Handlers.
-> Never read `team_id` from the request body.
-
----
-
-### Why the approaches differ
-
-| Surface | What is being protected | Mechanism |
-|---------|------------------------|-----------|
-| Server Component reads | Row ownership (session UUID belongs to caller) | RLS `user_id = auth.uid()` |
-| Route Handler writes / RPC calls | Team membership (team UUID must belong to caller) | `resolveTeamId` server-side resolution |
-
-Server Components query by **row identity**: the caller must own the row.
-Route Handlers query by **team identity**: the caller must be a member of the team.
-
-Do not move either pattern to the client.
+The `.eq('team_id', session.team_id)` filter is a defence-in-depth measure: even though RLS on `accounts` already restricts rows to the user's team, the explicit filter prevents the query from accidentally returning accounts from another team if RLS is misconfigured or temporarily disabled during a migration.

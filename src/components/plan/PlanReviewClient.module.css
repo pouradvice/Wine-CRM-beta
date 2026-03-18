@@ -1,0 +1,228 @@
+/* src/components/plan/PlanReviewClient.module.css */
+
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 var(--space-6);
+}
+
+/* ── All-done banner ──────────────────────────────────────── */
+
+.doneBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(45, 122, 58, 0.08);
+  border: 1px solid rgba(45, 122, 58, 0.25);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #1a5c2a;
+  margin-bottom: var(--space-6);
+}
+
+.doneBannerIcon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+.doneBtn {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-4);
+  background: #1a5c2a;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.doneBtn:hover {
+  opacity: 0.85;
+}
+
+/* ── Account list ─────────────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.cardDone {
+  opacity: 0.65;
+}
+
+/* ── Card header ──────────────────────────────────────────── */
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.accountMeta {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.accountName {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Value tier badge ─────────────────────────────────────── */
+
+.tierBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tierA {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.tierB {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  border: 1px solid var(--mist);
+}
+
+.tierC {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--mist);
+}
+
+/* ── Action area ──────────────────────────────────────────── */
+
+.cardAction {
+  flex-shrink: 0;
+}
+
+.logBtn {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--mist);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  font-family: inherit;
+}
+
+.logBtn:hover {
+  background: var(--parchment);
+  border-color: var(--mist-dark);
+}
+
+.completedBadge {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: #1a5c2a;
+  padding: var(--space-1) var(--space-3);
+  background: rgba(45, 122, 58, 0.08);
+  border: 1px solid rgba(45, 122, 58, 0.25);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Context signals ──────────────────────────────────────── */
+
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.signal {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.signalLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.signalValue {
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.signalFollowUp .signalValue {
+  color: #8b6a1a;
+  font-weight: 600;
+}
+
+/* ── Bag products ─────────────────────────────────────────── */
+
+.products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--mist);
+}
+
+.productChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  background: var(--parchment);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--mist);
+}
+
+.sku {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--wine);
+  font-weight: 600;
+}

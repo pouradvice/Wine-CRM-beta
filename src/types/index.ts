@@ -427,6 +427,26 @@ export interface BulkImportResult {
 }
 
 
+// ── Daily Plan ───────────────────────────────────────────────
+
+/**
+ * Represents a planning session created by the plan builder.
+ * Stored in the daily_plan_sessions table; id is carried forward via the
+ * plan_session_id cookie so subsequent pages can read the same session.
+ */
+export interface DailyPlanSession {
+  id:                    string;
+  team_id:               string;
+  user_id:               string;
+  plan_date:             string;        // YYYY-MM-DD — must equal todayLocal()
+  account_ids:           string[];      // ordered list of account IDs for the day
+  product_ids:           string[];      // bag of product IDs to show at every account
+  completed_account_ids: string[];      // account IDs where a recap has been saved
+  created_at:            string;
+  updated_at:            string;
+}
+
+
 // ── Form state ───────────────────────────────────────────────
 
 export interface RecapFormProduct {

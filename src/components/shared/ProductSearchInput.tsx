@@ -1,97 +1,140 @@
 'use client';
 // src/components/shared/ProductSearchInput.tsx
-//
-// Standalone debounced product search input + dropdown extracted from RecapForm.tsx.
-//
-// Props:
-//   onSelect   — called when the user picks a product from the dropdown.
-//                The component clears the input and closes the dropdown.
-//   excludeIds — product ids already selected; these are filtered out of results.
+// Reusable debounced product search input for forms.
 
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '@/types';
-import styles from './ProductSearchInput.module.css';
 
-interface Props {
-  onSelect:    (product: Product) => void;
+interface ProductSearchInputProps {
+  onSelect: (product: Product) => void;
   excludeIds?: string[];
+  placeholder?: string;
+  className?: string;
+  dropdownClassName?: string;
+  itemClassName?: string;
 }
 
-export function ProductSearchInput({ onSelect, excludeIds = [] }: Props) {
-  const [productSearch, setProductSearch] = useState('');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const [searching, setSearching] = useState(false);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function ProductSearchInput({
+  onSelect,
+  excludeIds = [],
+  placeholder = 'Search products…',
+  className,
+  dropdownClassName,
+  itemClassName,
+}: ProductSearchInputProps) {
+  const [query, setQuery] = useState('');
+  // rawResults holds the full API response; filtering by excludeIds is done at render time
+  const [rawResults, setRawResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!productSearch.trim()) {
-      setSearchResults([]);
-      setSearching(false);
+    if (!query.trim()) {
+      setRawResults([]);
+      setLoading(false);
       return;
     }
 
-    setSearching(true);
-    searchDebounceRef.current = setTimeout(async () => {
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/products?search=${encodeURIComponent(productSearch)}&limit=20`,
+          `/api/products?search=${encodeURIComponent(query)}&limit=20`,
         );
         const result = await res.json();
-        const excluded = new Set(excludeIds);
-        setSearchResults(
-          (result.data ?? []).filter((p: Product) => !excluded.has(p.id)),
-        );
+        setRawResults(result.data ?? []);
       } catch {
-        setSearchResults([]);
+        setRawResults([]);
       } finally {
-        setSearching(false);
+        setLoading(false);
       }
     }, 300);
 
     return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  // excludeIds is intentionally omitted — only productSearch drives re-fetches.
-  // Callers pass a stable array reference if they need live exclusion updates.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSearch]);
+  }, [query]);
 
-  function handleSelect(product: Product) {
+  // Filter at render time so changes to excludeIds are reflected immediately
+  const excludeSet = new Set(excludeIds);
+  const results = rawResults.filter((p) => !excludeSet.has(p.id));
+
+  const handleSelect = (product: Product) => {
     onSelect(product);
-    setProductSearch('');
-    setSearchResults([]);
-  }
+    setQuery('');
+    setRawResults([]);
+  };
 
   return (
-    <div className={styles.productSearch}>
+    <div style={{ position: 'relative' }}>
       <input
-        type="search"
-        className={styles.input}
-        placeholder="Search by name or SKU…"
-        value={productSearch}
-        onChange={(e) => setProductSearch(e.target.value)}
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={loading ? 'Searching…' : placeholder}
+        className={className}
       />
-
-      {productSearch && (
-        <ul className={styles.productDropdown}>
-          {searching && (
-            <li className={styles.productDropdownStatus}>Searching…</li>
-          )}
-          {!searching && searchResults.length === 0 && (
-            <li className={styles.productDropdownStatus}>No results</li>
-          )}
-          {!searching && searchResults.map((p) => (
+      {results.length > 0 && (
+        <ul
+          className={dropdownClassName}
+          style={
+            !dropdownClassName
+              ? {
+                  position: 'absolute',
+                  zIndex: 100,
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--mist)',
+                  borderRadius: 'var(--radius-md)',
+                  listStyle: 'none',
+                  margin: 0,
+                  padding: 0,
+                  boxShadow: 'var(--shadow-md)',
+                  maxHeight: '220px',
+                  overflowY: 'auto',
+                }
+              : undefined
+          }
+        >
+          {results.map((p) => (
             <li key={p.id}>
               <button
                 type="button"
-                className={styles.productDropdownItem}
                 onClick={() => handleSelect(p)}
+                className={itemClassName}
+                style={
+                  !itemClassName
+                    ? {
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: 'var(--space-2) var(--space-3)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-sm)',
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                      }
+                    : undefined
+                }
               >
-                <span className={styles.productSku}>{p.sku_number}</span>
-                <span className={styles.productName}>{p.wine_name}</span>
-                {p.type && <span className={styles.productType}>{p.type}</span>}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--wine)',
+                    fontWeight: 600,
+                    marginRight: 'var(--space-2)',
+                  }}
+                >
+                  {p.sku_number}
+                </span>
+                {p.wine_name}
               </button>
             </li>
           ))}
