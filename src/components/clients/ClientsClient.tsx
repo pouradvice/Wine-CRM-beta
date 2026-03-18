@@ -39,11 +39,29 @@ interface ClientForm {
   notes: string;
 }
 
-interface VisitRow {
+interface VisitProductRow {
+  wine_name: string;
+  sku_number: string;
+  outcome: string;
+}
+
+interface VisitGroup {
+  recap_id: string;
   visit_date: string;
   salesperson: string;
-  wine_name: string | null;
-  outcome: string | null;
+  products: VisitProductRow[];
+}
+
+interface ProductSeenRow {
+  wine_name: string;
+  sku_number: string;
+  latest_outcome: string;
+}
+
+interface ProductNotSeenRow {
+  id: string;
+  wine_name: string;
+  sku_number: string;
 }
 
 const emptyForm = (): ClientForm => ({
@@ -74,7 +92,18 @@ function clientToForm(c: Account): ClientForm {
   };
 }
 
+function OutcomePill({ outcome }: { outcome: string }) {
+  const cls =
+    outcome === 'Yes Today'   ? styles.pillYesToday :
+    outcome === 'Yes Later'   ? styles.pillYesLater :
+    outcome === 'Maybe Later' ? styles.pillMaybe :
+    outcome === 'No'          ? styles.pillNo :
+    styles.pillDiscussed;
+  return <span className={`${styles.outcomePill} ${cls}`}>{outcome}</span>;
+}
+
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
+type DetailTab = 'history' | 'seen' | 'not_seen';
 
 const PAGE_SIZE = 25;
 
@@ -94,9 +123,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ClientForm>>({});
 
-  // Visit history (detail view)
-  const [detailVisits, setDetailVisits] = useState<VisitRow[]>([]);
+  // Detail view state
+  const [detailTab, setDetailTab] = useState<DetailTab>('history');
   const [detailLoading, setDetailLoading] = useState(false);
+  const [visitGroups, setVisitGroups] = useState<VisitGroup[]>([]);
+  const [productsSeen, setProductsSeen] = useState<ProductSeenRow[]>([]);
+  const [productsNotSeen, setProductsNotSeen] = useState<ProductNotSeenRow[]>([]);
 
   // Active SKUs
   const [accountSkus, setAccountSkus_] = useState<Product[]>([]);
@@ -139,51 +171,82 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   }, [clients, search, statusTab]);
 
   const loadVisitHistory = async (c: Account) => {
-    setDetailVisits([]);
+    setVisitGroups([]);
+    setProductsSeen([]);
+    setProductsNotSeen([]);
     setDetailLoading(true);
     try {
       const sb = createClient();
-      const { data } = await sb
+
+      const { data: recapData } = await sb
         .from('recaps')
         .select(`
+          id,
           visit_date,
           salesperson,
           recap_products (
             outcome,
-            product:products ( wine_name )
+            product:products ( wine_name, sku_number )
           )
         `)
         .eq('account_id', c.id)
         .order('visit_date', { ascending: false })
         .limit(50);
 
+      const { data: allProducts } = await sb
+        .from('products')
+        .select('id, wine_name, sku_number')
+        .eq('team_id', teamId)
+        .eq('is_active', true)
+        .order('wine_name');
+
       type RawRecap = {
+        id: string;
         visit_date: string;
         salesperson: string;
         recap_products: Array<{
           outcome: string;
-          product: { wine_name: string } | null;
+          product: { wine_name: string; sku_number: string } | null;
         }>;
       };
 
-      const rows: VisitRow[] = [];
-      for (const r of (data ?? []) as unknown as RawRecap[]) {
-        if (!r.recap_products || r.recap_products.length === 0) {
-          rows.push({ visit_date: r.visit_date, salesperson: r.salesperson, wine_name: null, outcome: null });
-        } else {
-          for (const rp of r.recap_products) {
-            rows.push({
-              visit_date: r.visit_date,
-              salesperson: r.salesperson,
-              wine_name: rp.product?.wine_name ?? null,
-              outcome: rp.outcome,
+      const groups: VisitGroup[] = [];
+      const seenMap = new Map<string, ProductSeenRow>();
+
+      for (const r of (recapData ?? []) as unknown as RawRecap[]) {
+        const products: VisitProductRow[] = (r.recap_products ?? [])
+          .filter((rp) => rp.product != null)
+          .map((rp) => ({
+            wine_name: rp.product!.wine_name,
+            sku_number: rp.product!.sku_number,
+            outcome: rp.outcome,
+          }));
+
+        groups.push({ recap_id: r.id, visit_date: r.visit_date, salesperson: r.salesperson, products });
+
+        // visits are sorted desc → first encounter = most recent outcome
+        for (const rp of products) {
+          if (!seenMap.has(rp.wine_name)) {
+            seenMap.set(rp.wine_name, {
+              wine_name: rp.wine_name,
+              sku_number: rp.sku_number,
+              latest_outcome: rp.outcome,
             });
           }
         }
       }
-      setDetailVisits(rows);
+
+      const seen = Array.from(seenMap.values());
+      const seenNames = new Set(seenMap.keys());
+      const notSeen = (allProducts ?? []).filter((p) => !seenNames.has(p.wine_name));
+
+      setVisitGroups(groups);
+      setProductsSeen(seen);
+      setProductsNotSeen(notSeen as ProductNotSeenRow[]);
     } catch {
-      setDetailVisits([]);
+      setVisitGroups([]);
+      setProductsSeen([]);
+      setProductsNotSeen([]);
     } finally {
       setDetailLoading(false);
     }
@@ -208,6 +271,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const openView = async (c: Account) => {
     setActiveClient(c);
     setMode('view');
+    setDetailTab('history');
     await Promise.all([loadVisitHistory(c), loadAccountSkus_(c), loadAccountContacts(c)]);
   };
 
@@ -506,104 +570,171 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
       >
         {mode === 'view' && activeClient ? (
           <>
-            <div className={styles.detailSection}>
-              <h3 className={styles.detailSectionTitle}>Account Info</h3>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Company Name</span>
-                <span>{activeClient.name || '—'}</span>
+            {/* ── Account Info Card ─────────────────────────────────── */}
+            <div className={styles.infoCard}>
+              <div className={styles.infoCardBadges}>
+                <StatusBadge status={activeClient.status} />
+                {activeClient.type && (
+                  <span className={styles.typeBadge}>{activeClient.type}</span>
+                )}
+                {activeClient.value_tier && (
+                  <span className={`${styles.tierBadge} ${tierClass(activeClient.value_tier)}`}>
+                    {activeClient.value_tier}
+                  </span>
+                )}
               </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Type</span>
-                <span>{activeClient.type || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Value Tier</span>
-                <span>{activeClient.value_tier || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Phone</span>
-                <span>{activeClient.phone || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Email</span>
-                <span>{activeClient.email || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Address</span>
-                <span>{activeClient.address || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Account Lead</span>
-                <span>{activeClient.account_lead || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Primary Contact</span>
-                <span>
-                  {(() => {
-                    const pc = activeClient.primary_contact_id
-                      ? accountContacts.find((c) => c.id === activeClient.primary_contact_id)
-                      : undefined;
-                    return pc ? contactFullName(pc) : '—';
-                  })()}
-                </span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Status</span>
-                <span>{activeClient.status || '—'}</span>
-              </div>
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Notes</span>
-                <span>{activeClient.notes || '—'}</span>
+              <div className={styles.infoCardGrid}>
+                {activeClient.phone && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Phone</span>
+                    <span>{activeClient.phone}</span>
+                  </div>
+                )}
+                {activeClient.email && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Email</span>
+                    <span>{activeClient.email}</span>
+                  </div>
+                )}
+                {activeClient.address && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Address</span>
+                    <span>{activeClient.address}</span>
+                  </div>
+                )}
+                {activeClient.account_lead && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Account Lead</span>
+                    <span>{activeClient.account_lead}</span>
+                  </div>
+                )}
+                {activeClient.primary_contact_id && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Contact</span>
+                    <span>
+                      {(() => {
+                        const pc = accountContacts.find((c) => c.id === activeClient.primary_contact_id);
+                        return pc ? contactFullName(pc) : '—';
+                      })()}
+                    </span>
+                  </div>
+                )}
+                {accountSkus.length > 0 && (
+                  <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
+                    <span className={styles.infoCardLabel}>Active SKUs</span>
+                    <span className={styles.skuTagList}>
+                      {accountSkus.map((p) => (
+                        <span key={p.id} className={styles.skuTag}>
+                          {p.wine_name}
+                          <span className={styles.skuTagNumber}>{p.sku_number}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+                {activeClient.notes && (
+                  <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
+                    <span className={styles.infoCardLabel}>Notes</span>
+                    <span>{activeClient.notes}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className={styles.detailSection}>
-              <h3 className={styles.detailSectionTitle}>Active SKUs</h3>
-              {accountSkus.length === 0 ? (
-                <p className={styles.detailEmpty}>No active SKUs assigned.</p>
+            {/* ── Slideover tab bar ─────────────────────────────────── */}
+            <div className={styles.slideTabs}>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'history' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('history')}
+              >
+                Visit History
+              </button>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'seen' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('seen')}
+              >
+                Products Seen
+                {!detailLoading && productsSeen.length > 0 && (
+                  <span className={styles.tabCount}>{productsSeen.length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'not_seen' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('not_seen')}
+              >
+                Not Yet Seen
+                {!detailLoading && productsNotSeen.length > 0 && (
+                  <span className={styles.tabCount}>{productsNotSeen.length}</span>
+                )}
+              </button>
+            </div>
+
+            {/* ── Tab content ───────────────────────────────────────── */}
+            {detailLoading ? (
+              <p className={styles.detailEmpty}>Loading…</p>
+            ) : detailTab === 'history' ? (
+              visitGroups.length === 0 ? (
+                <p className={styles.detailEmpty}>No visits recorded yet.</p>
               ) : (
-                <ul className={styles.skuList}>
-                  {accountSkus.map((p) => (
-                    <li key={p.id} className={styles.skuItem}>
-                      <span className={styles.skuItemName}>{p.wine_name}</span>
-                      <span className={styles.skuItemNumber}>{p.sku_number}</span>
+                <div className={styles.visitList}>
+                  {visitGroups.map((g) => (
+                    <div key={g.recap_id} className={styles.visitGroup}>
+                      <div className={styles.visitGroupHeader}>
+                        <span className={styles.visitDate}>{g.visit_date}</span>
+                        <span className={styles.visitSalesperson}>{g.salesperson}</span>
+                      </div>
+                      {g.products.length === 0 ? (
+                        <p className={styles.visitNoProducts}>No products recorded</p>
+                      ) : (
+                        <ul className={styles.visitProductList}>
+                          {g.products.map((vp, i) => (
+                            <li key={i} className={styles.visitProductRow}>
+                              <div className={styles.visitProductInfo}>
+                                <span className={styles.visitProductName}>{vp.wine_name}</span>
+                                <span className={styles.visitProductSku}>{vp.sku_number}</span>
+                              </div>
+                              <OutcomePill outcome={vp.outcome} />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : detailTab === 'seen' ? (
+              productsSeen.length === 0 ? (
+                <p className={styles.detailEmpty}>No products shown yet.</p>
+              ) : (
+                <ul className={styles.productSeenList}>
+                  {productsSeen.map((p, i) => (
+                    <li key={i} className={styles.productSeenRow}>
+                      <div className={styles.productSeenInfo}>
+                        <span className={styles.productSeenName}>{p.wine_name}</span>
+                        <span className={styles.productSeenSku}>{p.sku_number}</span>
+                      </div>
+                      <OutcomePill outcome={p.latest_outcome} />
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-
-            <div className={styles.detailSection}>
-              <h3 className={styles.detailSectionTitle}>Visit History</h3>
-              {detailLoading ? (
-                <p className={styles.detailEmpty}>Loading…</p>
-              ) : detailVisits.length === 0 ? (
-                <p className={styles.detailEmpty}>No visits recorded yet.</p>
+              )
+            ) : (
+              productsNotSeen.length === 0 ? (
+                <p className={styles.detailEmpty}>All active products have been shown to this account.</p>
               ) : (
-                <div className={styles.visitTableWrapper}>
-                  <table className={styles.visitTable}>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Salesperson</th>
-                        <th>Wine</th>
-                        <th>Outcome</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detailVisits.map((v, i) => (
-                        <tr key={i}>
-                          <td>{v.visit_date}</td>
-                          <td>{v.salesperson}</td>
-                          <td>{v.wine_name ?? '—'}</td>
-                          <td>{v.outcome ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                <ul className={styles.productNotSeenList}>
+                  {productsNotSeen.map((p) => (
+                    <li key={p.id} className={styles.productNotSeenRow}>
+                      <span className={styles.productSeenName}>{p.wine_name}</span>
+                      <span className={styles.productSeenSku}>{p.sku_number}</span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
           </>
         ) : (mode === 'edit' || mode === 'add') ? (
           <div className={styles.formGrid}>

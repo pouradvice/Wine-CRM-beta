@@ -38,6 +38,20 @@ interface ProductForm {
   is_active: boolean;
 }
 
+interface AccountShownRow {
+  account_id: string;
+  account_name: string;
+  visit_date: string;
+  salesperson: string;
+  outcome: string;
+}
+
+interface AccountNotShownRow {
+  id: string;
+  name: string;
+  status: string;
+}
+
 const emptyForm = (): ProductForm => ({
   sku_number: '',
   wine_name: '',
@@ -78,7 +92,18 @@ function productToForm(p: Product): ProductForm {
   };
 }
 
+function OutcomePill({ outcome }: { outcome: string }) {
+  const cls =
+    outcome === 'Yes Today'   ? styles.pillYesToday :
+    outcome === 'Yes Later'   ? styles.pillYesLater :
+    outcome === 'Maybe Later' ? styles.pillMaybe :
+    outcome === 'No'          ? styles.pillNo :
+    styles.pillDiscussed;
+  return <span className={`${styles.outcomePill} ${cls}`}>{outcome}</span>;
+}
+
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
+type ProductDetailTab = 'shown' | 'not_shown';
 
 const PAGE_SIZE = 25;
 
@@ -97,6 +122,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<ProductForm>>({});
+
+  // Detail view state
+  const [detailTab, setDetailTab] = useState<ProductDetailTab>('shown');
+  const [accountsShown, setAccountsShown] = useState<AccountShownRow[]>([]);
+  const [accountsNotShown, setAccountsNotShown] = useState<AccountNotShownRow[]>([]);
+  const [productDetailLoading, setProductDetailLoading] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -125,9 +156,79 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     });
   }, [products, search, typeFilter]);
 
+  const loadProductDetail = async (p: Product) => {
+    setAccountsShown([]);
+    setAccountsNotShown([]);
+    setProductDetailLoading(true);
+    try {
+      const sb = createClient();
+
+      const { data: rpData } = await sb
+        .from('recap_products')
+        .select(`
+          outcome,
+          recap:recaps (
+            id,
+            visit_date,
+            salesperson,
+            account:accounts ( id, name )
+          )
+        `)
+        .eq('product_id', p.id)
+        .limit(200);
+
+      const { data: allAccounts } = await sb
+        .from('accounts')
+        .select('id, name, status')
+        .eq('team_id', teamId)
+        .eq('is_active', true)
+        .in('status', ['Active', 'Prospective'])
+        .order('name');
+
+      type RawRpData = {
+        outcome: string;
+        recap: {
+          id: string;
+          visit_date: string;
+          salesperson: string;
+          account: { id: string; name: string } | null;
+        } | null;
+      };
+
+      const shownRows: AccountShownRow[] = [];
+      const shownAccountIds = new Set<string>();
+
+      for (const rp of (rpData ?? []) as unknown as RawRpData[]) {
+        if (!rp.recap?.account) continue;
+        shownRows.push({
+          account_id: rp.recap.account.id,
+          account_name: rp.recap.account.name,
+          visit_date: rp.recap.visit_date,
+          salesperson: rp.recap.salesperson,
+          outcome: rp.outcome,
+        });
+        shownAccountIds.add(rp.recap.account.id);
+      }
+
+      shownRows.sort((a, b) => b.visit_date.localeCompare(a.visit_date));
+
+      const notShown = (allAccounts ?? []).filter((a) => !shownAccountIds.has(a.id));
+
+      setAccountsShown(shownRows);
+      setAccountsNotShown(notShown as AccountNotShownRow[]);
+    } catch {
+      setAccountsShown([]);
+      setAccountsNotShown([]);
+    } finally {
+      setProductDetailLoading(false);
+    }
+  };
+
   const openView = (p: Product) => {
     setActiveProduct(p);
     setMode('view');
+    setDetailTab('shown');
+    loadProductDetail(p);
   };
 
   const openAdd = () => {
@@ -250,6 +351,10 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
+
+  const originParts = activeProduct
+    ? [activeProduct.country, activeProduct.region, activeProduct.appellation].filter(Boolean)
+    : [];
 
   const slideoverOpen = mode !== 'closed';
   const slideoverTitle =
@@ -395,69 +500,140 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         }
       >
         {mode === 'view' && activeProduct ? (
-          <div className={styles.detailSection}>
-            <h3 className={styles.detailSectionTitle}>Product Info</h3>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>SKU</span>
-              <span>{activeProduct.sku_number}</span>
+          <>
+            {/* ── Product Info Card ─────────────────────────────────── */}
+            <div className={styles.infoCard}>
+              <div className={styles.infoCardBadges}>
+                <span className={styles.skuBadge}>{activeProduct.sku_number}</span>
+                {activeProduct.type && (
+                  <span className={styles.typeBadge}>{activeProduct.type}</span>
+                )}
+                {!activeProduct.is_active && (
+                  <span className={styles.archivedBadge}>Archived</span>
+                )}
+              </div>
+              <div className={styles.infoCardGrid}>
+                {activeProduct.brand?.name && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Brand</span>
+                    <span>{activeProduct.brand.name}</span>
+                  </div>
+                )}
+                {activeProduct.varietal && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Varietal</span>
+                    <span>{activeProduct.varietal}</span>
+                  </div>
+                )}
+                {activeProduct.vintage && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Vintage</span>
+                    <span>{activeProduct.vintage}</span>
+                  </div>
+                )}
+                {originParts.length > 0 && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Origin</span>
+                    <span>{originParts.join(' · ')}</span>
+                  </div>
+                )}
+                {activeProduct.distributor && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Distributor</span>
+                    <span>{activeProduct.distributor}</span>
+                  </div>
+                )}
+                {(activeProduct.btg_cost != null || activeProduct.three_cs_cost != null || activeProduct.frontline_cost != null) && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Costs</span>
+                    <span className={styles.costsRow}>
+                      {activeProduct.btg_cost != null && (
+                        <span>BTG <strong>${activeProduct.btg_cost.toFixed(2)}</strong></span>
+                      )}
+                      {activeProduct.three_cs_cost != null && (
+                        <span>3-Case <strong>${activeProduct.three_cs_cost.toFixed(2)}</strong></span>
+                      )}
+                      {activeProduct.frontline_cost != null && (
+                        <span>FL <strong>${activeProduct.frontline_cost.toFixed(2)}</strong></span>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {activeProduct.tech_sheet_url && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Tech Sheet</span>
+                    <a href={activeProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>
+                      View →
+                    </a>
+                  </div>
+                )}
+                {activeProduct.notes && (
+                  <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
+                    <span className={styles.infoCardLabel}>Notes</span>
+                    <span>{activeProduct.notes}</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Brand</span>
-              <span>{activeProduct.brand?.name || '—'}</span>
+
+            {/* ── Tab bar ──────────────────────────────────────────── */}
+            <div className={styles.slideTabs}>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'shown' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('shown')}
+              >
+                Accounts Shown
+                {!productDetailLoading && accountsShown.length > 0 && (
+                  <span className={styles.tabCount}>{accountsShown.length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'not_shown' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('not_shown')}
+              >
+                Not Yet Shown
+                {!productDetailLoading && accountsNotShown.length > 0 && (
+                  <span className={styles.tabCount}>{accountsNotShown.length}</span>
+                )}
+              </button>
             </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Type</span>
-              <span>{activeProduct.type || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Varietal</span>
-              <span>{activeProduct.varietal || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Vintage</span>
-              <span>{activeProduct.vintage || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Country</span>
-              <span>{activeProduct.country || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Region</span>
-              <span>{activeProduct.region || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Appellation</span>
-              <span>{activeProduct.appellation || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Distributor</span>
-              <span>{activeProduct.distributor || '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>BTG Cost</span>
-              <span>{activeProduct.btg_cost != null ? `$${activeProduct.btg_cost.toFixed(2)}` : '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>3-Case Cost</span>
-              <span>{activeProduct.three_cs_cost != null ? `$${activeProduct.three_cs_cost.toFixed(2)}` : '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Frontline</span>
-              <span>{activeProduct.frontline_cost != null ? `$${activeProduct.frontline_cost.toFixed(2)}` : '—'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Tech Sheet</span>
-              {activeProduct.tech_sheet_url ? (
-                <a href={activeProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>
-                  View →
-                </a>
-              ) : <span>—</span>}
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Notes</span>
-              <span>{activeProduct.notes || '—'}</span>
-            </div>
-          </div>
+
+            {/* ── Tab content ──────────────────────────────────────── */}
+            {productDetailLoading ? (
+              <p className={styles.detailEmpty}>Loading…</p>
+            ) : detailTab === 'shown' ? (
+              accountsShown.length === 0 ? (
+                <p className={styles.detailEmpty}>This product hasn't been shown to any accounts yet.</p>
+              ) : (
+                <ul className={styles.accountShownList}>
+                  {accountsShown.map((a, i) => (
+                    <li key={i} className={styles.accountShownRow}>
+                      <div className={styles.accountShownInfo}>
+                        <span className={styles.accountShownName}>{a.account_name}</span>
+                        <span className={styles.accountShownMeta}>{a.visit_date} · {a.salesperson}</span>
+                      </div>
+                      <OutcomePill outcome={a.outcome} />
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : (
+              accountsNotShown.length === 0 ? (
+                <p className={styles.detailEmpty}>This product has been shown to all active accounts.</p>
+              ) : (
+                <ul className={styles.accountNotShownList}>
+                  {accountsNotShown.map((a) => (
+                    <li key={a.id} className={styles.accountNotShownRow}>
+                      <span className={styles.accountNotShownName}>{a.name}</span>
+                      <span className={styles.accountNotShownStatus}>{a.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </>
         ) : (mode === 'edit' || mode === 'add') ? (
           <div className={styles.formGrid}>
             <div className={styles.formField}>
