@@ -29,8 +29,9 @@ import type {
   RecapNature,
 } from '@/types';
 import { contactFullName } from '@/types';
-import { AccountSelect } from '@/components/shared/AccountSelect';
+import { AccountCombobox } from '@/components/shared/AccountCombobox';
 import { ProductSearchInput } from '@/components/shared/ProductSearchInput';
+import { Slideover } from '@/components/ui/Slideover';
 import styles from './RecapForm.module.css';
 
 const OUTCOMES: RecapOutcome[] = [
@@ -97,6 +98,16 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Local copy of the accounts list so newly-created accounts appear immediately.
+  const [localClients, setLocalClients] = useState<Account[]>(clients);
+
+  // ── Add Account slideover state ──────────────────────────────
+  const [addAccountOpen, setAddAccountOpen]       = useState(false);
+  const [newAccountName, setNewAccountName]       = useState('');
+  const [newAccountType, setNewAccountType]       = useState('');
+  const [addAccountSaving, setAddAccountSaving]   = useState(false);
+  const [addAccountError, setAddAccountError]     = useState<string | null>(null);
+
   // Products already added — kept separately so rows don't disappear
   // when the user types in the search box.
   const [selectedProducts, setSelectedProducts] = useState<Product[]>(initialProducts ?? []);
@@ -156,6 +167,69 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
       console.error('Photo upload failed:', err);
     } finally {
       setPhotoUploading((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
+
+  // ── Add Account (slideover) ───────────────────────────────────
+  const openAddAccount = (name: string) => {
+    setNewAccountName(name);
+    setNewAccountType('');
+    setAddAccountError(null);
+    setAddAccountOpen(true);
+  };
+
+  const handleSaveNewAccount = async () => {
+    if (!newAccountName.trim()) {
+      setAddAccountError('Account name is required.');
+      return;
+    }
+    setAddAccountSaving(true);
+    setAddAccountError(null);
+    try {
+      const res = await fetch('/api/accounts/create', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          name:   newAccountName.trim(),
+          type:   newAccountType || undefined,
+          status: 'Active',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddAccountError(data.error ?? 'Failed to create account.');
+        return;
+      }
+      // Build a minimal Account object for local state.
+      const newAcct: Account = {
+        id:                   data.id,
+        team_id:              '',
+        name:                 newAccountName.trim(),
+        type:                 (newAccountType as Account['type']) || null,
+        value_tier:           null,
+        phone:                null,
+        email:                null,
+        address:              null,
+        city:                 null,
+        state:                null,
+        country:              null,
+        account_lead:         null,
+        primary_contact_id:   null,
+        primary_contact_name: null,
+        status:               'Active',
+        notes:                null,
+        is_active:            true,
+        created_at:           data.created_at ?? '',
+        updated_at:           data.created_at ?? '',
+      };
+      setLocalClients((prev) => [...prev, newAcct]);
+      setForm((f) => ({ ...f, account_id: newAcct.id, contact_id: null, contact_name: '' }));
+      setAddAccountOpen(false);
+    } catch (err) {
+      console.error('Failed to create account:', err);
+      setAddAccountError('An unexpected error occurred.');
+    } finally {
+      setAddAccountSaving(false);
     }
   };
 
@@ -244,6 +318,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     'Visit Notes';
 
   return (
+    <>
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
       {/* ── Visit Details ──────────────────────────────── */}
@@ -298,11 +373,11 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
             <label htmlFor="account_id" className={styles.label}>
               Account <span className={styles.required}>*</span>
             </label>
-            <AccountSelect
-              accounts={clients}
+            <AccountCombobox
+              accounts={localClients}
               value={form.account_id}
               onChange={(accountId) => {
-                const acct = clients.find((c) => c.id === accountId);
+                const acct = localClients.find((c) => c.id === accountId);
                 // Pre-fill contact: prefer primary_contact_name, then account_lead
                 const contactPreFill = acct?.primary_contact_name ?? acct?.account_lead ?? '';
                 setForm((f) => ({
@@ -325,7 +400,10 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                     .catch((err) => { console.error('Failed to fetch primary contact:', err); });
                 }
               }}
-              required
+              onAddAccount={openAddAccount}
+              className={styles.input}
+              dropdownClassName={styles.productDropdown}
+              dropdownItemClassName={styles.productDropdownItem}
             />
           </div>
 
@@ -607,6 +685,72 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         </button>
       </div>
     </form>
+
+    {/* ── Add Account Slideover ─────────────────────────── */}
+    <Slideover
+      open={addAccountOpen}
+      onClose={() => setAddAccountOpen(false)}
+      title="Add New Account"
+      footer={
+        <>
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={() => setAddAccountOpen(false)}
+            disabled={addAccountSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.saveBtn}
+            onClick={handleSaveNewAccount}
+            disabled={addAccountSaving}
+          >
+            {addAccountSaving ? 'Saving…' : 'Save Account'}
+          </button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={styles.field}>
+          <label className={styles.label}>
+            Name <span className={styles.required}>*</span>
+          </label>
+          <input
+            type="text"
+            className={styles.input}
+            value={newAccountName}
+            onChange={(e) => setNewAccountName(e.target.value)}
+            placeholder="Account name"
+            autoFocus
+          />
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Type</label>
+          <select
+            className={styles.select}
+            value={newAccountType}
+            onChange={(e) => setNewAccountType(e.target.value)}
+          >
+            <option value="">— Select type —</option>
+            <option value="Restaurant">Restaurant</option>
+            <option value="Bar">Bar</option>
+            <option value="Retail">Retail</option>
+            <option value="Hotel">Hotel</option>
+            <option value="Club">Club</option>
+            <option value="Corporate">Corporate</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        {addAccountError && (
+          <p className={styles.error}>{addAccountError}</p>
+        )}
+      </div>
+    </Slideover>
+    </>
   );
 }
 
