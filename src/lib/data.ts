@@ -149,7 +149,7 @@ export async function getProducts(
 
   let query = sb
     .from('products')
-    .select('*, brand:brands(*, supplier:suppliers(*))', { count: 'exact' })
+    .select('*, brand:brands(*, supplier:suppliers(*)), supplier:suppliers(*)', { count: 'exact' })
     .order('wine_name')
     .range(from, to);
 
@@ -175,7 +175,7 @@ export async function getProductById(
 ): Promise<Product | null> {
   let query = sb
     .from('products')
-    .select('*, brand:brands(*, supplier:suppliers(*))')
+    .select('*, brand:brands(*, supplier:suppliers(*)), supplier:suppliers(*)')
     .eq('id', id);
   if (teamId) query = query.eq('team_id', teamId);
   const { data, error } = await query.single();
@@ -191,7 +191,7 @@ export async function upsertProduct(
   const { data, error } = await sb
     .from('products')
     .upsert(product, { onConflict })
-    .select('*, brand:brands(*, supplier:suppliers(*))')
+    .select('*, brand:brands(*, supplier:suppliers(*)), supplier:suppliers(*)')
     .single();
   if (error) throw new Error(mapDbError(error));
   return data;
