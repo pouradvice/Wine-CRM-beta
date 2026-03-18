@@ -97,7 +97,7 @@ export function PlanReviewClient({ session, accountContext, sessionProducts, all
                       className={styles.logBtn}
                       // No query params — the plan_session_id cookie carries all
                       // context forward; the new-recap page reads it directly.
-                      onClick={() => router.push('/app/crm/new-recap')}
+                      onClick={() => { window.location.href = '/app/crm/new-recap'; }}
                     >
                       Log Recap
                     </button>

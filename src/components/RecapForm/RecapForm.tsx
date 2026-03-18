@@ -297,9 +297,9 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
       }
 
       if (result.redirect_to_plan) {
-        router.push('/app/crm/plan/review');
+        window.location.href = '/app/crm/plan/review';
       } else {
-        router.push(`/app/crm/history?highlight=${result.recap_id}`);
+        window.location.href = `/app/crm/history?highlight=${result.recap_id}`;
       }
     } catch (err) {
       const e = err as { error?: string; message?: string };
