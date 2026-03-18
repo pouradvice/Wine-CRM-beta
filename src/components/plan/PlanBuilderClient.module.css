@@ -1,0 +1,123 @@
+/* src/components/plan/PlanBuilderClient.module.css */
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 var(--space-8);
+}
+
+.section {
+  margin-bottom: var(--space-8);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 var(--space-4);
+}
+
+.selectRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.select {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.searchInput {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chipList {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.chipRemove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  padding: 0;
+  line-height: 1;
+}
+
+.chipRemove:hover {
+  color: var(--text);
+}
+
+.sku {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--wine);
+  font-weight: 600;
+}
+
+.error {
+  color: #c0392b;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.saveBtn {
+  padding: var(--space-3) var(--space-6);
+  background: var(--ink);
+  color: var(--surface);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
