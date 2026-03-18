@@ -1,20 +1,20 @@
 /* src/app/globals.css */
-/* Design token system — monochromatic palette */
+/* Design token system — wine CRM palette */
 
 :root {
   /* Core palette */
-  --ink:        #0a0a0a;
-  --wine:       #111111;
-  --wine-light: #333333;
-  --wine-dark:  #222222;
-  --gold:       #555555;
-  --gold-light: #e0e0e0;
-  --sage:       #777777;
-  --sage-light: #999999;
-  --parchment:  #f0f0f0;
-  --cream:      #fafafa;
-  --mist:       #d8d8d8;
-  --mist-dark:  #bbbbbb;
+  --ink:        #1a1a1a;
+  --wine:       #8b1a1a;
+  --wine-light: #b44040;
+  --wine-dark:  #6b1414;
+  --gold:       #b8892a;
+  --gold-light: #f5e4b8;
+  --sage:       #4a6741;
+  --sage-light: #8aaa82;
+  --parchment:  #f5f0e8;
+  --cream:      #faf8f4;
+  --mist:       #e5e0d8;
+  --mist-dark:  #c8c3bb;
 
   /* Semantic */
   --bg:         var(--cream);
