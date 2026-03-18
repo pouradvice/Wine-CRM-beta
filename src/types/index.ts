@@ -438,20 +438,6 @@ export interface BulkImportResult {
 }
 
 
-// ── Daily planning ───────────────────────────────────────────
-
-export interface DailyPlanSession {
-  id:                    string;
-  user_id:               string;
-  plan_date:             string;
-  account_ids:           string[];
-  completed_account_ids: string[];
-  product_ids:           string[];
-  created_at:            string;
-  updated_at:            string;
-}
-
-
 // ── Form state ───────────────────────────────────────────────
 
 export interface RecapFormProduct {
