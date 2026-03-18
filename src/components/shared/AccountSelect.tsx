@@ -10,6 +10,7 @@ interface AccountSelectProps {
   onChange: (id: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  required?: boolean;
   className?: string;
 }
 
@@ -19,6 +20,7 @@ export function AccountSelect({
   onChange,
   placeholder = 'Select account…',
   disabled = false,
+  required = false,
   className,
 }: AccountSelectProps) {
   return (
@@ -26,6 +28,7 @@ export function AccountSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
+      required={required}
       className={className}
     >
       <option value="">{placeholder}</option>
