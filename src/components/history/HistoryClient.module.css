@@ -391,3 +391,16 @@
 .editDropdownItem:hover {
   background: var(--cream);
 }
+
+.editMenuPlacementRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.editMenuPlacementLabel {
+  font-size: var(--text-sm);
+  color: var(--fg-muted, #666);
+  cursor: pointer;
+}

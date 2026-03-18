@@ -8,6 +8,12 @@
 //     GET /api/contacts?accountId= when the selected account changes.
 //   • selectedProducts state holds the products already added to the recap
 //     so their rows stay visible while the search field is in use.
+//   • Punch-list additions:
+//     - Event and Off-Premise Tasting visit types (checklist-only products)
+//     - Menu Placement outcome with photo upload
+//     - Discussed shows follow-up date instead of probability slider
+//     - Occasion field for Event type
+//     - Pre-fills contact from account's primary_contact_name
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,15 +39,20 @@ const OUTCOMES: RecapOutcome[] = [
   'Maybe Later',
   'No',
   'Discussed',
+  'Menu Placement',
 ];
 
 const OUTCOME_COLORS: Record<RecapOutcome, string> = {
-  'Yes Today':   'var(--outcome-yes)',
-  'Yes Later':   'var(--outcome-later)',
-  'Maybe Later': 'var(--outcome-maybe)',
-  'No':          'var(--outcome-no)',
-  'Discussed':   'var(--outcome-discussed)',
+  'Yes Today':      'var(--outcome-yes)',
+  'Yes Later':      'var(--outcome-later)',
+  'Maybe Later':    'var(--outcome-maybe)',
+  'No':             'var(--outcome-no)',
+  'Discussed':      'var(--outcome-discussed)',
+  'Menu Placement': 'var(--outcome-placement)',
 };
+
+/** Nature values that use the simplified checklist (no outcome/feedback). */
+const CHECKLIST_NATURES: RecapNature[] = ['Event', 'Off-Premise Tasting'];
 
 interface Props {
   clients:          Account[];
@@ -52,12 +63,14 @@ interface Props {
 
 function buildDefaultProduct(product: Product): RecapFormProduct {
   return {
-    product_id: product.id,
-    outcome: 'Discussed',
+    product_id:        product.id,
+    outcome:           'Discussed',
     order_probability: 0,
-    buyer_feedback: '',
-    follow_up_date: '',
-    bill_date: '',
+    buyer_feedback:    '',
+    follow_up_date:    '',
+    bill_date:         '',
+    menu_placement:    false,
+    menu_photo_url:    null,
   };
 }
 
@@ -68,15 +81,16 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
 
   // ── Form state ───────────────────────────────────────────────
   const [form, setForm] = useState<RecapFormState>({
-    visit_date: today,
-    salesperson: currentUser,
-    account_id: '',
-    contact_id: null,
-    contact_name: '',
-    nature: 'Sales Call',
+    visit_date:          today,
+    salesperson:         currentUser,
+    account_id:          '',
+    contact_id:          null,
+    contact_name:        '',
+    nature:              'Sales Call',
+    occasion:            '',
     expense_receipt_url: null,
-    notes: null,
-    products: [],
+    notes:               null,
+    products:            [],
     ...initialValues,
   });
 
@@ -87,6 +101,10 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   // when the user types in the search box.
   const [selectedProducts, setSelectedProducts] = useState<Product[]>(initialProducts ?? []);
 
+  // Photo upload states: productId → uploading/uploaded
+  const [photoUploading, setPhotoUploading] = useState<Record<string, boolean>>({});
+
+  const isChecklistMode = CHECKLIST_NATURES.includes(form.nature);
 
   // ── Product management ────────────────────────────────────────
   const addProduct = useCallback((product: Product) => {
@@ -121,6 +139,26 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     [],
   );
 
+  // ── Photo upload ──────────────────────────────────────────────
+  const handlePhotoUpload = async (productId: string, file: File) => {
+    setPhotoUploading((prev) => ({ ...prev, [productId]: true }));
+    try {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const path = `${productId}-${Date.now()}.${ext}`;
+      const { error: uploadErr } = await sb.storage
+        .from('menu-photos')
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = sb.storage.from('menu-photos').getPublicUrl(path);
+      updateProductField(productId, 'menu_photo_url', urlData.publicUrl);
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    } finally {
+      setPhotoUploading((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
+
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +175,6 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     setError(null);
 
     try {
-      // Build the same payload shape that data.ts saveRecap sends to save_recap RPC
       const { data: { user } } = await sb.auth.getUser();
       const p_recap = {
         visit_date:          form.visit_date,
@@ -146,17 +183,26 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         account_id:          form.account_id,
         contact_id:          form.contact_id || '',
         nature:              form.nature,
+        occasion:            form.occasion || '',
         expense_receipt_url: form.expense_receipt_url || '',
         notes:               form.notes || '',
       };
-      const p_products = form.products.map((p) => ({
-        product_id:        p.product_id,
-        outcome:           p.outcome,
-        order_probability: p.order_probability ? String(p.order_probability) : '',
-        buyer_feedback:    p.buyer_feedback || '',
-        follow_up_date:    p.follow_up_date || '',
-        bill_date:         p.bill_date || '',
-      }));
+
+      // For checklist visit types (Event, Off-Premise Tasting), override
+      // outcome to 'Discussed' and clear probability since there's no feedback.
+      const p_products = form.products.map((p) => {
+        const isChecklist = isChecklistMode;
+        return {
+          product_id:        p.product_id,
+          outcome:           isChecklist ? 'Discussed' : p.outcome,
+          order_probability: isChecklist ? '' : (p.order_probability ? String(p.order_probability) : ''),
+          buyer_feedback:    isChecklist ? '' : (p.buyer_feedback || ''),
+          follow_up_date:    p.follow_up_date || '',
+          bill_date:         isChecklist ? '' : (p.bill_date || ''),
+          menu_placement:    p.menu_placement ? 'true' : 'false',
+          menu_photo_url:    p.menu_photo_url || '',
+        };
+      });
 
       const res = await fetch('/api/recap/save', {
         method:  'POST',
@@ -176,7 +222,6 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         await sb.from('recaps').update({ contact_name: form.contact_name }).eq('id', result.recap_id);
       }
 
-      // Route Handler tells us where to go based on whether a plan session is active
       if (result.redirect_to_plan) {
         router.push('/app/crm/plan/review');
       } else {
@@ -191,6 +236,12 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
 
   const getFormProduct = (productId: string) =>
     form.products.find((p) => p.product_id === productId);
+
+  // Derive notes label based on visit type
+  const notesLabel =
+    form.nature === 'Event'             ? 'Event Notes' :
+    form.nature === 'Off-Premise Tasting' ? 'Demo Notes'  :
+    'Visit Notes';
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
@@ -225,6 +276,8 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
             >
               <option value="Sales Call">Sales Call</option>
               <option value="Depletion Meeting">Depletion Meeting</option>
+              <option value="Event">Event</option>
+              <option value="Off-Premise Tasting">Off-Premise Tasting</option>
             </select>
           </div>
 
@@ -250,14 +303,16 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
               value={form.account_id}
               onChange={(accountId) => {
                 const acct = clients.find((c) => c.id === accountId);
+                // Pre-fill contact: prefer primary_contact_name, then account_lead
+                const contactPreFill = acct?.primary_contact_name ?? acct?.account_lead ?? '';
                 setForm((f) => ({
                   ...f,
-                  account_id: accountId,
-                  contact_id: null,
-                  contact_name: acct?.account_lead ?? '',
+                  account_id:   accountId,
+                  contact_id:   null,
+                  contact_name: contactPreFill,
                 }));
-                // Pre-fill contact name from primary contact if set
-                if (acct?.primary_contact_id && accountId) {
+                // Also check for structured primary contact record
+                if (acct?.primary_contact_id && accountId && !acct.primary_contact_name) {
                   fetch(`/api/contacts?accountId=${accountId}&pageSize=100`)
                     .then((res) => res.json())
                     .then((result) => {
@@ -287,8 +342,23 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
           </div>
         </div>
 
+        {/* Occasion — only shown for Event type */}
+        {form.nature === 'Event' && (
+          <div className={styles.field}>
+            <label htmlFor="occasion" className={styles.label}>Occasion</label>
+            <input
+              id="occasion"
+              type="text"
+              className={styles.input}
+              placeholder="e.g. Grand Opening, Wine Dinner, Corporate Event…"
+              value={form.occasion}
+              onChange={(e) => setForm((f) => ({ ...f, occasion: e.target.value }))}
+            />
+          </div>
+        )}
+
         <div className={styles.field}>
-          <label htmlFor="notes" className={styles.label}>Visit Notes</label>
+          <label htmlFor="notes" className={styles.label}>{notesLabel}</label>
           <textarea
             id="notes"
             className={styles.textarea}
@@ -316,12 +386,34 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
           </p>
         )}
 
-        {/* Product feedback rows — driven by selectedProducts so they stay
-            visible regardless of what's in the search box */}
+        {/* Product rows — simplified checklist for Event/Off-Premise Tasting */}
         {selectedProducts.map((product) => {
           const fp = getFormProduct(product.id);
           if (!fp) return null;
 
+          if (isChecklistMode) {
+            // Checklist mode: just show product name + remove button
+            return (
+              <div key={product.id} className={styles.productRow}>
+                <div className={styles.productRowHeader}>
+                  <div className={styles.productRowTitle}>
+                    <span className={styles.productSku}>{product.sku_number}</span>
+                    <span className={styles.productName}>{product.wine_name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.removeBtn}
+                    onClick={() => removeProduct(product.id)}
+                    aria-label="Remove product"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          // Standard mode: full outcome/feedback UI
           return (
             <div key={product.id} className={styles.productRow}>
               <div className={styles.productRowHeader}>
@@ -354,10 +446,12 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                     }
                     onClick={() => {
                       updateProductField(product.id, 'outcome', outcome);
-                      if (outcome === 'Yes Today') {
+                      if (outcome === 'Yes Today' || outcome === 'Menu Placement') {
                         updateProductField(product.id, 'order_probability', 100);
                       } else if (outcome === 'No') {
                         updateProductField(product.id, 'order_probability', 0);
+                      } else if (outcome === 'Discussed') {
+                        updateProductField(product.id, 'order_probability', null);
                       }
                     }}
                   >
@@ -382,10 +476,10 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                 </div>
               )}
 
-              {fp.outcome === 'Maybe Later' && (
+              {(fp.outcome === 'Maybe Later' || fp.outcome === 'Discussed') && (
                 <div className={styles.row}>
                   <div className={styles.field}>
-                    <label className={styles.label}>Follow-up Date</label>
+                    <label className={styles.label}>Follow-up / Tasting Date</label>
                     <input
                       type="date"
                       className={styles.input}
@@ -398,41 +492,98 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                 </div>
               )}
 
-              <div className={styles.row}>
-                <div className={styles.field}>
-                  <label className={styles.label}>
-                    Order Probability ({fp.order_probability}%)
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    className={styles.range}
-                    value={fp.order_probability ?? 0}
-                    disabled={fp.outcome === 'Yes Today' || fp.outcome === 'No'}
-                    onChange={(e) =>
-                      updateProductField(
-                        product.id,
-                        'order_probability',
-                        Number(e.target.value),
-                      )
-                    }
-                  />
+              {fp.outcome === 'Menu Placement' && (
+                <div className={styles.row}>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Menu Photo (Proof)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className={styles.input}
+                      disabled={photoUploading[product.id]}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePhotoUpload(product.id, file);
+                      }}
+                    />
+                    {photoUploading[product.id] && (
+                      <span className={styles.uploadingHint}>Uploading…</span>
+                    )}
+                    {fp.menu_photo_url && !photoUploading[product.id] && (
+                      <a
+                        href={fp.menu_photo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.photoLink}
+                      >
+                        View uploaded photo →
+                      </a>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                <div className={styles.field}>
-                  <label className={styles.label}>Buyer Feedback</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    placeholder="Brief note…"
-                    value={fp.buyer_feedback ?? ''}
-                    onChange={(e) =>
-                      updateProductField(product.id, 'buyer_feedback', e.target.value)
-                    }
-                  />
+              {/* Order Probability: hidden for Discussed, Yes Today (locked at 100), No (locked at 0) */}
+              {fp.outcome !== 'Discussed' && (
+                <div className={styles.row}>
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Order Probability ({fp.order_probability ?? 0}%)
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      className={styles.range}
+                      value={fp.order_probability ?? 0}
+                      disabled={
+                        fp.outcome === 'Yes Today' ||
+                        fp.outcome === 'No' ||
+                        fp.outcome === 'Menu Placement'
+                      }
+                      onChange={(e) =>
+                        updateProductField(
+                          product.id,
+                          'order_probability',
+                          Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label}>Buyer Feedback</label>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      placeholder="Brief note…"
+                      value={fp.buyer_feedback ?? ''}
+                      onChange={(e) =>
+                        updateProductField(product.id, 'buyer_feedback', e.target.value)
+                      }
+                    />
+                  </div>
                 </div>
+              )}
+
+              {/* Menu Placement toggle (independent of outcome) */}
+              <div className={styles.menuPlacementRow}>
+                <input
+                  type="checkbox"
+                  id={`menu-placement-${product.id}`}
+                  checked={fp.menu_placement}
+                  onChange={(e) =>
+                    updateProductField(product.id, 'menu_placement', e.target.checked)
+                  }
+                />
+                <label
+                  htmlFor={`menu-placement-${product.id}`}
+                  className={styles.menuPlacementLabel}
+                >
+                  Menu Placement
+                </label>
               </div>
             </div>
           );
@@ -458,3 +609,4 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     </form>
   );
 }
+

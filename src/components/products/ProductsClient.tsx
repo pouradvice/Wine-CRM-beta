@@ -1,14 +1,14 @@
 'use client';
 // src/components/products/ProductsClient.tsx
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { upsertProduct, upsertBrand, archiveProduct, getProducts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
-import type { Product, ProductInsert, WineType } from '@/types';
+import type { Product, ProductInsert, WineType, Supplier } from '@/types';
 import styles from './ProductsClient.module.css';
 
 const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Spirit', 'Other'];
@@ -20,22 +20,23 @@ interface ProductsClientProps {
 }
 
 interface ProductForm {
-  sku_number: string;
-  wine_name: string;
-  brand_name: string;
-  type: string;
-  varietal: string;
-  country: string;
-  region: string;
-  appellation: string;
-  vintage: string;
-  btg_cost: string;
-  three_cs_cost: string;
+  sku_number:     string;
+  wine_name:      string;
+  brand_name:     string;
+  supplier_id:    string;
+  type:           string;
+  varietal:       string;
+  country:        string;
+  region:         string;
+  appellation:    string;
+  vintage:        string;
+  btg_cost:       string;
+  three_cs_cost:  string;
   frontline_cost: string;
-  distributor: string;
+  distributor:    string;
   tech_sheet_url: string;
-  notes: string;
-  is_active: boolean;
+  notes:          string;
+  is_active:      boolean;
 }
 
 interface AccountShownRow {
@@ -53,42 +54,44 @@ interface AccountNotShownRow {
 }
 
 const emptyForm = (): ProductForm => ({
-  sku_number: '',
-  wine_name: '',
-  brand_name: '',
-  type: '',
-  varietal: '',
-  country: '',
-  region: '',
-  appellation: '',
-  vintage: '',
-  btg_cost: '',
-  three_cs_cost: '',
+  sku_number:     '',
+  wine_name:      '',
+  brand_name:     '',
+  supplier_id:    '',
+  type:           '',
+  varietal:       '',
+  country:        '',
+  region:         '',
+  appellation:    '',
+  vintage:        '',
+  btg_cost:       '',
+  three_cs_cost:  '',
   frontline_cost: '',
-  distributor: '',
+  distributor:    '',
   tech_sheet_url: '',
-  notes: '',
-  is_active: true,
+  notes:          '',
+  is_active:      true,
 });
 
 function productToForm(p: Product): ProductForm {
   return {
-    sku_number: p.sku_number,
-    wine_name: p.wine_name,
-    brand_name: p.brand?.name ?? '',
-    type: p.type ?? '',
-    varietal: p.varietal ?? '',
-    country: p.country ?? '',
-    region: p.region ?? '',
-    appellation: p.appellation ?? '',
-    vintage: p.vintage ?? '',
-    btg_cost: p.btg_cost != null ? String(p.btg_cost) : '',
-    three_cs_cost: p.three_cs_cost != null ? String(p.three_cs_cost) : '',
+    sku_number:     p.sku_number,
+    wine_name:      p.wine_name,
+    brand_name:     p.brand?.name ?? '',
+    supplier_id:    p.supplier_id ?? p.brand?.supplier_id ?? '',
+    type:           p.type ?? '',
+    varietal:       p.varietal ?? '',
+    country:        p.country ?? '',
+    region:         p.region ?? '',
+    appellation:    p.appellation ?? '',
+    vintage:        p.vintage ?? '',
+    btg_cost:       p.btg_cost != null ? String(p.btg_cost) : '',
+    three_cs_cost:  p.three_cs_cost != null ? String(p.three_cs_cost) : '',
     frontline_cost: p.frontline_cost != null ? String(p.frontline_cost) : '',
-    distributor: p.distributor ?? '',
+    distributor:    p.distributor ?? '',
     tech_sheet_url: p.tech_sheet_url ?? '',
-    notes: p.notes ?? '',
-    is_active: p.is_active,
+    notes:          p.notes ?? '',
+    is_active:      p.is_active,
   };
 }
 
@@ -114,6 +117,24 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [currentPage, setCurrentPage] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+
+  // Suppliers list for the form dropdown
+  const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
+  const brandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch suppliers on mount
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const sb = createClient();
+        const { data } = await sb.from('suppliers').select('*').eq('is_active', true).order('name');
+        setSuppliersList(data ?? []);
+      } catch {
+        setSuppliersList([]);
+      }
+    };
+    fetchSuppliers();
+  }, []);
 
   // Unified slideover state
   const [mode, setMode] = useState<SlideoverMode>('closed');
@@ -266,53 +287,60 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     const sb = createClient();
     try {
       let brandId: string | null = null;
+      let brandSupplierId: string | null = null;
+
       if (form.brand_name.trim()) {
         const { data: existing } = await sb
           .from('brands')
-          .select('id')
+          .select('id, supplier_id')
           .eq('name', form.brand_name.trim())
           .eq('team_id', teamId)
           .maybeSingle();
 
         if (existing) {
           brandId = existing.id as string;
+          brandSupplierId = existing.supplier_id as string | null;
         } else {
           const newBrand = await upsertBrand(sb, {
-            name: form.brand_name.trim(),
-            team_id: teamId,
-            is_active: true,
-            supplier_id: null,
+            name:        form.brand_name.trim(),
+            team_id:     teamId,
+            is_active:   true,
+            supplier_id: form.supplier_id || null,
             description: null,
-            country: null,
-            region: null,
-            website: null,
-            notes: null,
+            country:     null,
+            region:      null,
+            website:     null,
+            notes:       null,
           });
           brandId = newBrand.id;
+          brandSupplierId = form.supplier_id || null;
         }
       }
 
+      // Use the explicitly selected supplier_id, falling back to brand's supplier
+      const resolvedSupplierId = form.supplier_id || brandSupplierId || null;
+
       const payload: ProductInsert & { id?: string } = {
-        sku_number: form.sku_number.trim(),
-        wine_name: form.wine_name.trim(),
-        brand_id: brandId,
-        team_id: teamId,
-        type: (form.type as WineType) || null,
-        varietal: form.varietal || null,
-        country: form.country || null,
-        region: form.region || null,
-        appellation: form.appellation || null,
-        vintage: form.vintage || null,
-        btg_cost: form.btg_cost ? Number(form.btg_cost) : null,
-        three_cs_cost: form.three_cs_cost ? Number(form.three_cs_cost) : null,
+        sku_number:     form.sku_number.trim(),
+        wine_name:      form.wine_name.trim(),
+        brand_id:       brandId,
+        team_id:        teamId,
+        type:           (form.type as WineType) || null,
+        varietal:       form.varietal || null,
+        country:        form.country || null,
+        region:         form.region || null,
+        appellation:    form.appellation || null,
+        vintage:        form.vintage || null,
+        btg_cost:       form.btg_cost ? Number(form.btg_cost) : null,
+        three_cs_cost:  form.three_cs_cost ? Number(form.three_cs_cost) : null,
         frontline_cost: form.frontline_cost ? Number(form.frontline_cost) : null,
-        distributor: form.distributor || null,
+        distributor:    form.distributor || null,
         tech_sheet_url: form.tech_sheet_url || null,
-        notes: form.notes || null,
-        supplier_id: null,
-        description: null,
-        tasting_notes: null,
-        is_active: form.is_active,
+        notes:          form.notes || null,
+        supplier_id:    resolvedSupplierId,
+        description:    null,
+        tasting_notes:  null,
+        is_active:      form.is_active,
         ...(activeProduct ? { id: activeProduct.id } : {}),
       };
 
@@ -350,6 +378,27 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
+  // When brand_name changes, debounce and auto-populate supplier from matching brand
+  const handleBrandChange = (brandName: string) => {
+    setField('brand_name', brandName);
+    if (brandDebounceRef.current) clearTimeout(brandDebounceRef.current);
+    if (!brandName.trim()) return;
+    brandDebounceRef.current = setTimeout(async () => {
+      try {
+        const sb = createClient();
+        const { data } = await sb
+          .from('brands')
+          .select('supplier_id')
+          .eq('name', brandName.trim())
+          .eq('team_id', teamId)
+          .maybeSingle();
+        if (data?.supplier_id) {
+          setForm((f) => ({ ...f, supplier_id: f.supplier_id || data.supplier_id }));
+        }
+      } catch { /* ignore */ }
+    }, 500);
   };
 
   const originParts = activeProduct
@@ -424,6 +473,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                   <th>SKU</th>
                   <th>Wine Name</th>
                   <th>Type</th>
+                  <th>Supplier</th>
                   <th>Brand / Distributor</th>
                   <th>BTG Cost</th>
                 </tr>
@@ -438,6 +488,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                     <td className={styles.skuCell}>{p.sku_number}</td>
                     <td className={styles.wineNameCell}>{p.wine_name}</td>
                     <td>{p.type ?? '—'}</td>
+                    <td>{p.brand?.supplier?.name ?? p.supplier?.name ?? '—'}</td>
                     <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
                     <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
                   </tr>
@@ -513,6 +564,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                 )}
               </div>
               <div className={styles.infoCardGrid}>
+                {(activeProduct.brand?.supplier?.name || activeProduct.supplier?.name) && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Supplier</span>
+                    <span>{activeProduct.brand?.supplier?.name ?? activeProduct.supplier?.name}</span>
+                  </div>
+                )}
                 {activeProduct.brand?.name && (
                   <div className={styles.infoCardRow}>
                     <span className={styles.infoCardLabel}>Brand</span>
@@ -667,9 +724,23 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
               <input
                 className={styles.formInput}
                 value={form.brand_name}
-                onChange={(e) => setField('brand_name', e.target.value)}
+                onChange={(e) => handleBrandChange(e.target.value)}
                 placeholder="Brand / supplier"
               />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Supplier</label>
+              <select
+                className={styles.formSelect}
+                value={form.supplier_id}
+                onChange={(e) => setField('supplier_id', e.target.value)}
+              >
+                <option value="">No supplier</option>
+                {suppliersList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className={styles.formField}>

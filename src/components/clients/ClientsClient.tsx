@@ -27,16 +27,16 @@ interface ClientsClientProps {
 }
 
 interface ClientForm {
-  name: string;
-  type: string;
-  value_tier: string;
-  phone: string;
-  email: string;
-  address: string;
-  account_lead: string;
-  primary_contact_id: string;
-  status: AccountStatus;
-  notes: string;
+  name:                 string;
+  type:                 string;
+  value_tier:           string;
+  phone:                string;
+  email:                string;
+  address:              string;
+  account_lead:         string;
+  primary_contact_name: string;
+  status:               AccountStatus;
+  notes:                string;
 }
 
 interface VisitProductRow {
@@ -65,30 +65,30 @@ interface ProductNotSeenRow {
 }
 
 const emptyForm = (): ClientForm => ({
-  name: '',
-  type: '',
-  value_tier: '',
-  phone: '',
-  email: '',
-  address: '',
-  account_lead: '',
-  primary_contact_id: '',
-  status: 'Active',
-  notes: '',
+  name:                 '',
+  type:                 '',
+  value_tier:           '',
+  phone:                '',
+  email:                '',
+  address:              '',
+  account_lead:         '',
+  primary_contact_name: '',
+  status:               'Active',
+  notes:                '',
 });
 
 function clientToForm(c: Account): ClientForm {
   return {
-    name: c.name,
-    type: c.type ?? '',
-    value_tier: c.value_tier ?? '',
-    phone: c.phone ?? '',
-    email: c.email ?? '',
-    address: c.address ?? '',
-    account_lead: c.account_lead ?? '',
-    primary_contact_id: c.primary_contact_id ?? '',
-    status: c.status,
-    notes: c.notes ?? '',
+    name:                 c.name,
+    type:                 c.type ?? '',
+    value_tier:           c.value_tier ?? '',
+    phone:                c.phone ?? '',
+    email:                c.email ?? '',
+    address:              c.address ?? '',
+    account_lead:         c.account_lead ?? '',
+    primary_contact_name: c.primary_contact_name ?? '',
+    status:               c.status,
+    notes:                c.notes ?? '',
   };
 }
 
@@ -342,21 +342,22 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     const sb = createClient();
     try {
       const payload: AccountInsert & { id?: string } = {
-        name: form.name.trim(),
-        type: (form.type as AccountType) || null,
-        value_tier: (form.value_tier as ValueTier) || null,
-        phone: form.phone || null,
-        email: form.email || null,
-        address: form.address || null,
-        account_lead: form.account_lead || null,
-        primary_contact_id: form.primary_contact_id || null,
-        city: null,
-        state: null,
-        country: null,
-        team_id: teamId,
-        status: form.status,
-        notes: form.notes || null,
-        is_active: true,
+        name:                 form.name.trim(),
+        type:                 (form.type as AccountType) || null,
+        value_tier:           (form.value_tier as ValueTier) || null,
+        phone:                form.phone || null,
+        email:                form.email || null,
+        address:              form.address || null,
+        account_lead:         form.account_lead || null,
+        primary_contact_id:   activeClient?.primary_contact_id ?? null,
+        primary_contact_name: form.primary_contact_name || null,
+        city:                 null,
+        state:                null,
+        country:              null,
+        team_id:              teamId,
+        status:               form.status,
+        notes:                form.notes || null,
+        is_active:            true,
         ...(activeClient ? { id: activeClient.id } : {}),
       };
 
@@ -608,11 +609,11 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                     <span>{activeClient.account_lead}</span>
                   </div>
                 )}
-                {activeClient.primary_contact_id && (
+                {(activeClient.primary_contact_name || activeClient.primary_contact_id) && (
                   <div className={styles.infoCardRow}>
                     <span className={styles.infoCardLabel}>Contact</span>
                     <span>
-                      {(() => {
+                      {activeClient.primary_contact_name || (() => {
                         const pc = accountContacts.find((c) => c.id === activeClient.primary_contact_id);
                         return pc ? contactFullName(pc) : '—';
                       })()}
@@ -788,20 +789,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
 
             <div className={styles.formField}>
               <label className={styles.formLabel}>Primary Contact</label>
-              <select
-                className={styles.formSelect}
-                value={form.primary_contact_id}
-                onChange={(e) => setField('primary_contact_id', e.target.value)}
-                disabled={mode === 'add'}
-              >
-                <option value="">None</option>
-                {accountContacts.map((c) => (
-                  <option key={c.id} value={c.id}>{contactFullName(c)}</option>
-                ))}
-              </select>
-              {mode === 'add' && (
-                <span className={styles.formHint}>Save the account first, then add contacts to set a primary contact.</span>
-              )}
+              <input
+                className={styles.formInput}
+                value={form.primary_contact_name}
+                placeholder="First and last name (last name optional)"
+                onChange={(e) => setField('primary_contact_name', e.target.value)}
+              />
             </div>
 
             <div className={styles.formField}>

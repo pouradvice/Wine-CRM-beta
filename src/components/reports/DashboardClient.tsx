@@ -11,6 +11,7 @@ interface Props {
   topAccounts:      TopAccount[];
   inactiveAccounts: InactiveAccount[];
   pipelineHealth:   PipelineHealth[];
+  allPerformance?:  ProductPerformance[];
 }
 
 const OUTCOME_ORDER = ['Yes Today', 'Yes Later', 'Maybe Later', 'No', 'Discussed'];
@@ -22,7 +23,7 @@ const OUTCOME_COLOR: Record<string, string> = {
   'Discussed':   'var(--outcome-discussed)',
 };
 
-export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth }: Props) {
+export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth, allPerformance }: Props) {
   const [summary, setSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -54,6 +55,14 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
   const sortedHealth = [...pipelineHealth].sort(
     (a, b) => OUTCOME_ORDER.indexOf(a.outcome) - OUTCOME_ORDER.indexOf(b.outcome),
   );
+
+  // Compute total menu placements from all performance data (or topSkus if not provided)
+  const perfSource = allPerformance ?? topSkus;
+  const totalPlacements = perfSource.reduce((sum, p) => sum + (p.menu_placements ?? 0), 0);
+  const topPlacementProducts = [...perfSource]
+    .filter((p) => (p.menu_placements ?? 0) > 0)
+    .sort((a, b) => (b.menu_placements ?? 0) - (a.menu_placements ?? 0))
+    .slice(0, 5);
 
   return (
     <div className={styles.page}>
@@ -201,6 +210,38 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
               );
             })}
           </div>
+        )}
+      </section>
+
+      {/* ── Menu Placement Wins ───────────────────────── */}
+      <section className={styles.fullSection}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Menu Placement Wins</h3>
+          {totalPlacements > 0 && (
+            <span className={styles.sectionMeta}>{totalPlacements} total placements</span>
+          )}
+        </div>
+        {topPlacementProducts.length === 0 ? (
+          <p className={styles.empty}>No menu placements recorded yet.</p>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Wine</th>
+                <th className={styles.numCell}>Placements</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topPlacementProducts.map((p) => (
+                <tr key={p.product_id}>
+                  <td className={styles.mono}>{p.sku_number}</td>
+                  <td>{p.wine_name}</td>
+                  <td className={styles.numCell}>{p.menu_placements}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
 

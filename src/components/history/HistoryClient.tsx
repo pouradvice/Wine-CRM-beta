@@ -17,37 +17,42 @@ interface HistoryClientProps {
 }
 
 interface EditForm {
-  visit_date: string;
-  nature: RecapNature;
+  visit_date:   string;
+  nature:       RecapNature;
   contact_name: string;
-  notes: string;
+  notes:        string;
+  occasion:     string;
 }
 
 interface EditProduct {
-  rpId: string | null;  // recap_products.id; null = newly added
-  product_id: string;
-  wine_name: string;
-  sku_number: string;
-  outcome: RecapOutcome;
+  rpId:              string | null;  // recap_products.id; null = newly added
+  product_id:        string;
+  wine_name:         string;
+  sku_number:        string;
+  outcome:           RecapOutcome;
   order_probability: number;
-  buyer_feedback: string;
-  follow_up_date: string;
-  bill_date: string;
+  buyer_feedback:    string;
+  follow_up_date:    string;
+  bill_date:         string;
+  menu_placement:    boolean;
+  menu_photo_url:    string;
 }
 
-const OUTCOMES: RecapOutcome[] = ['Yes Today', 'Yes Later', 'Maybe Later', 'No', 'Discussed'];
+const OUTCOMES: RecapOutcome[] = ['Yes Today', 'Yes Later', 'Maybe Later', 'No', 'Discussed', 'Menu Placement'];
 
 function defaultEditProduct(product: Product): EditProduct {
   return {
-    rpId: null,
-    product_id: product.id,
-    wine_name: product.wine_name,
-    sku_number: product.sku_number,
-    outcome: 'Discussed',
+    rpId:              null,
+    product_id:        product.id,
+    wine_name:         product.wine_name,
+    sku_number:        product.sku_number,
+    outcome:           'Discussed',
     order_probability: 0,
-    buyer_feedback: '',
-    follow_up_date: '',
-    bill_date: '',
+    buyer_feedback:    '',
+    follow_up_date:    '',
+    bill_date:         '',
+    menu_placement:    false,
+    menu_photo_url:    '',
   };
 }
 
@@ -66,7 +71,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
   // Edit state — recap fields
   const [editOpen, setEditOpen] = useState(false);
   const [editingRecap, setEditingRecap] = useState<Recap | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ visit_date: '', nature: 'Sales Call', contact_name: '', notes: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ visit_date: '', nature: 'Sales Call', contact_name: '', notes: '', occasion: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -163,23 +168,26 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
     e.stopPropagation();
     setEditingRecap(recap);
     setEditForm({
-      visit_date: recap.visit_date,
-      nature: recap.nature,
+      visit_date:   recap.visit_date,
+      nature:       recap.nature,
       contact_name: recap.contact_name ?? '',
-      notes: recap.notes ?? '',
+      notes:        recap.notes ?? '',
+      occasion:     recap.occasion ?? '',
     });
     const prods: EditProduct[] = (recap.recap_products ?? []).map((rp) => {
       const product = rp.product as Product | null;
       return {
-        rpId: rp.id,
-        product_id: rp.product_id,
-        wine_name: product?.wine_name ?? '',
-        sku_number: product?.sku_number ?? '',
-        outcome: rp.outcome,
+        rpId:              rp.id,
+        product_id:        rp.product_id,
+        wine_name:         product?.wine_name ?? '',
+        sku_number:        product?.sku_number ?? '',
+        outcome:           rp.outcome,
         order_probability: rp.order_probability ?? 0,
-        buyer_feedback: rp.buyer_feedback ?? '',
-        follow_up_date: rp.follow_up_date ?? '',
-        bill_date: rp.bill_date ?? '',
+        buyer_feedback:    rp.buyer_feedback ?? '',
+        follow_up_date:    rp.follow_up_date ?? '',
+        bill_date:         rp.bill_date ?? '',
+        menu_placement:    rp.menu_placement ?? false,
+        menu_photo_url:    rp.menu_photo_url ?? '',
       };
     });
     setEditProducts(prods);
@@ -223,6 +231,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
           nature:       editForm.nature,
           contact_name: editForm.contact_name || null,
           notes:        editForm.notes || null,
+          occasion:     editForm.occasion || null,
         })
         .eq('id', editingRecap.id);
       if (recapErr) throw recapErr;
@@ -246,6 +255,8 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
             buyer_feedback:    p.buyer_feedback || null,
             follow_up_date:    p.follow_up_date || null,
             bill_date:         p.bill_date || null,
+            menu_placement:    p.menu_placement,
+            menu_photo_url:    p.menu_photo_url || null,
           })
           .eq('id', p.rpId!);
         if (upErr) throw upErr;
@@ -265,6 +276,8 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
               buyer_feedback:    p.buyer_feedback || null,
               follow_up_date:    p.follow_up_date || null,
               bill_date:         p.bill_date || null,
+              menu_placement:    p.menu_placement,
+              menu_photo_url:    p.menu_photo_url || null,
             })),
           );
         if (insErr) throw insErr;
@@ -275,17 +288,19 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
         prev.map((r) => {
           if (r.id !== editingRecap.id) return r;
           const updatedProducts = editProducts.map((p) => ({
-            id: p.rpId ?? crypto.randomUUID(),
-            recap_id: r.id,
-            product_id: p.product_id,
-            supplier_id: null,
-            outcome: p.outcome,
-            order_probability: p.order_probability,
-            buyer_feedback: p.buyer_feedback || null,
+            id:                 p.rpId ?? crypto.randomUUID(),
+            recap_id:           r.id,
+            product_id:         p.product_id,
+            supplier_id:        null,
+            outcome:            p.outcome,
+            order_probability:  p.order_probability,
+            buyer_feedback:     p.buyer_feedback || null,
             follow_up_required: false,
-            follow_up_date: p.follow_up_date || null,
-            bill_date: p.bill_date || null,
-            created_at: '',
+            follow_up_date:     p.follow_up_date || null,
+            bill_date:          p.bill_date || null,
+            menu_placement:     p.menu_placement,
+            menu_photo_url:     p.menu_photo_url || null,
+            created_at:         '',
             product: { id: p.product_id, wine_name: p.wine_name, sku_number: p.sku_number } as Product,
           }));
           return {
@@ -294,6 +309,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
             nature:       editForm.nature,
             contact_name: editForm.contact_name || null,
             notes:        editForm.notes || null,
+            occasion:     editForm.occasion || null,
             recap_products: updatedProducts,
           };
         }),
@@ -509,6 +525,8 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
             >
               <option value="Sales Call">Sales Call</option>
               <option value="Depletion Meeting">Depletion Meeting</option>
+              <option value="Event">Event</option>
+              <option value="Off-Premise Tasting">Off-Premise Tasting</option>
             </select>
           </div>
           <div className={styles.editField}>
@@ -521,8 +539,24 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
               onChange={(e) => setEditForm((f) => ({ ...f, contact_name: e.target.value }))}
             />
           </div>
+          {editForm.nature === 'Event' && (
+            <div className={styles.editField}>
+              <label className={styles.editLabel}>Occasion</label>
+              <input
+                type="text"
+                className={styles.editInput}
+                value={editForm.occasion}
+                placeholder="e.g. Grand Opening, Wine Dinner…"
+                onChange={(e) => setEditForm((f) => ({ ...f, occasion: e.target.value }))}
+              />
+            </div>
+          )}
           <div className={styles.editField}>
-            <label className={styles.editLabel}>Notes</label>
+            <label className={styles.editLabel}>
+              {editForm.nature === 'Event' ? 'Event Notes' :
+               editForm.nature === 'Off-Premise Tasting' ? 'Demo Notes' :
+               'Notes'}
+            </label>
             <textarea
               className={styles.editTextarea}
               rows={3}
@@ -559,25 +593,30 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                     onChange={(e) => {
                       const o = e.target.value as RecapOutcome;
                       updateEditProduct(idx, {
-                        outcome: o,
-                        order_probability: o === 'Yes Today' ? 100 : o === 'No' ? 0 : p.order_probability,
+                        outcome:           o,
+                        order_probability: o === 'Yes Today' || o === 'Menu Placement' ? 100
+                          : o === 'No' ? 0
+                          : o === 'Discussed' ? 0
+                          : p.order_probability,
                       });
                     }}
                   >
                     {OUTCOMES.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
-                <div className={styles.editField}>
-                  <label className={styles.editLabel}>Probability ({p.order_probability}%)</label>
-                  <input
-                    type="range"
-                    min={0} max={100} step={5}
-                    className={styles.editRange}
-                    value={p.order_probability}
-                    disabled={p.outcome === 'Yes Today' || p.outcome === 'No'}
-                    onChange={(e) => updateEditProduct(idx, { order_probability: Number(e.target.value) })}
-                  />
-                </div>
+                {p.outcome !== 'Discussed' && (
+                  <div className={styles.editField}>
+                    <label className={styles.editLabel}>Probability ({p.order_probability}%)</label>
+                    <input
+                      type="range"
+                      min={0} max={100} step={5}
+                      className={styles.editRange}
+                      value={p.order_probability}
+                      disabled={p.outcome === 'Yes Today' || p.outcome === 'No' || p.outcome === 'Menu Placement'}
+                      onChange={(e) => updateEditProduct(idx, { order_probability: Number(e.target.value) })}
+                    />
+                  </div>
+                )}
                 <div className={styles.editField}>
                   <label className={styles.editLabel}>Buyer Feedback</label>
                   <input
@@ -587,7 +626,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                     onChange={(e) => updateEditProduct(idx, { buyer_feedback: e.target.value })}
                   />
                 </div>
-                {(p.outcome === 'Yes Later') && (
+                {p.outcome === 'Yes Later' && (
                   <div className={styles.editField}>
                     <label className={styles.editLabel}>Bill Date</label>
                     <input
@@ -598,9 +637,9 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                     />
                   </div>
                 )}
-                {(p.outcome === 'Maybe Later') && (
+                {(p.outcome === 'Maybe Later' || p.outcome === 'Discussed') && (
                   <div className={styles.editField}>
-                    <label className={styles.editLabel}>Follow-up Date</label>
+                    <label className={styles.editLabel}>Follow-up / Tasting Date</label>
                     <input
                       type="date"
                       className={styles.editInput}
@@ -609,6 +648,17 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
                     />
                   </div>
                 )}
+                <div className={styles.editMenuPlacementRow}>
+                  <input
+                    type="checkbox"
+                    id={`edit-mp-${p.rpId ?? idx}`}
+                    checked={p.menu_placement}
+                    onChange={(e) => updateEditProduct(idx, { menu_placement: e.target.checked })}
+                  />
+                  <label htmlFor={`edit-mp-${p.rpId ?? idx}`} className={styles.editMenuPlacementLabel}>
+                    Menu Placement
+                  </label>
+                </div>
               </div>
             </div>
           ))}

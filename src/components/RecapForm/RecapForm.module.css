@@ -292,3 +292,29 @@
   --outcome-no: #8b1a1a;
   --outcome-discussed: #5a5a5a;
 }
+
+.uploadingHint {
+  font-size: var(--text-xs);
+  color: var(--mist-dark, #999);
+  margin-top: var(--space-1);
+}
+
+.photoLink {
+  display: inline-block;
+  font-size: var(--text-xs);
+  color: var(--wine, #8b1a1a);
+  margin-top: var(--space-1);
+}
+
+.menuPlacementRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.menuPlacementLabel {
+  font-size: var(--text-sm);
+  color: var(--fg-muted, #666);
+  cursor: pointer;
+}

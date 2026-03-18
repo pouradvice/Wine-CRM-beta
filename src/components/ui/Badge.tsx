@@ -8,6 +8,7 @@ type BadgeVariant =
   | 'maybe'
   | 'no'
   | 'discussed'
+  | 'placement'
   | 'active'
   | 'prospective'
   | 'former';
@@ -18,14 +19,15 @@ interface BadgeProps {
 }
 
 const OUTCOME_MAP: Record<string, BadgeVariant> = {
-  'Yes Today': 'yes',
-  'Yes Later': 'later',
-  'Maybe Later': 'maybe',
-  'No': 'no',
-  'Discussed': 'discussed',
-  'Active': 'active',
-  'Prospective': 'prospective',
-  'Former': 'former',
+  'Yes Today':      'yes',
+  'Yes Later':      'later',
+  'Maybe Later':    'maybe',
+  'No':             'no',
+  'Discussed':      'discussed',
+  'Menu Placement': 'placement',
+  'Active':         'active',
+  'Prospective':    'prospective',
+  'Former':         'former',
 };
 
 export function Badge({ variant, children }: BadgeProps) {

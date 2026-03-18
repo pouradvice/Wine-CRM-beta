@@ -7,11 +7,11 @@
 
 // ── Shared primitives ────────────────────────────────────────
 
-export type RecapOutcome     = 'Yes Today' | 'Yes Later' | 'Maybe Later' | 'No' | 'Discussed';
+export type RecapOutcome     = 'Yes Today' | 'Yes Later' | 'Maybe Later' | 'No' | 'Discussed' | 'Menu Placement';
 export type AccountStatus    = 'Active' | 'Prospective' | 'Former';
 export type FollowUpStatus   = 'Open' | 'Snoozed' | 'Completed';
 export type FollowUpType     = 'Call' | 'Visit' | 'Email' | 'Sample';
-export type RecapNature      = 'Sales Call' | 'Depletion Meeting';
+export type RecapNature      = 'Sales Call' | 'Depletion Meeting' | 'Event' | 'Off-Premise Tasting';
 export type UserRole         = 'owner' | 'admin' | 'member';
 export type SupplierUserRole = 'admin' | 'viewer';
 export type ContractStatus   = 'pending' | 'active' | 'expired' | 'terminated';
@@ -162,24 +162,25 @@ export type ProductUpdate = Partial<ProductInsert>;
 // ── CRM ──────────────────────────────────────────────────────
 
 export interface Account {
-  id:                 string;
-  team_id:            string;
-  name:               string;
-  type:               AccountType | null;
-  value_tier:         ValueTier | null;
-  phone:              string | null;
-  email:              string | null;
-  address:            string | null;
-  city:               string | null;
-  state:              string | null;
-  country:            string | null;
-  account_lead:       string | null;
-  primary_contact_id: string | null;
-  status:             AccountStatus;
-  notes:              string | null;
-  is_active:          boolean;
-  created_at:         string;
-  updated_at:         string;
+  id:                   string;
+  team_id:              string;
+  name:                 string;
+  type:                 AccountType | null;
+  value_tier:           ValueTier | null;
+  phone:                string | null;
+  email:                string | null;
+  address:              string | null;
+  city:                 string | null;
+  state:                string | null;
+  country:              string | null;
+  account_lead:         string | null;
+  primary_contact_id:   string | null;
+  primary_contact_name: string | null;
+  status:               AccountStatus;
+  notes:                string | null;
+  is_active:            boolean;
+  created_at:           string;
+  updated_at:           string;
 }
 
 export type AccountInsert = Omit<Account, 'id' | 'created_at' | 'updated_at'>;
@@ -221,6 +222,7 @@ export interface Recap {
   visit_date:          string;
   salesperson:         string;
   nature:              RecapNature;
+  occasion:            string | null;
   expense_receipt_url: string | null;
   notes:               string | null;
   created_at:          string;
@@ -242,6 +244,8 @@ export interface RecapProduct {
   follow_up_required: boolean;
   follow_up_date:     string | null;
   bill_date:          string | null;
+  menu_placement:     boolean;
+  menu_photo_url:     string | null;
   created_at:         string;
   // Relations
   product?: Product | null;
@@ -286,6 +290,7 @@ export interface ProductPerformance {
   avg_order_probability: number | null;
   conversion_rate_pct:   number | null;
   last_shown_date:       string | null;
+  menu_placements:       number;
 }
 
 export interface FollowUpQueueRow {
@@ -447,6 +452,8 @@ export interface RecapFormProduct {
   buyer_feedback:    string | null;
   follow_up_date:    string | null;
   bill_date:         string | null;
+  menu_placement:    boolean;
+  menu_photo_url:    string | null;
 }
 
 export interface RecapFormState {
@@ -456,6 +463,7 @@ export interface RecapFormState {
   contact_id:          string | null;
   contact_name:        string;
   nature:              RecapNature;
+  occasion:            string;
   expense_receipt_url: string | null;
   notes:               string | null;
   products:            RecapFormProduct[];
