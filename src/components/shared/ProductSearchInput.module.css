@@ -1,0 +1,88 @@
+/* src/components/shared/ProductSearchInput.module.css */
+
+.productSearch {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--ink, #1a1a1a);
+  background: #fff;
+  border: 1px solid var(--mist, #e5e0d8);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--wine, #8b1a1a);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.productDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--mist, #e5e0d8);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  z-index: 50;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.productDropdownItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--ink, #1a1a1a);
+  transition: background 0.1s;
+}
+
+.productDropdownItem:hover {
+  background: var(--parchment, #f5f0e8);
+}
+
+.productSku {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--wine, #8b1a1a);
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.productName {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--ink, #1a1a1a);
+}
+
+.productType {
+  font-size: 0.75rem;
+  color: #888;
+  white-space: nowrap;
+}
+
+.productDropdownStatus {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #999;
+  font-style: italic;
+  list-style: none;
+}

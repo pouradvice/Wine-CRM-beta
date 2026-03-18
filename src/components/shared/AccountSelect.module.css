@@ -1,0 +1,20 @@
+/* src/components/shared/AccountSelect.module.css */
+
+.select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--ink, #1a1a1a);
+  background: #fff;
+  border: 1px solid var(--mist, #e5e0d8);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--wine, #8b1a1a);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
