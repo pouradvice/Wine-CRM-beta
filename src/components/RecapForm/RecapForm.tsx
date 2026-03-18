@@ -86,43 +86,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   // Products already added — kept separately so rows don't disappear
   // when the user types in the search box.
   const [selectedProducts, setSelectedProducts] = useState<Product[]>(initialProducts ?? []);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
-  // ── Debounced product search ──────────────────────────────────
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-
-    if (!productSearch.trim()) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
-    }
-
-    setSearching(true);
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/products?search=${encodeURIComponent(productSearch)}&limit=20`,
-        );
-        const result = await res.json();
-        // Filter out products already added to the recap
-        const addedIds = new Set(form.products.map((p) => p.product_id));
-        setSearchResults(
-          (result.data ?? []).filter((p: Product) => !addedIds.has(p.id)),
-        );
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSearch]);
 
   // ── Product management ────────────────────────────────────────
   const addProduct = useCallback((product: Product) => {
