@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { DashboardClient } from './DashboardClient';
 import { ExpensesClient } from './ExpensesClient';
+import { ByAccountsClient } from './ByAccountsClient';
 import type {
   ProductPerformance,
   VisitsBySupplierRow,
@@ -12,15 +13,17 @@ import type {
   InactiveAccount,
   PipelineHealth,
   ExpenseRecap,
+  AccountReportRow,
 } from '@/types';
 import styles from './ReportsClient.module.css';
 
-type TabId = 'dashboard' | 'performance' | 'by-supplier' | 'expenses';
+type TabId = 'dashboard' | 'performance' | 'by-supplier' | 'by-accounts' | 'expenses';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'dashboard',   label: 'Dashboard' },
   { id: 'performance', label: 'Performance' },
   { id: 'by-supplier', label: 'By Supplier' },
+  { id: 'by-accounts', label: 'By Accounts' },
   { id: 'expenses',    label: 'Expenses' },
 ];
 
@@ -33,6 +36,7 @@ interface ReportsClientProps {
   inactiveAccounts: InactiveAccount[];
   pipelineHealth:   PipelineHealth[];
   expenses:         ExpenseRecap[];
+  accountsReport:   AccountReportRow[];
 }
 
 export function ReportsClient({
@@ -44,6 +48,7 @@ export function ReportsClient({
   inactiveAccounts,
   pipelineHealth,
   expenses,
+  accountsReport,
 }: ReportsClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
 
@@ -162,6 +167,10 @@ export function ReportsClient({
               </>
             )}
           </>
+        )}
+
+        {activeTab === 'by-accounts' && (
+          <ByAccountsClient accounts={accountsReport} />
         )}
 
         {activeTab === 'expenses' && (

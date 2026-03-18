@@ -33,6 +33,7 @@ interface ClientForm {
   email: string;
   address: string;
   account_lead: string;
+  primary_contact: string;
   status: AccountStatus;
   notes: string;
 }
@@ -52,6 +53,7 @@ const emptyForm = (): ClientForm => ({
   email: '',
   address: '',
   account_lead: '',
+  primary_contact: '',
   status: 'Active',
   notes: '',
 });
@@ -65,6 +67,7 @@ function clientToForm(c: Account): ClientForm {
     email: c.email ?? '',
     address: c.address ?? '',
     account_lead: c.account_lead ?? '',
+    primary_contact: c.primary_contact ?? '',
     status: c.status,
     notes: c.notes ?? '',
   };
@@ -268,6 +271,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         email: form.email || null,
         address: form.address || null,
         account_lead: form.account_lead || null,
+        primary_contact: form.primary_contact || null,
         city: null,
         state: null,
         country: null,
@@ -519,6 +523,10 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 <span>{activeClient.account_lead || '—'}</span>
               </div>
               <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Primary Contact</span>
+                <span>{activeClient.primary_contact || '—'}</span>
+              </div>
+              <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Status</span>
                 <span>{activeClient.status || '—'}</span>
               </div>
@@ -624,6 +632,16 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
             <div className={styles.formField}>
               <label className={styles.formLabel}>Account Lead</label>
               <input className={styles.formInput} value={form.account_lead} onChange={(e) => setField('account_lead', e.target.value)} />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Primary Contact</label>
+              <input
+                className={styles.formInput}
+                placeholder="Buyer or key contact name"
+                value={form.primary_contact}
+                onChange={(e) => setField('primary_contact', e.target.value)}
+              />
             </div>
 
             <div className={styles.formField}>

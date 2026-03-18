@@ -247,7 +247,7 @@ export function RecapForm({ clients, currentUser }: Props) {
                   ...f,
                   account_id: e.target.value,
                   contact_id: null,
-                  contact_name: acct?.account_lead ?? '',
+                  contact_name: acct?.primary_contact ?? acct?.account_lead ?? '',
                 }));
               }}
               required

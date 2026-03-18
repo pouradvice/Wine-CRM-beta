@@ -10,6 +10,7 @@ import {
   getInactiveAccounts,
   getPipelineHealth,
   getExpenseRecaps,
+  getAccountsReport,
 } from '@/lib/data';
 import { ReportsClient } from '@/components/reports/ReportsClient';
 import { resolveTeamId } from '@/lib/team';
@@ -44,6 +45,7 @@ export default async function ReportsPage() {
     inactiveAccounts,
     pipelineHealth,
     expenses,
+    accountsReport,
   ] = await Promise.all([
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
@@ -53,6 +55,7 @@ export default async function ReportsPage() {
     safe(getInactiveAccounts(sb, 60, teamId), []),
     safe(getPipelineHealth(sb, teamId), []),
     safe(getExpenseRecaps(sb, { teamId }), []),
+    safe(getAccountsReport(sb, teamId), []),
   ]);
 
   return (
@@ -65,6 +68,7 @@ export default async function ReportsPage() {
       inactiveAccounts={inactiveAccounts}
       pipelineHealth={pipelineHealth}
       expenses={expenses}
+      accountsReport={accountsReport}
     />
   );
 }
