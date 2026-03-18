@@ -33,6 +33,7 @@ import type {
   InactiveAccount,
   PipelineHealth,
   ExpenseRecap,
+  AccountReportRow,
 } from '@/types';
 import { mapDbError } from '@/types';
 
@@ -895,6 +896,60 @@ export async function getExpenseRecaps(
     });
   }
   return rows;
+}
+
+export async function getAccountsReport(
+  sb: SupabaseClient,
+  teamId?: string,
+): Promise<AccountReportRow[]> {
+  let accountsQuery = sb
+    .from('accounts')
+    .select('id, name, type, value_tier, status')
+    .eq('is_active', true);
+  if (teamId) accountsQuery = accountsQuery.eq('team_id', teamId);
+
+  let recapsQuery = sb
+    .from('recaps')
+    .select('account_id, visit_date, recap_products(outcome)');
+  if (teamId) recapsQuery = recapsQuery.eq('team_id', teamId);
+
+  const [accountsRes, recapsRes] = await Promise.all([accountsQuery, recapsQuery]);
+  if (accountsRes.error) throw new Error(mapDbError(accountsRes.error));
+  if (recapsRes.error)   throw new Error(mapDbError(recapsRes.error));
+
+  type RawRecap = {
+    account_id: string;
+    visit_date: string;
+    recap_products: Array<{ outcome: string }>;
+  };
+
+  const visitMap = new Map<string, { visits: string[]; orders: number }>();
+  for (const r of (recapsRes.data ?? []) as unknown as RawRecap[]) {
+    if (!visitMap.has(r.account_id)) visitMap.set(r.account_id, { visits: [], orders: 0 });
+    const entry = visitMap.get(r.account_id)!;
+    entry.visits.push(r.visit_date);
+    for (const rp of r.recap_products ?? []) {
+      if (rp.outcome === 'Yes Today') entry.orders++;
+    }
+  }
+
+  return (accountsRes.data ?? []).map((a) => {
+    const entry = visitMap.get(a.id);
+    const visits = entry?.visits ?? [];
+    const lastVisit = visits.length > 0
+      ? visits.reduce((latest, d) => (d > latest ? d : latest))
+      : null;
+    return {
+      account_id:      a.id,
+      account_name:    a.name,
+      account_type:    a.type ?? null,
+      value_tier:      a.value_tier ?? null,
+      status:          a.status,
+      visit_count:     visits.length,
+      last_visit_date: lastVisit,
+      orders_placed:   entry?.orders ?? 0,
+    };
+  }).sort((a, b) => b.visit_count - a.visit_count);
 }
 
 // Re-export error type for API routes

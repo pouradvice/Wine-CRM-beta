@@ -143,6 +143,39 @@
   white-space: nowrap;
 }
 
+/* ── By Accounts search input ───────────────────────────────── */
+.searchInput {
+  width: 100%;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--mist);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--wine);
+  box-shadow: 0 0 0 2px rgba(133, 30, 51, 0.1);
+}
+
+/* ── Sortable column headers ─────────────────────────────────── */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover { color: var(--ink); }
+
+.sortArrow {
+  margin-left: 4px;
+  font-style: normal;
+  color: var(--wine);
+}
+
 /* ── Empty state ────────────────────────────────────────────── */
 .empty {
   text-align: center;
