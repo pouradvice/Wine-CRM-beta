@@ -395,7 +395,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
           .eq('team_id', teamId)
           .maybeSingle();
         if (data?.supplier_id) {
-          setForm((f) => ({ ...f, supplier_id: f.supplier_id || data.supplier_id }));
+          setForm((f) => ({ ...f, supplier_id: data.supplier_id }));
         }
       } catch { /* ignore */ }
     }, 500);
