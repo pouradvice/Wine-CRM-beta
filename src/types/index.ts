@@ -449,3 +449,40 @@ export interface RecapFormState {
   notes:               string | null;
   products:            RecapFormProduct[];
 }
+
+
+// ── Daily Planning ───────────────────────────────────────────
+
+export interface DailyPlanSession {
+  id:                    string;
+  team_id:               string;
+  user_id:               string;
+  plan_date:             string;   // ISO date string 'YYYY-MM-DD'
+  account_ids:           string[];
+  product_ids:           string[];
+  completed_account_ids: string[];
+  created_at:            string;
+  updated_at:            string;
+}
+
+export interface SuggestedProduct {
+  product_id:        string;
+  wine_name:         string;
+  sku_number:        string;
+  brand_name:        string | null;
+  type:              WineType | null;
+  accounts_covered:  number;
+  conversion_rate:   number | null;
+  value_tier_weight: number;
+  score:             number;
+}
+
+export interface SuggestedAccount {
+  account_id:       string;
+  account_name:     string;
+  value_tier:       ValueTier | null;
+  last_visit_date:  string | null;
+  open_follow_ups:  number;
+  products_matched: number;
+  score:            number;
+}
