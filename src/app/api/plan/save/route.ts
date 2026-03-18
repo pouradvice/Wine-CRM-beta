@@ -72,9 +72,14 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error || !session) {
-    console.error('[plan/save] upsert error:', error);
+    console.error('[plan/save] upsert error:', {
+      message: error?.message,
+      code:    error?.code,
+      details: error?.details,
+      hint:    error?.hint,
+    });
     return NextResponse.json(
-      { error: 'Failed to save plan session', code: 'DB_ERROR' },
+      { error: 'Failed to save plan session', code: error?.code ?? 'DB_ERROR' },
       { status: 500 },
     );
   }
