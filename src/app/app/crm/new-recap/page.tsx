@@ -103,6 +103,7 @@ export default async function NewRecapPage() {
         New Recap
       </h1>
       <RecapForm
+        key={crypto.randomUUID()}
         clients={clients}
         currentUser={displayName}
         initialValues={initialValues}
