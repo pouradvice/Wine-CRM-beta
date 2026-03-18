@@ -37,7 +37,12 @@
   color: #444;
 }
 
-/* Client status variants */
+.placement {
+  background: rgba(212, 160, 23, 0.15);
+  color: #8a6200;
+}
+
+
 .active {
   background: rgba(107, 124, 94, 0.15);
   color: #3d5a30;

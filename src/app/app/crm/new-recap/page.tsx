@@ -82,6 +82,8 @@ export default async function NewRecapPage() {
             buyer_feedback:    null,
             follow_up_date:    null,
             bill_date:         null,
+            menu_placement:    false,
+            menu_photo_url:    null,
           })),
         };
       }

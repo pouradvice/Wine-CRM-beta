@@ -22,7 +22,7 @@ type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expe
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'dashboard',   label: 'Dashboard' },
   { id: 'by-accounts', label: 'By Accounts' },
-  { id: 'performance', label: 'Performance' },
+  { id: 'performance', label: 'By Product' },
   { id: 'by-supplier', label: 'By Supplier' },
   { id: 'expenses',    label: 'Expenses' },
 ];
@@ -81,6 +81,7 @@ export function ReportsClient({
             topAccounts={topAccounts}
             inactiveAccounts={inactiveAccounts}
             pipelineHealth={pipelineHealth}
+            allPerformance={performance}
           />
         )}
 
@@ -104,6 +105,7 @@ export function ReportsClient({
                       <th className={styles.numCell}>Shown</th>
                       <th className={styles.numCell}>Orders</th>
                       <th className={styles.numCell}>Committed</th>
+                      <th className={styles.numCell}>Placements</th>
                       <th className={styles.numCell}>Avg Prob</th>
                       <th>Conversion</th>
                       <th>Last Shown</th>
@@ -119,6 +121,7 @@ export function ReportsClient({
                         <td className={styles.numCell}>{p.times_shown}</td>
                         <td className={styles.numCell}>{p.orders_placed}</td>
                         <td className={styles.numCell}>{p.committed}</td>
+                        <td className={styles.numCell}>{p.menu_placements ?? 0}</td>
                         <td className={styles.numCell}>
                           {p.avg_order_probability != null
                             ? `${Math.round(p.avg_order_probability)}%`
