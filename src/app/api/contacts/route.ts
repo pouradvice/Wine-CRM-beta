@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getContacts } from '@/lib/data';
 import { mapDbError } from '@/types';
+import { resolveTeamId } from '@/lib/team';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,12 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: memberRow } = await sb
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const teamId: string | undefined = memberRow?.team_id ?? undefined;
+    const teamId = await resolveTeamId(sb, user);
 
     const { searchParams } = new URL(request.url);
 

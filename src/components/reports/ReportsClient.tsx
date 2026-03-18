@@ -17,13 +17,13 @@ import type {
 } from '@/types';
 import styles from './ReportsClient.module.css';
 
-type TabId = 'dashboard' | 'performance' | 'by-supplier' | 'by-accounts' | 'expenses';
+type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'dashboard',   label: 'Dashboard' },
+  { id: 'by-accounts', label: 'By Accounts' },
   { id: 'performance', label: 'Performance' },
   { id: 'by-supplier', label: 'By Supplier' },
-  { id: 'by-accounts', label: 'By Accounts' },
   { id: 'expenses',    label: 'Expenses' },
 ];
 

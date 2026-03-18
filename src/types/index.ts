@@ -162,24 +162,24 @@ export type ProductUpdate = Partial<ProductInsert>;
 // ── CRM ──────────────────────────────────────────────────────
 
 export interface Account {
-  id:              string;
-  team_id:         string;
-  name:            string;
-  type:            AccountType | null;
-  value_tier:      ValueTier | null;
-  phone:           string | null;
-  email:           string | null;
-  address:         string | null;
-  city:            string | null;
-  state:           string | null;
-  country:         string | null;
-  account_lead:    string | null;
-  primary_contact: string | null;
-  status:          AccountStatus;
-  notes:           string | null;
-  is_active:       boolean;
-  created_at:      string;
-  updated_at:      string;
+  id:                 string;
+  team_id:            string;
+  name:               string;
+  type:               AccountType | null;
+  value_tier:         ValueTier | null;
+  phone:              string | null;
+  email:              string | null;
+  address:            string | null;
+  city:               string | null;
+  state:              string | null;
+  country:            string | null;
+  account_lead:       string | null;
+  primary_contact_id: string | null;
+  status:             AccountStatus;
+  notes:              string | null;
+  is_active:          boolean;
+  created_at:         string;
+  updated_at:         string;
 }
 
 export type AccountInsert = Omit<Account, 'id' | 'created_at' | 'updated_at'>;
@@ -438,6 +438,20 @@ export interface BulkImportResult {
 }
 
 
+// ── Daily planning ───────────────────────────────────────────
+
+export interface DailyPlanSession {
+  id:                    string;
+  user_id:               string;
+  plan_date:             string;
+  account_ids:           string[];
+  completed_account_ids: string[];
+  product_ids:           string[];
+  created_at:            string;
+  updated_at:            string;
+}
+
+
 // ── Form state ───────────────────────────────────────────────
 
 export interface RecapFormProduct {
@@ -459,4 +473,41 @@ export interface RecapFormState {
   expense_receipt_url: string | null;
   notes:               string | null;
   products:            RecapFormProduct[];
+}
+
+
+// ── Daily Planning ───────────────────────────────────────────
+
+export interface DailyPlanSession {
+  id:                    string;
+  team_id:               string;
+  user_id:               string;
+  plan_date:             string;   // ISO date string 'YYYY-MM-DD'
+  account_ids:           string[];
+  product_ids:           string[];
+  completed_account_ids: string[];
+  created_at:            string;
+  updated_at:            string;
+}
+
+export interface SuggestedProduct {
+  product_id:        string;
+  wine_name:         string;
+  sku_number:        string;
+  brand_name:        string | null;
+  type:              WineType | null;
+  accounts_covered:  number;
+  conversion_rate:   number | null;
+  value_tier_weight: number;
+  score:             number;
+}
+
+export interface SuggestedAccount {
+  account_id:       string;
+  account_name:     string;
+  value_tier:       ValueTier | null;
+  last_visit_date:  string | null;
+  open_follow_ups:  number;
+  products_matched: number;
+  score:            number;
 }

@@ -9,18 +9,22 @@
 //   • selectedProducts state holds the products already added to the recap
 //     so their rows stay visible while the search field is in use.
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { saveRecap } from '@/lib/data';
+import { todayLocal } from '@/lib/dateUtils';
 import type {
   Account,
+  Contact,
   Product,
   RecapFormState,
   RecapFormProduct,
   RecapOutcome,
   RecapNature,
 } from '@/types';
+import { contactFullName } from '@/types';
+import { AccountSelect } from '@/components/shared/AccountSelect';
+import { ProductSearchInput } from '@/components/shared/ProductSearchInput';
 import styles from './RecapForm.module.css';
 
 const OUTCOMES: RecapOutcome[] = [
@@ -40,8 +44,10 @@ const OUTCOME_COLORS: Record<RecapOutcome, string> = {
 };
 
 interface Props {
-  clients: Account[];
-  currentUser: string;
+  clients:          Account[];
+  currentUser:      string;
+  initialValues?:   Partial<RecapFormState>;
+  initialProducts?: Product[];
 }
 
 function buildDefaultProduct(product: Product): RecapFormProduct {
@@ -55,10 +61,10 @@ function buildDefaultProduct(product: Product): RecapFormProduct {
   };
 }
 
-export function RecapForm({ clients, currentUser }: Props) {
+export function RecapForm({ clients, currentUser, initialValues, initialProducts }: Props) {
   const router = useRouter();
   const sb = createClient();
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   // ── Form state ───────────────────────────────────────────────
   const [form, setForm] = useState<RecapFormState>({
@@ -71,55 +77,16 @@ export function RecapForm({ clients, currentUser }: Props) {
     expense_receipt_url: null,
     notes: null,
     products: [],
+    ...initialValues,
   });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Product search state (item 5) ────────────────────────────
-  const [productSearch, setProductSearch] = useState('');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const [searching, setSearching] = useState(false);
   // Products already added — kept separately so rows don't disappear
   // when the user types in the search box.
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>(initialProducts ?? []);
 
-
-  // ── Debounced product search ──────────────────────────────────
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-
-    if (!productSearch.trim()) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
-    }
-
-    setSearching(true);
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/products?search=${encodeURIComponent(productSearch)}&limit=20`,
-        );
-        const result = await res.json();
-        // Filter out products already added to the recap
-        const addedIds = new Set(form.products.map((p) => p.product_id));
-        setSearchResults(
-          (result.data ?? []).filter((p: Product) => !addedIds.has(p.id)),
-        );
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSearch]);
 
   // ── Product management ────────────────────────────────────────
   const addProduct = useCallback((product: Product) => {
@@ -128,8 +95,6 @@ export function RecapForm({ clients, currentUser }: Props) {
       ...prev,
       products: [...prev.products, buildDefaultProduct(product)],
     }));
-    setProductSearch('');
-    setSearchResults([]);
   }, []);
 
   const removeProduct = useCallback((productId: string) => {
@@ -172,8 +137,51 @@ export function RecapForm({ clients, currentUser }: Props) {
     setError(null);
 
     try {
-      const recapId = await saveRecap(sb, form);
-      router.push(`/app/crm/history?highlight=${recapId}`);
+      // Build the same payload shape that data.ts saveRecap sends to save_recap RPC
+      const { data: { user } } = await sb.auth.getUser();
+      const p_recap = {
+        visit_date:          form.visit_date,
+        salesperson:         form.salesperson,
+        user_id:             user?.id ?? null,
+        account_id:          form.account_id,
+        contact_id:          form.contact_id || '',
+        nature:              form.nature,
+        expense_receipt_url: form.expense_receipt_url || '',
+        notes:               form.notes || '',
+      };
+      const p_products = form.products.map((p) => ({
+        product_id:        p.product_id,
+        outcome:           p.outcome,
+        order_probability: p.order_probability ? String(p.order_probability) : '',
+        buyer_feedback:    p.buyer_feedback || '',
+        follow_up_date:    p.follow_up_date || '',
+        bill_date:         p.bill_date || '',
+      }));
+
+      const res = await fetch('/api/recap/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ recap: p_recap, products: p_products }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setError(result.error ?? 'Failed to save recap. Please try again.');
+        setSaving(false);
+        return;
+      }
+
+      // Store contact_name (free-text account lead) — separate update since it's
+      // not part of the save_recap RPC signature.
+      if (form.contact_name) {
+        await sb.from('recaps').update({ contact_name: form.contact_name }).eq('id', result.recap_id);
+      }
+
+      // Route Handler tells us where to go based on whether a plan session is active
+      if (result.redirect_to_plan) {
+        router.push('/app/crm/plan/review');
+      } else {
+        router.push(`/app/crm/history?highlight=${result.recap_id}`);
+      }
     } catch (err) {
       const e = err as { error?: string; message?: string };
       setError(e.error ?? e.message ?? 'Failed to save recap. Please try again.');
@@ -237,26 +245,33 @@ export function RecapForm({ clients, currentUser }: Props) {
             <label htmlFor="account_id" className={styles.label}>
               Account <span className={styles.required}>*</span>
             </label>
-            <select
-              id="account_id"
-              className={styles.select}
+            <AccountSelect
+              accounts={clients}
               value={form.account_id}
-              onChange={(e) => {
-                const acct = clients.find((c) => c.id === e.target.value);
+              onChange={(accountId) => {
+                const acct = clients.find((c) => c.id === accountId);
                 setForm((f) => ({
                   ...f,
-                  account_id: e.target.value,
+                  account_id: accountId,
                   contact_id: null,
-                  contact_name: acct?.primary_contact ?? acct?.account_lead ?? '',
+                  contact_name: acct?.account_lead ?? '',
                 }));
+                // Pre-fill contact name from primary contact if set
+                if (acct?.primary_contact_id && accountId) {
+                  fetch(`/api/contacts?accountId=${accountId}&pageSize=100`)
+                    .then((res) => res.json())
+                    .then((result) => {
+                      const contacts: Contact[] = result.data ?? [];
+                      const primary = contacts.find((c) => c.id === acct.primary_contact_id);
+                      if (primary) {
+                        setForm((f) => ({ ...f, contact_name: contactFullName(primary) }));
+                      }
+                    })
+                    .catch((err) => { console.error('Failed to fetch primary contact:', err); });
+                }
               }}
               required
-            >
-              <option value="">Select account…</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className={styles.field}>
@@ -289,41 +304,11 @@ export function RecapForm({ clients, currentUser }: Props) {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Products Shown</h2>
 
-        {/* Server-side search input */}
-        <div className={styles.productSearch}>
-          <input
-            type="search"
-            className={styles.input}
-            placeholder="Search by name or SKU…"
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-          />
-
-          {/* Dropdown: show while typing */}
-          {productSearch && (
-            <ul className={styles.productDropdown}>
-              {searching && (
-                <li className={styles.productDropdownStatus}>Searching…</li>
-              )}
-              {!searching && searchResults.length === 0 && (
-                <li className={styles.productDropdownStatus}>No results</li>
-              )}
-              {!searching && searchResults.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    className={styles.productDropdownItem}
-                    onClick={() => addProduct(p)}
-                  >
-                    <span className={styles.productSku}>{p.sku_number}</span>
-                    <span className={styles.productName}>{p.wine_name}</span>
-                    {p.type && <span className={styles.productType}>{p.type}</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* Debounced product search */}
+        <ProductSearchInput
+          onSelect={addProduct}
+          excludeIds={form.products.map((p) => p.product_id)}
+        />
 
         {form.products.length === 0 && (
           <p className={styles.emptyHint}>

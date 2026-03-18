@@ -354,8 +354,9 @@ export async function getRecaps(
   options?: {
     accountId?:  string;
     salesperson?: string;
-    from?:        string;
-    to?:          string;
+    from?:       string;
+    to?:         string;
+    teamId?:     string;
   } & PaginationOptions,
 ): Promise<PaginatedResult<Recap>> {
   const [rangeFrom, rangeTo] = pageRange(options?.page, options?.pageSize);
@@ -375,6 +376,7 @@ export async function getRecaps(
     .order('visit_date', { ascending: false })
     .range(rangeFrom, rangeTo);
 
+  if (options?.teamId)      query = query.eq('team_id', options.teamId);
   if (options?.accountId)   query = query.eq('account_id', options.accountId);
   if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
   if (options?.from)        query = query.gte('visit_date', options.from);
@@ -388,8 +390,9 @@ export async function getRecaps(
 export async function getRecapById(
   sb: SupabaseClient,
   id: string,
+  teamId?: string,
 ): Promise<Recap | null> {
-  const { data, error } = await sb
+  let query = sb
     .from('recaps')
     .select(`
       *,
@@ -397,8 +400,9 @@ export async function getRecapById(
       contact:contacts(*),
       recap_products(*, product:products(*))
     `)
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (teamId) query = query.eq('team_id', teamId);
+  const { data, error } = await query.single();
   if (error) throw new Error(mapDbError(error));
   return data;
 }
