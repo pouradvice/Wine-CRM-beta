@@ -170,7 +170,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
       const { data: { user }, error: authError } = await sb.auth.getUser();
       if (authError || !user) throw new Error('Not authenticated');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `${user.id}/receipts/${Date.now()}-${safeName}`;
+      const path = `receipts/${user.id}-${Date.now()}-${safeName}`;
       const { error: uploadErr } = await sb.storage
         .from('expense-receipts')
         .upload(path, file, { upsert: true });
@@ -512,19 +512,21 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
           )}
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="expense_amount" className={styles.label}>Expense Amount ($)</label>
-          <input
-            id="expense_amount"
-            type="number"
-            step="0.01"
-            min="0"
-            className={styles.input}
-            placeholder="0.00"
-            value={form.expense_amount}
-            onChange={(e) => setForm((f) => ({ ...f, expense_amount: e.target.value }))}
-          />
-        </div>
+        {form.expense_receipt_url && (
+          <div className={styles.field}>
+            <label htmlFor="expense_amount" className={styles.label}>Expense Amount ($)</label>
+            <input
+              id="expense_amount"
+              type="number"
+              step="0.01"
+              min="0"
+              className={styles.input}
+              placeholder="0.00"
+              value={form.expense_amount}
+              onChange={(e) => setForm((f) => ({ ...f, expense_amount: e.target.value }))}
+            />
+          </div>
+        )}
       </section>
 
       {/* ── Products Shown ─────────────────────────────── */}
