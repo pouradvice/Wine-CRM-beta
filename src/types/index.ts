@@ -486,7 +486,7 @@ export interface RecapFormState {
   nature:              RecapNature;
   occasion:            string;
   expense_receipt_url: string | null;
-  expense_amount:      number | null;
+  expense_amount:      string;
   notes:               string | null;
   products:            RecapFormProduct[];
 }

@@ -99,7 +99,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     nature:              'Sales Call',
     occasion:            '',
     expense_receipt_url: null,
-    expense_amount:      null,
+    expense_amount:      '',
     notes:               null,
     products:            [],
     ...initialValues,
@@ -167,8 +167,10 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   const handleReceiptUpload = async (file: File) => {
     setReceiptUploading(true);
     try {
+      const { data: { user }, error: authError } = await sb.auth.getUser();
+      if (authError || !user) throw new Error('Not authenticated');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `receipts/${Date.now()}-${safeName}`;
+      const path = `${user.id}/receipts/${Date.now()}-${safeName}`;
       const { error: uploadErr } = await sb.storage
         .from('expense-receipts')
         .upload(path, file, { upsert: true });
@@ -293,7 +295,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         nature:              form.nature,
         occasion:            form.occasion || '',
         expense_receipt_url: form.expense_receipt_url || '',
-        expense_amount:      form.expense_amount ?? null,
+        expense_amount:      form.expense_amount ? parseFloat(form.expense_amount) : null,
         notes:               form.notes || '',
       };
 
@@ -519,15 +521,8 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
             min="0"
             className={styles.input}
             placeholder="0.00"
-            value={form.expense_amount ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              const num = val === '' ? null : parseFloat(val);
-              setForm((f) => ({
-                ...f,
-                expense_amount: num === null || isNaN(num) ? null : num,
-              }));
-            }}
+            value={form.expense_amount}
+            onChange={(e) => setForm((f) => ({ ...f, expense_amount: e.target.value }))}
           />
         </div>
       </section>

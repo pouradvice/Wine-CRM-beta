@@ -851,6 +851,7 @@ export async function getExpenseRecaps(
         )
       )
     `)
+    .or('expense_receipt_url.not.is.null,expense_amount.not.is.null')
     .order('visit_date', { ascending: false });
 
   if (options?.from) query = query.gte('visit_date', options.from);
@@ -887,15 +888,12 @@ export async function getExpenseRecaps(
       if (!hasSupplier) continue;
     }
 
-    // Include rows that have either a receipt URL or an expense amount
-    if (!row.expense_receipt_url && row.expense_amount == null) continue;
-
     rows.push({
       recap_id:            row.id,
       visit_date:          row.visit_date,
       salesperson:         row.salesperson,
       account_name:        accountName,
-      expense_receipt_url: row.expense_receipt_url,
+      expense_receipt_url: row.expense_receipt_url ?? null,
       expense_amount:      row.expense_amount ?? null,
     });
   }
