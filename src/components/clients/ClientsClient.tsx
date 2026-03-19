@@ -257,8 +257,9 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         }
 
         // Derive active placements — most recent per product (visits sorted desc, first encounter wins)
+        // A placement is active if menu_placement is true OR outcome is 'Yes Today'
         for (const rp of (r.recap_products ?? [])) {
-          if (rp.menu_placement && rp.product && !placementMap.has(rp.product_id)) {
+          if ((rp.menu_placement || rp.outcome === 'Yes Today') && rp.product && !placementMap.has(rp.product_id)) {
             placementMap.set(rp.product_id, {
               product_id: rp.product_id,
               wine_name: rp.product.wine_name,
