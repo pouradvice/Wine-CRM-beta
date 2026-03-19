@@ -53,6 +53,13 @@ interface AccountNotShownRow {
   status: string;
 }
 
+interface ActiveAccountRow {
+  account_id: string;
+  account_name: string;
+  value_tier: string | null;
+  placement_date: string;
+}
+
 const emptyForm = (): ProductForm => ({
   sku_number:     '',
   wine_name:      '',
@@ -106,7 +113,7 @@ function OutcomePill({ outcome }: { outcome: string }) {
 }
 
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
-type ProductDetailTab = 'shown' | 'not_shown';
+type ProductDetailTab = 'active' | 'shown' | 'not_shown';
 
 const PAGE_SIZE = 25;
 
@@ -148,6 +155,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [detailTab, setDetailTab] = useState<ProductDetailTab>('shown');
   const [accountsShown, setAccountsShown] = useState<AccountShownRow[]>([]);
   const [accountsNotShown, setAccountsNotShown] = useState<AccountNotShownRow[]>([]);
+  const [activeAccounts, setActiveAccounts] = useState<ActiveAccountRow[]>([]);
   const [productDetailLoading, setProductDetailLoading] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -180,6 +188,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const loadProductDetail = async (p: Product) => {
     setAccountsShown([]);
     setAccountsNotShown([]);
+    setActiveAccounts([]);
     setProductDetailLoading(true);
     try {
       const sb = createClient();
@@ -188,11 +197,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         .from('recap_products')
         .select(`
           outcome,
+          menu_placement,
           recap:recaps (
             id,
             visit_date,
             salesperson,
-            account:accounts ( id, name )
+            account:accounts ( id, name, value_tier )
           )
         `)
         .eq('product_id', p.id)
@@ -208,16 +218,19 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
       type RawRpData = {
         outcome: string;
+        menu_placement: boolean;
         recap: {
           id: string;
           visit_date: string;
           salesperson: string;
-          account: { id: string; name: string } | null;
+          account: { id: string; name: string; value_tier: string | null } | null;
         } | null;
       };
 
       const shownRows: AccountShownRow[] = [];
       const shownAccountIds = new Set<string>();
+      // Track most recent placement date per account (data may be unordered)
+      const activeAccountMap = new Map<string, ActiveAccountRow>();
 
       for (const rp of (rpData ?? []) as unknown as RawRpData[]) {
         if (!rp.recap?.account) continue;
@@ -229,17 +242,35 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
           outcome: rp.outcome,
         });
         shownAccountIds.add(rp.recap.account.id);
+
+        // Track active placements — keep the most recent placement_date per account
+        if (rp.menu_placement) {
+          const existing = activeAccountMap.get(rp.recap.account.id);
+          if (!existing || rp.recap.visit_date > existing.placement_date) {
+            activeAccountMap.set(rp.recap.account.id, {
+              account_id: rp.recap.account.id,
+              account_name: rp.recap.account.name,
+              value_tier: rp.recap.account.value_tier,
+              placement_date: rp.recap.visit_date,
+            });
+          }
+        }
       }
 
       shownRows.sort((a, b) => b.visit_date.localeCompare(a.visit_date));
 
       const notShown = (allAccounts ?? []).filter((a) => !shownAccountIds.has(a.id));
 
+      const active = Array.from(activeAccountMap.values());
+      active.sort((a, b) => b.placement_date.localeCompare(a.placement_date));
+
       setAccountsShown(shownRows);
       setAccountsNotShown(notShown as AccountNotShownRow[]);
+      setActiveAccounts(active);
     } catch {
       setAccountsShown([]);
       setAccountsNotShown([]);
+      setActiveAccounts([]);
     } finally {
       setProductDetailLoading(false);
     }
@@ -630,11 +661,29 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                     <span>{activeProduct.notes}</span>
                   </div>
                 )}
+                {!productDetailLoading && activeAccounts.length > 0 && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Placed at</span>
+                    <span className={styles.dossierStat}>
+                      {activeAccounts.length} active account{activeAccounts.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* ── Tab bar ──────────────────────────────────────────── */}
             <div className={styles.slideTabs}>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'active' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('active')}
+              >
+                Active Accounts
+                {!productDetailLoading && activeAccounts.length > 0 && (
+                  <span className={styles.tabCount}>{activeAccounts.length}</span>
+                )}
+              </button>
               <button
                 type="button"
                 className={`${styles.slideTab} ${detailTab === 'shown' ? styles.slideTabActive : ''}`}
@@ -660,6 +709,28 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             {/* ── Tab content ──────────────────────────────────────── */}
             {productDetailLoading ? (
               <p className={styles.detailEmpty}>Loading…</p>
+            ) : detailTab === 'active' ? (
+              activeAccounts.length === 0 ? (
+                <p className={styles.detailEmpty}>No active placements recorded for this product.</p>
+              ) : (
+                <ul className={styles.activeAccountList}>
+                  {activeAccounts.map((a) => (
+                    <li key={a.account_id} className={styles.activeAccountRow}>
+                      <div className={styles.activeAccountInfo}>
+                        <span className={styles.activeAccountName}>{a.account_name}</span>
+                        <span className={styles.activeAccountMeta}>Placed {a.placement_date}</span>
+                      </div>
+                      {a.value_tier && (
+                        <span className={`${styles.tierBadge} ${
+                          a.value_tier === 'A' ? styles.tierA :
+                          a.value_tier === 'B' ? styles.tierB :
+                          styles.tierC
+                        }`}>{a.value_tier}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )
             ) : detailTab === 'shown' ? (
               accountsShown.length === 0 ? (
                 <p className={styles.detailEmpty}>This product hasn't been shown to any accounts yet.</p>

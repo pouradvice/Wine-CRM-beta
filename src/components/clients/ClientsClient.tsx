@@ -64,6 +64,13 @@ interface ProductNotSeenRow {
   sku_number: string;
 }
 
+interface PlacementRow {
+  product_id: string;
+  wine_name: string;
+  sku_number: string;
+  placement_date: string;
+}
+
 const emptyForm = (): ClientForm => ({
   name:                 '',
   type:                 '',
@@ -103,7 +110,7 @@ function OutcomePill({ outcome }: { outcome: string }) {
 }
 
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
-type DetailTab = 'history' | 'seen' | 'not_seen';
+type DetailTab = 'history' | 'placements' | 'seen' | 'not_seen';
 
 const PAGE_SIZE = 25;
 
@@ -129,6 +136,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [visitGroups, setVisitGroups] = useState<VisitGroup[]>([]);
   const [productsSeen, setProductsSeen] = useState<ProductSeenRow[]>([]);
   const [productsNotSeen, setProductsNotSeen] = useState<ProductNotSeenRow[]>([]);
+  const [placements, setPlacements] = useState<PlacementRow[]>([]);
 
   // Active SKUs
   const [accountSkus, setAccountSkus_] = useState<Product[]>([]);
@@ -174,6 +182,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     setVisitGroups([]);
     setProductsSeen([]);
     setProductsNotSeen([]);
+    setPlacements([]);
     setDetailLoading(true);
     try {
       const sb = createClient();
@@ -185,7 +194,9 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
           visit_date,
           salesperson,
           recap_products (
+            product_id,
             outcome,
+            menu_placement,
             product:products ( wine_name, sku_number )
           )
         `)
@@ -205,13 +216,16 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         visit_date: string;
         salesperson: string;
         recap_products: Array<{
+          product_id: string;
           outcome: string;
+          menu_placement: boolean;
           product: { wine_name: string; sku_number: string } | null;
         }>;
       };
 
       const groups: VisitGroup[] = [];
       const seenMap = new Map<string, ProductSeenRow>();
+      const placementMap = new Map<string, PlacementRow>();
 
       for (const r of (recapData ?? []) as unknown as RawRecap[]) {
         const products: VisitProductRow[] = (r.recap_products ?? [])
@@ -234,19 +248,35 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
             });
           }
         }
+
+        // Derive active placements — most recent per product (visits sorted desc, first encounter wins)
+        for (const rp of (r.recap_products ?? [])) {
+          if (rp.menu_placement && rp.product && !placementMap.has(rp.product_id)) {
+            placementMap.set(rp.product_id, {
+              product_id: rp.product_id,
+              wine_name: rp.product.wine_name,
+              sku_number: rp.product.sku_number,
+              placement_date: r.visit_date,
+            });
+          }
+        }
       }
 
       const seen = Array.from(seenMap.values());
       const seenNames = new Set(seenMap.keys());
       const notSeen = (allProducts ?? []).filter((p) => !seenNames.has(p.wine_name));
+      const placed = Array.from(placementMap.values());
+      placed.sort((a, b) => b.placement_date.localeCompare(a.placement_date));
 
       setVisitGroups(groups);
       setProductsSeen(seen);
       setProductsNotSeen(notSeen as ProductNotSeenRow[]);
+      setPlacements(placed);
     } catch {
       setVisitGroups([]);
       setProductsSeen([]);
       setProductsNotSeen([]);
+      setPlacements([]);
     } finally {
       setDetailLoading(false);
     }
@@ -633,6 +663,14 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                     </span>
                   </div>
                 )}
+                {!detailLoading && placements.length > 0 && (
+                  <div className={styles.infoCardRow}>
+                    <span className={styles.infoCardLabel}>Placed</span>
+                    <span className={styles.dossierStat}>
+                      {placements.length} active placement{placements.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
                 {activeClient.notes && (
                   <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
                     <span className={styles.infoCardLabel}>Notes</span>
@@ -650,6 +688,16 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 onClick={() => setDetailTab('history')}
               >
                 Visit History
+              </button>
+              <button
+                type="button"
+                className={`${styles.slideTab} ${detailTab === 'placements' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('placements')}
+              >
+                Active Placements
+                {!detailLoading && placements.length > 0 && (
+                  <span className={styles.tabCount}>{placements.length}</span>
+                )}
               </button>
               <button
                 type="button"
@@ -705,6 +753,22 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                     </div>
                   ))}
                 </div>
+              )
+            ) : detailTab === 'placements' ? (
+              placements.length === 0 ? (
+                <p className={styles.detailEmpty}>No active placements recorded for this account.</p>
+              ) : (
+                <ul className={styles.placementList}>
+                  {placements.map((p) => (
+                    <li key={p.product_id} className={styles.placementRow}>
+                      <div className={styles.placementInfo}>
+                        <span className={styles.placementName}>{p.wine_name}</span>
+                        <span className={styles.placementSku}>{p.sku_number}</span>
+                      </div>
+                      <span className={styles.placementDate}>{p.placement_date}</span>
+                    </li>
+                  ))}
+                </ul>
               )
             ) : detailTab === 'seen' ? (
               productsSeen.length === 0 ? (

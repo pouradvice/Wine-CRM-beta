@@ -644,6 +644,63 @@
   text-align: center;
 }
 
+/* ── Active Placements tab ───────────────────────────────────── */
+.placementList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.placementRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--mist);
+}
+
+.placementRow:last-child {
+  border-bottom: none;
+}
+
+.placementInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.placementName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placementSku {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.placementDate {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Dossier summary stat ────────────────────────────────────── */
+.dossierStat {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--wine);
+}
+
 /* ── Active SKUs — view mode ─────────────────────────────────── */
 .skuList {
   list-style: none;

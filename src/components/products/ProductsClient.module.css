@@ -601,6 +601,75 @@
   text-align: center;
 }
 
+/* ── Active Accounts tab ─────────────────────────────────────── */
+.activeAccountList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.activeAccountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--mist);
+}
+
+.activeAccountRow:last-child {
+  border-bottom: none;
+}
+
+.activeAccountInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activeAccountName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeAccountMeta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ── Tier badge (mirrored from ClientsClient) ────────────────── */
+.tierBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  background: var(--mist);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.tierA { background: rgba(201, 168, 76, 0.2); color: #7a5a0a; }
+.tierB { background: rgba(107, 124, 94, 0.2); color: #3d5a30; }
+.tierC { background: rgba(229, 224, 216, 0.6); color: #666; }
+
+/* ── Dossier summary stat ────────────────────────────────────── */
+.dossierStat {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--wine);
+}
+
 @media (max-width: 640px) {
   .formGrid {
     grid-template-columns: 1fr;
