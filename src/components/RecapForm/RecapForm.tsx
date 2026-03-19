@@ -170,7 +170,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
       const { data: { user }, error: authError } = await sb.auth.getUser();
       if (authError || !user) throw new Error('Not authenticated');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `receipts/${user.id}-${Date.now()}-${safeName}`;
+      const path = `${user.id}/receipts/${Date.now()}-${safeName}`;
       const { error: uploadErr } = await sb.storage
         .from('expense-receipts')
         .upload(path, file, { upsert: true });

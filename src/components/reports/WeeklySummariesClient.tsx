@@ -30,10 +30,14 @@ function formatWeekRange(weekStart: string, weekEnd: string): string {
 
 function getMondayOfCurrentWeek(): string {
   const now = new Date();
-  const day = now.getUTCDay(); // 0=Sun, 1=Mon...
+  const day = now.getDay(); // local time: 0=Sun, 1=Mon...
   const diff = day === 0 ? -6 : 1 - day; // offset to Monday
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
-  return monday.toISOString().split('T')[0];
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  const year  = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, '0');
+  const date  = String(monday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
 }
 
 function DetailPanel({ summary }: { summary: WeeklySummary }) {
