@@ -1,5 +1,21 @@
 # Wine-CRM-beta
 Wine CRM Beta
+
+## Reference Artifacts
+
+### `recap-portal_22.html`
+
+This file is a **read-only reference artifact**. It must **not** be imported, required, or called from any production app component.
+
+Its sole purpose is to serve as a design and code reference for:
+
+- Form and UI styling patterns (`.form-control`, `.card`, `.feedback-pill`, etc.)
+- Product/account picker logic (search, dropdown)
+- Report and dashboard layout (table, KPI card)
+
+**Permitted use:** Team members may manually read this file and safely duplicate or adapt code patterns into new components. Any such extraction must be noted in the relevant PR/code-review as originating from this artifact.
+
+**No runtime dependency on this file is permitted.**
                           ┌─────────────────────────┐
                           │        SUPPLIERS        │
                           │ Upload brand data       │
