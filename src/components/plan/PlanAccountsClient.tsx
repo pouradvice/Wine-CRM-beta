@@ -93,8 +93,9 @@ export function PlanAccountsClient({ accounts, teamId }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          account_ids: Array.from(selectedAccountIds),
-          product_ids: Array.from(selectedProductIds),
+          account_ids:   Array.from(selectedAccountIds),
+          product_ids:   Array.from(selectedProductIds),
+          planning_mode: 'account_first',
         }),
       });
       if (!res.ok) {

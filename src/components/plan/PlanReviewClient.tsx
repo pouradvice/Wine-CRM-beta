@@ -28,10 +28,11 @@ export interface AccountWithContext {
 }
 
 interface Props {
-  session:         DailyPlanSession;
-  accountContext:  AccountWithContext[];
-  sessionProducts: { id: string; wine_name: string; sku_number: string; type: WineType | null }[];
-  allDone:         boolean;
+  session:              DailyPlanSession;
+  accountContext:       AccountWithContext[];
+  sessionProducts:      { id: string; wine_name: string; sku_number: string; type: WineType | null }[];
+  allDone:              boolean;
+  unplannedAccountIds:  string[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -40,7 +41,7 @@ const TIER_LABEL: Record<ValueTier, string> = { A: 'A', B: 'B', C: 'C' };
 
 // ── Component ─────────────────────────────────────────────────
 
-export function PlanReviewClient({ session, accountContext, sessionProducts, allDone }: Props) {
+export function PlanReviewClient({ session, accountContext, sessionProducts, allDone, unplannedAccountIds }: Props) {
   const router = useRouter();
 
   // Build a map for O(1) context lookup
@@ -70,6 +71,7 @@ export function PlanReviewClient({ session, accountContext, sessionProducts, all
           if (!ctx) return null;
 
           const isCompleted = session.completed_account_ids.includes(accountId);
+          const isUnplanned = unplannedAccountIds.includes(accountId);
 
           return (
             <div
@@ -90,14 +92,17 @@ export function PlanReviewClient({ session, accountContext, sessionProducts, all
                 {/* ── Action ── */}
                 <div className={styles.cardAction}>
                   {isCompleted ? (
-                    <span className={styles.completedBadge}>✓ Done</span>
+                    <>
+                      <span className={styles.completedBadge}>✓ Done</span>
+                      {isUnplanned && (
+                        <span className={styles.unplannedBadge}>Unplanned</span>
+                      )}
+                    </>
                   ) : (
                     <button
                       type="button"
                       className={styles.logBtn}
-                      // No query params — the plan_session_id cookie carries all
-                      // context forward; the new-recap page reads it directly.
-                      onClick={() => { window.location.href = '/app/crm/new-recap'; }}
+                      onClick={() => router.push(`/app/crm/new-recap?account_id=${accountId}`)}
                     >
                       Log Recap
                     </button>
@@ -136,6 +141,15 @@ export function PlanReviewClient({ session, accountContext, sessionProducts, all
             </div>
           );
         })}
+        {!allDone && (
+          <button
+            type="button"
+            className={styles.unplannedBtn}
+            onClick={() => router.push('/app/crm/new-recap?unplanned=true')}
+          >
+            + Add unplanned stop
+          </button>
+        )}
       </div>
     </div>
   );

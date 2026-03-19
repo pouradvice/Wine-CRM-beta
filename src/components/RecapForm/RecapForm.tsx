@@ -62,6 +62,15 @@ interface Props {
   initialProducts?: Product[];
 }
 
+/** Returns a YYYY-MM-DD date string offset from today by the given days. */
+function defaultFollowUpDate(outcome: RecapOutcome): string {
+  const d = new Date();
+  // Yes Later → 14 days (rep is expecting a near-term order)
+  // Maybe Later → 30 days (softer commitment, longer horizon)
+  d.setDate(d.getDate() + (outcome === 'Yes Later' ? 14 : 30));
+  return d.toISOString().split('T')[0];
+}
+
 function buildDefaultProduct(product: Product): RecapFormProduct {
   return {
     product_id:        product.id,
@@ -578,6 +587,20 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                       updateProductField(product.id, 'outcome', outcome);
                       if (outcome === 'Yes Today' || outcome === 'Menu Placement') {
                         updateProductField(product.id, 'order_probability', 100);
+                      } else if (outcome === 'Yes Later') {
+                        updateProductField(product.id, 'order_probability', 75);
+                        // Auto-fill follow_up_date only if currently empty
+                        const current = getFormProduct(product.id);
+                        if (!current?.follow_up_date) {
+                          updateProductField(product.id, 'follow_up_date', defaultFollowUpDate('Yes Later'));
+                        }
+                      } else if (outcome === 'Maybe Later') {
+                        updateProductField(product.id, 'order_probability', 25);
+                        // Auto-fill follow_up_date only if currently empty
+                        const current = getFormProduct(product.id);
+                        if (!current?.follow_up_date) {
+                          updateProductField(product.id, 'follow_up_date', defaultFollowUpDate('Maybe Later'));
+                        }
                       } else if (outcome === 'No') {
                         updateProductField(product.id, 'order_probability', 0);
                       } else if (outcome === 'Discussed') {
@@ -606,7 +629,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                 </div>
               )}
 
-              {(fp.outcome === 'Maybe Later' || fp.outcome === 'Discussed') && (
+              {(fp.outcome === 'Yes Later' || fp.outcome === 'Maybe Later' || fp.outcome === 'Discussed') && (
                 <div className={styles.row}>
                   <div className={styles.field}>
                     <label className={styles.label}>Follow-up / Tasting Date</label>

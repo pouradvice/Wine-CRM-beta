@@ -102,12 +102,16 @@ export default async function PlanReviewPage() {
     cookieStore.delete('plan_session_id');
   }
 
+  // Derive unplannedAccountIds from typedSession
+  const unplannedAccountIds: string[] = typedSession.unplanned_account_ids ?? [];
+
   return (
     <PlanReviewClient
       session={typedSession}
       accountContext={accountContext}
       sessionProducts={sessionProducts}
       allDone={allDone}
+      unplannedAccountIds={unplannedAccountIds}
     />
   );
 }

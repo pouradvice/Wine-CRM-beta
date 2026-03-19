@@ -19,6 +19,7 @@ export type WineType         = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Desser
 export type AccountType      = 'Restaurant' | 'Retail' | 'Hotel' | 'Bar' | 'Club' | 'Corporate' | 'Other';
 export type PremiseType      = 'On-Premise' | 'Off-Premise';
 export type ValueTier        = 'A' | 'B' | 'C';
+export type PlanningMode     = 'product_first' | 'account_first';
 
 export interface PaginationOptions {
   page?:     number;
@@ -498,6 +499,8 @@ export interface DailyPlanSession {
   account_ids:           string[];
   product_ids:           string[];
   completed_account_ids: string[];
+  planning_mode:         PlanningMode;
+  unplanned_account_ids: string[];
   created_at:            string;
   updated_at:            string;
 }
