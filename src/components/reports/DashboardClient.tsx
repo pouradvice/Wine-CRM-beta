@@ -11,6 +11,8 @@ interface Props {
   inactiveAccounts: InactiveAccount[];
   pipelineHealth:   PipelineHealth[];
   allPerformance?:  ProductPerformance[];
+  onAccountClick?:  (id: string, name: string) => void;
+  onProductClick?:  (id: string, name: string) => void;
 }
 
 const OUTCOME_ORDER = ['Yes Today', 'Yes Later', 'Maybe Later', 'No', 'Discussed'];
@@ -22,7 +24,7 @@ const OUTCOME_COLOR: Record<string, string> = {
   'Discussed':   'var(--outcome-discussed)',
 };
 
-export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth, allPerformance }: Props) {
+export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth, allPerformance, onAccountClick, onProductClick }: Props) {
   const totalFollowUps = pipelineHealth.reduce((s, p) => s + p.count, 0);
   const sortedHealth = [...pipelineHealth].sort(
     (a, b) => OUTCOME_ORDER.indexOf(a.outcome) - OUTCOME_ORDER.indexOf(b.outcome),
@@ -82,7 +84,11 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
               </thead>
               <tbody>
                 {topSkus.map((p) => (
-                  <tr key={p.product_id}>
+                  <tr
+                    key={p.product_id}
+                    onClick={() => onProductClick?.(p.product_id, p.wine_name)}
+                    style={{ cursor: onProductClick ? 'pointer' : undefined }}
+                  >
                     <td className={styles.mono}>{p.sku_number}</td>
                     <td>{p.wine_name}</td>
                     <td className={styles.numCell}>{p.times_shown}</td>
@@ -114,7 +120,11 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
               </thead>
               <tbody>
                 {topAccounts.map((a) => (
-                  <tr key={a.account_id}>
+                  <tr
+                    key={a.account_id}
+                    onClick={() => onAccountClick?.(a.account_id, a.account_name)}
+                    style={{ cursor: onAccountClick ? 'pointer' : undefined }}
+                  >
                     <td>{a.account_name}</td>
                     <td className={styles.numCell}>{a.total_visits}</td>
                     <td className={styles.numCell}>{a.orders_placed}</td>
@@ -181,7 +191,11 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
             </thead>
             <tbody>
               {topPlacementProducts.map((p) => (
-                <tr key={p.product_id}>
+                <tr
+                  key={p.product_id}
+                  onClick={() => onProductClick?.(p.product_id, p.wine_name)}
+                  style={{ cursor: onProductClick ? 'pointer' : undefined }}
+                >
                   <td className={styles.mono}>{p.sku_number}</td>
                   <td>{p.wine_name}</td>
                   <td className={styles.numCell}>{p.menu_placements}</td>
@@ -211,7 +225,11 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
             </thead>
             <tbody>
               {inactiveAccounts.map((a) => (
-                <tr key={a.account_id}>
+                <tr
+                  key={a.account_id}
+                  onClick={() => onAccountClick?.(a.account_id, a.account_name)}
+                  style={{ cursor: onAccountClick ? 'pointer' : undefined }}
+                >
                   <td className={styles.bold}>{a.account_name}</td>
                   <td className={a.last_visit_date == null || a.days_inactive >= 90 ? styles.urgent : undefined}>
                     {a.last_visit_date ?? 'Never'}

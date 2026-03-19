@@ -63,6 +63,7 @@ export default async function ReportsPage() {
 
   return (
     <ReportsClient
+      teamId={teamId}
       performance={performanceResult.data}
       visitsBySupplier={visitsBySupplier}
       dashboardStats={dashboardStats}

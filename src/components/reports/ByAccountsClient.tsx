@@ -7,11 +7,12 @@ import styles from './ReportsClient.module.css';
 
 interface Props {
   accounts: AccountReportRow[];
+  onAccountClick?: (id: string, name: string) => void;
 }
 
 type SortKey = 'account_name' | 'visit_count' | 'last_visit_date' | 'orders_placed';
 
-export function ByAccountsClient({ accounts }: Props) {
+export function ByAccountsClient({ accounts, onAccountClick }: Props) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('visit_count');
   const [asc, setAsc] = useState(false);
@@ -103,7 +104,11 @@ export function ByAccountsClient({ accounts }: Props) {
         </thead>
         <tbody>
           {filtered.map((a) => (
-            <tr key={a.account_id}>
+            <tr
+              key={a.account_id}
+              onClick={() => onAccountClick?.(a.account_id, a.account_name)}
+              style={{ cursor: onAccountClick ? 'pointer' : undefined }}
+            >
               <td>{a.account_name}</td>
               <td>{a.account_type ?? '—'}</td>
               <td>{a.value_tier ?? '—'}</td>
