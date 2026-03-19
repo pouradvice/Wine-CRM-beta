@@ -842,6 +842,7 @@ export async function getExpenseRecaps(
       visit_date,
       salesperson,
       expense_receipt_url,
+      expense_amount,
       account:accounts(name),
       recap_products(
         supplier_id,
@@ -850,7 +851,6 @@ export async function getExpenseRecaps(
         )
       )
     `)
-    .not('expense_receipt_url', 'is', null)
     .order('visit_date', { ascending: false });
 
   if (options?.from) query = query.gte('visit_date', options.from);
@@ -865,6 +865,7 @@ export async function getExpenseRecaps(
     visit_date:          string;
     salesperson:         string;
     expense_receipt_url: string | null;
+    expense_amount:      number | null;
     account: Array<{ name: string }> | { name: string } | null;
     recap_products: Array<{
       supplier_id: string | null;
@@ -886,7 +887,8 @@ export async function getExpenseRecaps(
       if (!hasSupplier) continue;
     }
 
-    if (!row.expense_receipt_url) continue;
+    // Include rows that have either a receipt URL or an expense amount
+    if (!row.expense_receipt_url && row.expense_amount == null) continue;
 
     rows.push({
       recap_id:            row.id,
@@ -894,6 +896,7 @@ export async function getExpenseRecaps(
       salesperson:         row.salesperson,
       account_name:        accountName,
       expense_receipt_url: row.expense_receipt_url,
+      expense_amount:      row.expense_amount ?? null,
     });
   }
   return rows;

@@ -99,6 +99,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     nature:              'Sales Call',
     occasion:            '',
     expense_receipt_url: null,
+    expense_amount:      null,
     notes:               null,
     products:            [],
     ...initialValues,
@@ -292,6 +293,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         nature:              form.nature,
         occasion:            form.occasion || '',
         expense_receipt_url: form.expense_receipt_url || '',
+        expense_amount:      form.expense_amount ?? null,
         notes:               form.notes || '',
       };
 
@@ -506,6 +508,27 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
               View uploaded receipt →
             </a>
           )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="expense_amount" className={styles.label}>Expense Amount ($)</label>
+          <input
+            id="expense_amount"
+            type="number"
+            step="0.01"
+            min="0"
+            className={styles.input}
+            placeholder="0.00"
+            value={form.expense_amount ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              const num = val === '' ? null : parseFloat(val);
+              setForm((f) => ({
+                ...f,
+                expense_amount: num === null || isNaN(num) ? null : num,
+              }));
+            }}
+          />
         </div>
       </section>
 
