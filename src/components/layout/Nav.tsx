@@ -79,7 +79,13 @@ export function Nav({ displayName, isOwner }: NavProps) {
           <Link
             href="/app/crm/new-recap"
             className={`${styles.ctaBtn} ${isNewRecapActive ? styles.ctaBtnActive : ''}`}
-            onClick={() => setMobileOpen(false)}
+            onClick={(e) => {
+              setMobileOpen(false);
+              if (isNewRecapActive) {
+                e.preventDefault();
+                window.location.href = '/app/crm/new-recap';
+              }
+            }}
           >
             + New Recap
           </Link>
