@@ -235,3 +235,48 @@
   font-size: var(--text-sm);
   color: #b91c1c;
 }
+
+/* ── Export bar ─────────────────────────────────────────────── */
+.exportBar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--mist);
+}
+
+.exportBtn {
+  padding: 0.3rem 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  font-family: inherit;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--mist-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.exportBtn:hover {
+  background: var(--mist);
+}
+
+/* ── Print styles ───────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the expanded summary detail */
+  body * {
+    visibility: hidden;
+  }
+  .detailRow,
+  .detailRow * {
+    visibility: visible;
+  }
+  .detailRow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .exportBar {
+    display: none;
+  }
+}

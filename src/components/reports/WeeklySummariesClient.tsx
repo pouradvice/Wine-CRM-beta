@@ -211,6 +211,85 @@ export function WeeklySummariesClient({ summaries: initialSummaries }: Props) {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const csvEscape = (value: string | number | null | undefined): string => {
+    const str = value == null ? '' : String(value);
+    return str.includes(',') || str.includes('"') || str.includes('\n')
+      ? `"${str.replace(/"/g, '""')}"`
+      : str;
+  };
+
+  const handleExportCsv = (summary: WeeklySummary) => {
+    const rows: string[] = [];
+
+    // Section 1 — Key Metrics
+    rows.push(
+      [
+        'Week', 'Visits', 'Accounts Visited', 'Orders',
+        'Conversion %', 'Open Follow-Ups', 'Inactive Accounts',
+      ].map(csvEscape).join(','),
+    );
+    rows.push(
+      [
+        formatWeekRange(summary.week_start, summary.week_end),
+        summary.total_visits,
+        summary.accounts_visited,
+        summary.total_orders,
+        summary.conversion_rate_pct ?? '',
+        summary.active_follow_ups,
+        summary.inactive_accounts,
+      ].map(csvEscape).join(','),
+    );
+
+    // Section 2 — Top Products
+    if (summary.top_products.length > 0) {
+      rows.push('');
+      rows.push('Top Products');
+      rows.push(['SKU', 'Wine', 'Orders', 'Conversion %'].map(csvEscape).join(','));
+      for (const p of summary.top_products) {
+        rows.push(
+          [p.sku_number, p.wine_name, p.orders_placed, p.conversion_rate_pct ?? ''].map(csvEscape).join(','),
+        );
+      }
+    }
+
+    // Section 3 — Top Accounts
+    if (summary.top_accounts.length > 0) {
+      rows.push('');
+      rows.push('Top Accounts');
+      rows.push(['Account', 'Visits', 'Orders'].map(csvEscape).join(','));
+      for (const a of summary.top_accounts) {
+        rows.push(
+          [a.account_name, a.visit_count, a.orders_placed].map(csvEscape).join(','),
+        );
+      }
+    }
+
+    // Section 4 — Pipeline Breakdown
+    if (Object.keys(summary.pipeline_summary).length > 0) {
+      rows.push('');
+      rows.push('Pipeline Breakdown');
+      rows.push(['Outcome', 'Count'].map(csvEscape).join(','));
+      for (const [outcome, count] of Object.entries(summary.pipeline_summary)) {
+        rows.push([outcome, count].map(csvEscape).join(','));
+      }
+    }
+
+    const csvString = rows.join('\n');
+    const url = URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `weekly-summary-${summary.week_start}.csv`;
+    a.click();
+    // Delay revocation to give the browser time to initiate the download
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  };
+
+  const handlePrint = (summary: WeeklySummary) => {
+    setExpandedId(summary.id);
+    // Small delay to let the DOM update before printing
+    setTimeout(() => window.print(), 100);
+  };
+
   return (
     <>
       <div className={styles.header}>
@@ -261,6 +340,22 @@ export function WeeklySummariesClient({ summaries: initialSummaries }: Props) {
                 {expandedId === s.id && (
                   <tr className={styles.detailRow}>
                     <td colSpan={7}>
+                      <div className={styles.exportBar}>
+                        <button
+                          type="button"
+                          className={styles.exportBtn}
+                          onClick={() => handleExportCsv(s)}
+                        >
+                          Export CSV
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportBtn}
+                          onClick={() => handlePrint(s)}
+                        >
+                          Print / Save as PDF
+                        </button>
+                      </div>
                       <DetailPanel summary={s} />
                     </td>
                   </tr>
