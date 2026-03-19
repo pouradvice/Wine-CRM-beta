@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import type { DashboardStats, ProductPerformance, TopAccount, InactiveAccount, PipelineHealth } from '@/types';
+import { buildWeeklySummary } from '@/lib/buildWeeklySummary';
 import styles from './DashboardClient.module.css';
 
 interface Props {
@@ -25,30 +26,9 @@ const OUTCOME_COLOR: Record<string, string> = {
 
 export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth, allPerformance }: Props) {
   const [summary, setSummary] = useState<string | null>(null);
-  const [loadingSummary, setLoadingSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  const handleGenerateSummary = async () => {
-    setLoadingSummary(true);
-    setSummaryError(null);
-    setSummary(null);
-    try {
-      const res = await fetch('/api/summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stats, topSkus, topAccounts }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Request failed' }));
-        throw new Error(err.error ?? 'Request failed');
-      }
-      const json = await res.json();
-      setSummary(json.summary);
-    } catch (e) {
-      setSummaryError(e instanceof Error ? e.message : 'Failed to generate summary');
-    } finally {
-      setLoadingSummary(false);
-    }
+  const handleGenerateSummary = () => {
+    setSummary(buildWeeklySummary(stats, topSkus, topAccounts, inactiveAccounts, pipelineHealth));
   };
 
   const totalFollowUps = pipelineHealth.reduce((s, p) => s + p.count, 0);
@@ -89,28 +69,21 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
         </div>
       </div>
 
-      {/* ── AI Summary ────────────────────────────────────── */}
+      {/* ── Weekly Summary ────────────────────────────────── */}
       <div className={styles.summaryRow}>
         <button
           type="button"
           className={styles.summaryBtn}
           onClick={handleGenerateSummary}
-          disabled={loadingSummary}
         >
-          {loadingSummary ? 'Generating…' : 'Generate Weekly Summary'}
+          Generate Weekly Summary
         </button>
       </div>
 
-      {(summary || summaryError) && (
-        <div className={`${styles.summaryBox} ${summaryError ? styles.summaryBoxError : ''}`}>
-          {summaryError ? (
-            <p className={styles.summaryText}>{summaryError}</p>
-          ) : (
-            <>
-              <p className={styles.summaryHeading}>Weekly AI Summary</p>
-              <p className={styles.summaryText}>{summary}</p>
-            </>
-          )}
+      {summary && (
+        <div className={styles.summaryBox}>
+          <p className={styles.summaryHeading}>Weekly Summary</p>
+          <p className={styles.summaryText}>{summary}</p>
         </div>
       )}
 
