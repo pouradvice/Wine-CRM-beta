@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '@/types';
+import styles from './ProductSearchInput.module.css';
 
 interface ProductSearchInputProps {
   onSelect: (product: Product) => void;
@@ -68,73 +69,25 @@ export function ProductSearchInput({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className={styles.productSearch}>
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={loading ? 'Searching…' : placeholder}
-        className={className}
+        className={className ?? styles.input}
       />
       {results.length > 0 && (
-        <ul
-          className={dropdownClassName}
-          style={
-            !dropdownClassName
-              ? {
-                  position: 'absolute',
-                  zIndex: 100,
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--mist)',
-                  borderRadius: 'var(--radius-md)',
-                  listStyle: 'none',
-                  margin: 0,
-                  padding: 0,
-                  boxShadow: 'var(--shadow-md)',
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                }
-              : undefined
-          }
-        >
+        <ul className={dropdownClassName ?? styles.productDropdown}>
           {results.map((p) => (
             <li key={p.id}>
               <button
                 type="button"
                 onClick={() => handleSelect(p)}
-                className={itemClassName}
-                style={
-                  !itemClassName
-                    ? {
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: 'var(--space-2) var(--space-3)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: 'var(--text-sm)',
-                        color: 'var(--text)',
-                        fontFamily: 'inherit',
-                      }
-                    : undefined
-                }
+                className={itemClassName ?? styles.productDropdownItem}
               >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 'var(--text-xs)',
-                    color: 'var(--wine)',
-                    fontWeight: 600,
-                    marginRight: 'var(--space-2)',
-                  }}
-                >
-                  {p.sku_number}
-                </span>
-                {p.wine_name}
+                <span className={styles.productSku}>{p.sku_number}</span>
+                <span className={styles.productName}>{p.wine_name}</span>
               </button>
             </li>
           ))}
