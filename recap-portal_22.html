@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1409" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Pour Advice — Recap Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #1a1409; --parchment: #f5f0e8; --cream: #faf7f2;
+      --wine: #6b1f2a; --wine-light: #9b3a47; --gold: #c9973a;
+      --gold-light: #e8c57a; --sage: #7a8c6e; --mist: #e8e2d8;
+      --shadow: rgba(26,20,9,0.12);
+    }
+    html, body { height: 100%; background: var(--cream); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+    #root { min-height: 100vh; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; background: var(--cream); }
+    .topbar { background: var(--ink); padding: 0 1.25rem; display: flex; align-items: center; height: 56px; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--wine); }
+    .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--gold-light); letter-spacing: .04em; }
+    .topbar-brand span { color: var(--mist); font-style: italic; font-size: .8rem; margin-left: .5rem; }
+    .nav { background: var(--parchment); border-bottom: 1px solid var(--mist); display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 .5rem; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-btn { padding: .75rem 1rem; border: none; background: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .8rem; font-weight: 500; color: #6b5d4a; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .2s; }
+    .nav-btn.active { color: var(--wine); border-bottom-color: var(--wine); }
+    .nav-btn:hover:not(.active) { color: var(--ink); }
+    .main { flex: 1; padding: 1.25rem; max-width: 680px; margin: 0 auto; width: 100%; }
+    .card { background: #fff; border: 1px solid var(--mist); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 4px var(--shadow); }
+    .card-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--ink); margin-bottom: 1rem; padding-bottom: .6rem; border-bottom: 1px solid var(--mist); }
+    .card-title em { color: var(--wine); font-style: italic; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: .72rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #7a6a54; margin-bottom: .35rem; }
+    .form-control { width: 100%; padding: .6rem .75rem; border: 1px solid var(--mist); border-radius: 5px; font-family: 'DM Sans', sans-serif; font-size: .9rem; color: var(--ink); background: var(--cream); transition: border-color .2s, box-shadow .2s; appearance: none; -webkit-appearance: none; }
+    .form-control:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,151,58,.15); background: #fff; }
+    select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b5d4a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .75rem center; padding-right: 2rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+    .feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .5rem; }
+    .feedback-pill { padding: .5rem .4rem; border-radius: 5px; border: 1.5px solid var(--mist); background: var(--cream); font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; transition: all .15s; color: #6b5d4a; font-family: 'DM Sans', sans-serif; }
+    .feedback-pill:hover { border-color: var(--gold); color: var(--ink); }
+    .feedback-pill.sel-yes_today   { background: #1a5c2e; border-color: #1a5c2e; color: #fff; }
+    .feedback-pill.sel-yes_later   { background: var(--sage); border-color: var(--sage); color: #fff; }
+    .feedback-pill.sel-maybe_later { background: var(--gold); border-color: var(--gold); color: #fff; }
+    .feedback-pill.sel-no          { background: #888; border-color: #888; color: #fff; }
+    .sku-row { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; border: 1px solid var(--mist); border-radius: 5px; margin-bottom: .5rem; background: var(--cream); }
+    .sku-name { flex: 1; font-weight: 500; font-size: .85rem; color: var(--ink); }
+    .sku-sub  { font-size: .75rem; color: #8a7a64; }
+    .sku-remove { background: none; border: none; color: #aaa; cursor: pointer; font-size: 1.2rem; padding: 0 .2rem; line-height: 1; }
+    .sku-remove:hover { color: var(--wine); }
+    .sku-block { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--mist); }
+    .sku-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .btn { padding: .65rem 1.25rem; border-radius: 5px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 500; letter-spacing: .04em; transition: all .2s; }
+    .btn-primary { background: var(--wine); color: #fff; box-shadow: 0 2px 8px rgba(107,31,42,.25); width: 100%; margin-top: .5rem; }
+    .btn-primary:hover { background: var(--wine-light); }
+    .btn-primary:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+    .btn-back { background: var(--parchment); color: var(--ink); border: 1px solid var(--mist); margin-bottom: 1rem; font-size: .78rem; padding: .4rem .75rem; }
+    .btn-back:hover { background: var(--mist); }
+    .recap-item { padding: 1rem 1.25rem; border: 1px solid var(--mist); border-radius: 8px; margin-bottom: .75rem; background: #fff; box-shadow: 0 1px 3px var(--shadow); cursor: pointer; transition: border-color .2s; }
+    .recap-item:hover { border-color: var(--gold); }
+    .recap-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .3rem; }
+    .recap-client { font-family: 'Playfair Display', serif; font-size: 1rem; }
+    .recap-date { font-size: .75rem; color: #8a7a64; }
+    .recap-meta { font-size: .78rem; color: #6b5d4a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge { display: inline-block; padding: .15rem .5rem; border-radius: 20px; font-size: .68rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    .badge-sales { background: #e8f0ea; color: #1a5c2e; }
+    .badge-dep   { background: #f5ebe0; color: var(--wine); }
+    .badge-yes   { background: #e8f0ea; color: #1a5c2e; }
+    .badge-no    { background: #f0ede8; color: #888; }
+    .tag { display: inline-block; padding: .15rem .5rem; background: var(--parchment); border: 1px solid var(--mist); border-radius: 3px; font-size: .72rem; color: #6b5d4a; margin: .15rem; }
+    .followup-item { padding: .9rem 1.1rem; border-left: 3px solid var(--gold); background: #fff; border-radius: 0 6px 6px 0; margin-bottom: .6rem; box-shadow: 0 1px 3px var(--shadow); }
+    .followup-item.urgent { border-left-color: var(--wine); }
+    .fu-row { display: flex; justify-content: space-between; align-items: center; }
+    .fu-account { font-weight: 500; font-size: .9rem; }
+    .fu-date    { font-size: .75rem; color: #8a7a64; }
+    .fu-product { font-size: .78rem; color: #6b5d4a; margin-top: .2rem; }
+    .fu-label   { font-size: .72rem; font-weight: 500; margin-top: .25rem; }
+    .fu-label.yes_later   { color: var(--sage); }
+    .fu-label.maybe_later { color: var(--gold); }
+    .section-label { font-size: .68rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #8a7a64; margin-bottom: .75rem; }
+    .divider { height: 1px; background: var(--mist); margin: 1rem 0; }
+    .empty { text-align: center; padding: 2.5rem 1rem; color: #8a7a64; font-style: italic; }
+    .loading { text-align: center; padding: 2rem; color: #8a7a64; font-style: italic; }
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--gold-light); padding: .7rem 1.5rem; border-radius: 30px; font-size: .85rem; box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 999; white-space: nowrap; }
+    .search-wrap { position: relative; }
+    .search-results { position: absolute; z-index: 50; background: #fff; border: 1px solid var(--mist); border-radius: 5px; box-shadow: 0 4px 16px var(--shadow); max-height: 200px; overflow-y: auto; width: 100%; top: 100%; left: 0; }
+    .search-item { padding: .55rem .75rem; cursor: pointer; font-size: .85rem; border-bottom: 1px solid var(--mist); }
+    .search-item:last-child { border-bottom: none; }
+    .search-item:hover { background: var(--parchment); }
+    .search-item small { color: #8a7a64; font-size: .72rem; display: block; }
+    .date-hint { font-size: .72rem; color: #8a7a64; margin-top: .25rem; }
+    .warn { color: var(--wine); }
+
+    /* ── Phase 3 additions ─────────────────────────────── */
+    .main-wide { flex: 1; padding: 1.25rem; width: 100%; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--ink); }
+    .page-title em { color: var(--wine); font-style: italic; }
+    .btn-sm { padding: .4rem .9rem; font-size: .78rem; }
+    .btn-outline { background: #fff; border: 1px solid var(--mist); color: var(--ink); }
+    .btn-outline:hover { border-color: var(--gold); }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover { background: #a93226; }
+    .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-bar select { padding: .4rem .75rem; border: 1px solid var(--mist); border-radius: 5px; font-family: 'DM Sans', sans-serif; font-size: .78rem; color: var(--ink); background: var(--cream); appearance: none; -webkit-appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b5d4a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .6rem center; padding-right: 1.6rem; }
+    .tbl-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--mist); border-radius: 8px; box-shadow: 0 1px 4px var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead th { padding: .65rem 1rem; text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #7a6a54; background: var(--parchment); border-bottom: 1px solid var(--mist); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--mist); cursor: pointer; transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--parchment); }
+    tbody td { padding: .7rem 1rem; color: var(--ink); vertical-align: middle; }
+    .cell-primary { font-family: 'Playfair Display', serif; font-size: .95rem; }
+    .cell-sub { font-size: .72rem; color: #8a7a64; margin-top: .1rem; }
+    .badge-status-active     { background: #e8f0ea; color: #1a5c2e; }
+    .badge-status-former     { background: #f0ede8; color: #888; }
+    .badge-status-prospective { background: #fef9ec; color: #a07820; }
+    .badge-tier { background: var(--parchment); color: var(--ink); border: 1px solid var(--mist); }
+    .stale-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--wine); margin-right: .35rem; vertical-align: middle; }
+
+    /* Overlay / Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(26,20,9,.45); z-index: 200; display: flex; align-items: flex-start; justify-content: flex-end; }
+    .slideover { background: #fff; width: min(580px, 100vw); height: 100vh; overflow-y: auto; box-shadow: -4px 0 24px rgba(0,0,0,.18); display: flex; flex-direction: column; }
+    .slideover-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--mist); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 10; }
+    .slideover-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+    .slideover-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #8a7a64; line-height: 1; padding: .1rem .3rem; }
+    .slideover-close:hover { color: var(--wine); }
+    .slideover-body { flex: 1; padding: 1.25rem; }
+    .slideover-tabs { display: flex; border-bottom: 1px solid var(--mist); margin-bottom: 1rem; }
+    .stab { padding: .6rem 1rem; border: none; background: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .8rem; font-weight: 500; color: #6b5d4a; border-bottom: 2px solid transparent; transition: all .2s; }
+    .stab.active { color: var(--wine); border-bottom-color: var(--wine); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: .75rem; }
+    .field-row.single { grid-template-columns: 1fr; }
+    .field-val { font-size: .88rem; color: var(--ink); padding: .5rem .75rem; background: var(--cream); border-radius: 4px; border: 1px solid var(--mist); min-height: 2.2rem; }
+    .field-val.editable { background: #fff; }
+    .slideover-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--mist); display: flex; gap: .6rem; justify-content: flex-end; position: sticky; bottom: 0; background: #fff; }
+
+    /* Modal (Add New) */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(26,20,9,.5); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .modal { background: #fff; border-radius: 10px; width: min(560px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,.25); }
+    .modal-header { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--mist); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+    .modal-body { padding: 1.25rem; }
+    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--mist); display: flex; gap: .6rem; justify-content: flex-end; }
+
+    /* Buyers screen */
+    .buyer-group { margin-bottom: 1.25rem; }
+    .buyer-group-header { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--ink); padding: .6rem 1rem; background: var(--parchment); border: 1px solid var(--mist); border-radius: 6px 6px 0 0; display: flex; align-items: center; justify-content: space-between; }
+    .buyer-row { display: flex; align-items: center; padding: .65rem 1rem; border: 1px solid var(--mist); border-top: none; background: #fff; gap: .75rem; }
+    .buyer-row:last-child { border-radius: 0 0 6px 6px; }
+    .buyer-row:hover { background: var(--parchment); }
+    .buyer-name { flex: 1; font-weight: 500; font-size: .88rem; }
+    .buyer-meta { font-size: .75rem; color: #8a7a64; }
+    .stale-badge { font-size: .68rem; background: #fde8e8; color: var(--wine); border-radius: 20px; padding: .1rem .5rem; font-weight: 500; white-space: nowrap; }
+
+    /* ── Pagination ────────────────────────────────────────── */
+    .pagination { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-top: 1px solid var(--mist); background: var(--parchment); border-radius: 0 0 8px 8px; }
+    .pagination-info { font-size: .75rem; color: #8a7a64; }
+    .pagination-btns { display: flex; gap: .4rem; align-items: center; }
+    .pg-btn { padding: .3rem .7rem; border: 1px solid var(--mist); border-radius: 4px; background: #fff; font-size: .78rem; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--ink); transition: all .15s; }
+    .pg-btn:hover:not(:disabled) { border-color: var(--gold); background: var(--parchment); }
+    .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .pg-btn.active { background: var(--wine); color: #fff; border-color: var(--wine); }
+
+    /* ── Phase 4: Products ─────────────────────────────────── */
+    .conv-bar { display: flex; align-items: center; gap: .3rem; }
+    .conv-fill { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--wine), var(--gold)); min-width: 2px; transition: width .3s; }
+    .conv-bg { height: 6px; border-radius: 3px; background: var(--mist); flex: 1; overflow: hidden; }
+    .conv-pct { font-size: .72rem; color: #8a7a64; white-space: nowrap; min-width: 2.5rem; text-align: right; }
+    .badge-type-wine     { background: #f5e8ed; color: var(--wine); }
+    .badge-type-beer     { background: #fef3e2; color: #9a6200; }
+    .badge-type-spirits  { background: #e8eef5; color: #1a3a6e; }
+    .badge-type-na       { background: #e8f5ee; color: #1a5c2e; }
+    .badge-type-other    { background: #f0ede8; color: #666; }
+    .badge-active   { background: #e8f0ea; color: #1a5c2e; }
+    .badge-archived { background: #f0ede8; color: #888; }
+    .csv-drop { border: 2px dashed var(--mist); border-radius: 8px; padding: 2rem 1rem; text-align: center; color: #8a7a64; font-size: .85rem; cursor: pointer; transition: border-color .2s; }
+    .csv-drop:hover { border-color: var(--gold); color: var(--ink); }
+    .csv-drop.active { border-color: var(--wine); background: var(--parchment); }
+    .import-row { display: flex; align-items: center; justify-content: space-between; padding: .4rem .75rem; font-size: .82rem; border-bottom: 1px solid var(--mist); }
+    .import-row:last-child { border-bottom: none; }
+    .import-row.err { background: #fde8e8; color: var(--wine); }
+    .import-row.ok  { background: #f0f8f1; }
+    .pill-accounts { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; background: var(--parchment); border: 1px solid var(--mist); border-radius: 20px; font-size: .72rem; color: #6b5d4a; }
+    .pill-accounts strong { color: var(--ink); }
+    .product-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1rem; }
+    @media (max-width: 500px) { .product-detail-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div id="root"><div class="loading" style="padding-top:3rem;">Loading Pour Advice…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react,env">
+const { useState, useEffect, useRef } = React;
+
+const sb = supabase.createClient(
+  'https://zuvsurnuyeqbgcwandwq.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dnN1cm51eWVxYmdjd2FuZHdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzA1NDQsImV4cCI6MjA4ODE0NjU0NH0.WFn83S-vrG8zLXLke6v5lz_hlX85KN5aD17RLaze8Hc'
+);
+
+function Toast({ msg, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, []);
+  return <div className="toast">{msg}</div>;
+}
+
+function ProductPicker({ onAdd, exclude = [] }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const timer = useRef(null);
+
+  const search = (val) => {
+    clearTimeout(timer.current);
+    setQ(val);
+    if (val.length < 2) { setResults([]); setOpen(false); return; }
+    timer.current = setTimeout(async () => {
+      const { data } = await sb.from('products')
+        .select('id, sku_number, brand_name, wine_name')
+        .or(`brand_name.ilike.*${val}*,wine_name.ilike.*${val}*,sku_number.ilike.*${val}*`)
+        .limit(8);
+      const filtered = (data || []).filter(p => !exclude.includes(p.id));
+      setResults(filtered);
+      setOpen(filtered.length > 0);
+    }, 300);
+  };
+
+  const pick = (p) => { onAdd(p); setQ(''); setResults([]); setOpen(false); };
+
+  return (
+    <div className="search-wrap">
+      <input className="form-control" placeholder="Search brand, wine name, or SKU…"
+        value={q} onChange={e => search(e.target.value)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => results.length > 0 && setOpen(true)} />
+      {open && (
+        <div className="search-results">
+          {results.map(p => (
+            <div key={p.id} className="search-item" onMouseDown={() => pick(p)}>
+              <strong>{p.brand_name}</strong>{p.wine_name ? ` — ${p.wine_name}` : ''}
+              <small>{p.sku_number}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountPicker({ onSelect, selectedName }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const timer = useRef(null);
+
+  const search = (val) => {
+    clearTimeout(timer.current);
+    setQ(val);
+    if (val.length < 2) { setResults([]); setOpen(false); return; }
+    timer.current = setTimeout(async () => {
+      const { data } = await sb.from('clients')
+        .select('id, company_name')
+        .ilike('company_name', `*${val}*`)
+        .order('company_name')
+        .limit(10);
+      setResults(data || []);
+      setOpen((data || []).length > 0);
+    }, 250);
+  };
+
+  const pick = (c) => { onSelect(c); setQ(''); setResults([]); setOpen(false); };
+  const clear = () => { onSelect(null); setQ(''); setResults([]); setOpen(false); };
+
+  if (selectedName) return (
+    <div className="sku-row" style={{ background: '#fff' }}>
+      <div className="sku-name">{selectedName}</div>
+      <button className="sku-remove" onClick={clear} title="Clear account">×</button>
+    </div>
+  );
+
+  return (
+    <div className="search-wrap">
+      <input className="form-control" placeholder="Type to search accounts…"
+        value={q} onChange={e => search(e.target.value)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => results.length > 0 && setOpen(true)} />
+      {open && (
+        <div className="search-results">
+          {results.map(c => (
+            <div key={c.id} className="search-item" onMouseDown={() => pick(c)}>
+              {c.company_name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const FB_OPTS = [
+  { val: 'yes_today',   lbl: '✓ Yes — Today'  },
+  { val: 'yes_later',   lbl: '◷ Yes — Later'  },
+  { val: 'maybe_later', lbl: '~ Maybe Later'   },
+  { val: 'no',          lbl: '✕ No'            },
+];
+
+function NewRecap({ onSaved }) {
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [buyers,  setBuyers]  = useState([]);
+  const [shown,   setShown]   = useState([]);
+  const [discussed, setDiscussed] = useState([]);
+  const [saving, setSaving]   = useState(false);
+  const [f, setF] = useState({ date: today, buyer: '', nature: 'Sales Call', notes: '' });
+
+  useEffect(() => {
+    if (!selectedClient) { setBuyers([]); setF(p => ({ ...p, buyer: '' })); return; }
+    sb.from('buyers').select('id, contact_name, role')
+      .eq('client_id', selectedClient.id).order('contact_name')
+      .then(({ data }) => setBuyers(data || []));
+  }, [selectedClient]);
+
+  const sf = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const addShown = p => setShown(prev => [...prev, { ...p, fb: '', fu: '' }]);
+  const addDiscussed = p => setDiscussed(prev => [...prev, p]);
+  const setFb = (id, fb) => setShown(p => p.map(x => x.id === id ? { ...x, fb } : x));
+  const setFu = (id, fu) => setShown(p => p.map(x => x.id === id ? { ...x, fu } : x));
+  const rmShown = id => setShown(p => p.filter(x => x.id !== id));
+  const rmDiscussed = id => setDiscussed(p => p.filter(x => x.id !== id));
+  const shownIds = shown.map(p => p.id);
+  const discIds  = discussed.map(p => p.id);
+
+  const submit = async () => {
+    if (!selectedClient || !f.date) return;
+    setSaving(true);
+    try {
+      // 1. Insert the recap record
+      const { data: recapArr, error: recapErr } = await sb.from('recaps').insert({
+        visit_date: f.date, client_id: selectedClient.id,
+        buyer_id: f.buyer || null, nature: f.nature, notes: f.notes,
+      }).select();
+      if (recapErr) throw recapErr;
+      const recap = recapArr[0];
+
+      // 2. Insert products shown (with feedback)
+      if (shown.length > 0) {
+        const { error: shownErr } = await sb.from('recap_products_shown').insert(
+          shown.map(p => ({
+            recap_id: recap.id, product_id: p.id,
+            feedback: p.fb || null, follow_up_date: p.fu || null,
+          }))
+        );
+        if (shownErr) throw shownErr;
+      }
+
+      // 3. Insert products discussed
+      if (discussed.length > 0) {
+        const { error: discErr } = await sb.from('recap_products_discussed').insert(
+          discussed.map(p => ({ recap_id: recap.id, product_id: p.id }))
+        );
+        if (discErr) throw discErr;
+      }
+
+
+      onSaved('Recap saved ✓');
+      setSelectedClient(null);
+      setF({ date: today, buyer: '', nature: 'Sales Call', notes: '' });
+      setShown([]); setDiscussed([]);
+    } catch (e) { onSaved('Error: ' + (e.message || JSON.stringify(e))); }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div className="card-title">Log a <em>Visit</em></div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Visit Date</label>
+            <input type="date" className="form-control" value={f.date} onChange={e => sf('date', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Nature</label>
+            <select className="form-control" value={f.nature} onChange={e => sf('nature', e.target.value)}>
+              <option>Sales Call</option>
+              <option>Depletion Meeting</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Account</label>
+          <AccountPicker onSelect={setSelectedClient} selectedName={selectedClient?.company_name} />
+        </div>
+        {buyers.length > 0 && (
+          <div className="form-group">
+            <label className="form-label">Buyer / Contact</label>
+            <select className="form-control" value={f.buyer} onChange={e => sf('buyer', e.target.value)}>
+              <option value="">— Select contact —</option>
+              {buyers.map(b => <option key={b.id} value={b.id}>{b.contact_name}{b.role ? ` · ${b.role}` : ''}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="form-group">
+          <label className="form-label">Notes</label>
+          <textarea className="form-control" placeholder="Visit notes, context, follow-up prep…" value={f.notes} onChange={e => sf('notes', e.target.value)} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Products <em>Shown</em></div>
+        <div className="form-group">
+          <label className="form-label">Search & add</label>
+          <ProductPicker onAdd={addShown} exclude={[...shownIds, ...discIds]} />
+        </div>
+        {shown.map(p => (
+          <div key={p.id} className="sku-block">
+            <div className="sku-row">
+              <div><div className="sku-name">{p.brand_name}{p.wine_name ? ` — ${p.wine_name}` : ''}</div><div className="sku-sub">{p.sku_number}</div></div>
+              <button className="sku-remove" onClick={() => rmShown(p.id)}>×</button>
+            </div>
+            <div className="feedback-grid">
+              {FB_OPTS.map(o => (
+                <button key={o.val} className={`feedback-pill ${p.fb === o.val ? `sel-${o.val}` : ''}`} onClick={() => setFb(p.id, o.val)}>{o.lbl}</button>
+              ))}
+            </div>
+            {(p.fb === 'yes_later' || p.fb === 'maybe_later') && (
+              <div style={{ marginTop: '.5rem' }}>
+                <input type="date" className="form-control" value={p.fu} onChange={e => setFu(p.id, e.target.value)} />
+                <div className="date-hint">Follow-up date</div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Products <em>Discussed</em></div>
+        <p style={{ fontSize: '.78rem', color: '#8a7a64', marginBottom: '.75rem' }}>Mentioned but not formally presented</p>
+        <div className="form-group">
+          <ProductPicker onAdd={addDiscussed} exclude={[...shownIds, ...discIds]} />
+        </div>
+        {discussed.map(p => (
+          <div key={p.id} className="sku-row">
+            <div><div className="sku-name">{p.brand_name}{p.wine_name ? ` — ${p.wine_name}` : ''}</div><div className="sku-sub">{p.sku_number}</div></div>
+            <button className="sku-remove" onClick={() => rmDiscussed(p.id)}>×</button>
+          </div>
+        ))}
+      </div>
+
+      <button className="btn btn-primary" onClick={submit} disabled={saving || !selectedClient}>
+        {saving ? 'Saving…' : 'Save Recap'}
+      </button>
+    </div>
+  );
+}
+
+function RecapHistory({ onNavigateProduct }) {
+  const [recaps,  setRecaps]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sel,     setSel]     = useState(null);
+  const [detail,  setDetail]  = useState(null);
+
+  useEffect(() => {
+    sb.from('recaps')
+      .select('id, visit_date, nature, notes, clients(company_name), buyers(contact_name, role)')
+      .order('visit_date', { ascending: false }).limit(60)
+      .then(({ data }) => { setRecaps(data || []); setLoading(false); });
+  }, []);
+
+  const open = async (r) => {
+    setSel(r); setDetail(null);
+    const [{ data: s }, { data: d }] = await Promise.all([
+      sb.from('recap_products_shown').select('feedback, follow_up_date, products(id, brand_name, wine_name, sku_number)').eq('recap_id', r.id),
+      sb.from('recap_products_discussed').select('products(id, brand_name, wine_name)').eq('recap_id', r.id),
+    ]);
+    setDetail({ shown: s || [], discussed: d || [] });
+  };
+
+  if (loading) return <div className="loading">Loading recaps…</div>;
+
+  if (sel) return (
+    <div>
+      <button className="btn btn-back" onClick={() => { setSel(null); setDetail(null); }}>← Back</button>
+      <div className="card">
+        <div className="card-title">{sel.clients?.company_name}</div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.75rem' }}>
+          <span className="tag">{sel.visit_date}</span>
+          <span className={`badge ${sel.nature === 'Sales Call' ? 'badge-sales' : 'badge-dep'}`}>{sel.nature}</span>
+          {sel.buyers && <span className="tag">{sel.buyers.contact_name}{sel.buyers.role ? ` · ${sel.buyers.role}` : ''}</span>}
+        </div>
+        {sel.notes && <p style={{ fontSize: '.88rem', color: '#4a3f2e', lineHeight: 1.6 }}>{sel.notes}</p>}
+      </div>
+      {!detail && <div className="loading">Loading products…</div>}
+      {detail && detail.shown.length > 0 && (
+        <div className="card">
+          <div className="card-title">Products <em>Shown</em></div>
+          {detail.shown.map((s, i) => (
+            <div key={i} style={{ paddingBottom: '.75rem', marginBottom: '.75rem', borderBottom: i < detail.shown.length - 1 ? '1px solid var(--mist)' : 'none' }}>
+              <div
+                style={{ fontWeight: 500, cursor: onNavigateProduct ? 'pointer' : 'default', color: onNavigateProduct ? 'var(--wine)' : 'inherit', textDecoration: onNavigateProduct ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' }}
+                onClick={() => onNavigateProduct && s.products?.id && onNavigateProduct(s.products)}
+                title={onNavigateProduct ? 'View product page' : ''}
+              >
+                {s.products?.brand_name}{s.products?.wine_name ? ` — ${s.products.wine_name}` : ''}
+              </div>
+              <div style={{ fontSize: '.75rem', color: '#8a7a64' }}>{s.products?.sku_number}</div>
+              {s.feedback && <span className={`badge ${s.feedback.startsWith('yes') ? 'badge-yes' : 'badge-no'}`} style={{ marginTop: '.3rem', display: 'inline-block' }}>{s.feedback.replace(/_/g, ' ')}{s.follow_up_date ? ` · ${s.follow_up_date}` : ''}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {detail && detail.discussed.length > 0 && (
+        <div className="card">
+          <div className="card-title">Products <em>Discussed</em></div>
+          {detail.discussed.map((d, i) => <span key={i} className="tag">{d.products?.brand_name}{d.products?.wine_name ? ` — ${d.products.wine_name}` : ''}</span>)}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="section-label">Recent Visits</div>
+      {recaps.length === 0 && <div className="empty">No recaps logged yet.</div>}
+      {recaps.map(r => (
+        <div key={r.id} className="recap-item" onClick={() => open(r)}>
+          <div className="recap-row">
+            <div className="recap-client">{r.clients?.company_name || 'Unknown'}</div>
+            <div className="recap-date">{r.visit_date}</div>
+          </div>
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+            <span className={`badge ${r.nature === 'Sales Call' ? 'badge-sales' : 'badge-dep'}`}>{r.nature}</span>
+            {r.buyers && <span className="recap-meta">{r.buyers.contact_name}</span>}
+          </div>
+          {r.notes && <div className="recap-meta" style={{ marginTop: '.25rem' }}>{r.notes}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FollowUps() {
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    sb.from('recap_products_shown')
+      .select('feedback, follow_up_date, products(brand_name, wine_name), recaps(clients(company_name), buyers(contact_name))')
+      .in('feedback', ['yes_later', 'maybe_later'])
+      .order('follow_up_date')
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
+  }, []);
+
+  if (loading) return <div className="loading">Loading follow-ups…</div>;
+
+  const overdue  = items.filter(i => i.follow_up_date && i.follow_up_date < today);
+  const upcoming = items.filter(i => !i.follow_up_date || i.follow_up_date >= today);
+
+  const Row = (item, i) => (
+    <div key={i} className={`followup-item ${item.follow_up_date && item.follow_up_date < today ? 'urgent' : ''}`}>
+      <div className="fu-row">
+        <div className="fu-account">{item.recaps?.clients?.company_name || '—'}</div>
+        <div className="fu-date">{item.follow_up_date || 'No date'}</div>
+      </div>
+      <div className="fu-product">{item.products?.brand_name}{item.products?.wine_name ? ` — ${item.products.wine_name}` : ''}</div>
+      {item.recaps?.buyers && <div className="fu-product">{item.recaps.buyers.contact_name}</div>}
+      <div className={`fu-label ${item.feedback}`}>{item.feedback === 'yes_later' ? 'Committed — follow up' : 'Maybe — check in'}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      {items.length === 0 && <div className="empty">No open follow-ups. Nice work.</div>}
+      {overdue.length > 0 && <><div className="section-label warn">⚠ Overdue ({overdue.length})</div>{overdue.map(Row)}<div className="divider" /></>}
+      {upcoming.length > 0 && <><div className="section-label">Upcoming ({upcoming.length})</div>{upcoming.map(Row)}</>}
+    </div>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+const daysSince = (d) => d ? Math.floor((Date.now() - new Date(d + 'T00:00:00')) / 86400000) : null;
+
+// ── ClientModal (Add / Edit) ──────────────────────────────────────────────────
+const CLIENT_BLANK = { company_name: '', status: 'Active', company_type: 'On-Premise', contact_name: '', role: '', phone: '', email: '', value_tier: '$', source_of_reference: '', commission_pct: '', billback_pct: '', service_contract_months: '', date_start: '', date_end: '' };
+
+function ClientModal({ initial, onSave, onClose }) {
+  const [f, setF] = useState({ ...CLIENT_BLANK, ...initial });
+  const [saving, setSaving] = useState(false);
+  const sf = (k, v) => setF(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!f.company_name.trim()) return;
+    setSaving(true);
+    const payload = {
+      company_name: f.company_name, status: f.status, company_type: f.company_type,
+      contact_name: f.contact_name || null, role: f.role || null,
+      phone: f.phone || null, email: f.email || null,
+      value_tier: f.value_tier || null,
+      source_of_reference: f.source_of_reference || null,
+      commission_pct: f.commission_pct !== '' ? parseFloat(f.commission_pct) : null,
+      billback_pct: f.billback_pct !== '' ? parseFloat(f.billback_pct) : null,
+      service_contract_months: f.service_contract_months !== '' ? parseInt(f.service_contract_months) : null,
+      date_start: f.date_start || null, date_end: f.date_end || null,
+    };
+    let err;
+    if (f.id) {
+      ({ error: err } = await sb.from('clients').update(payload).eq('id', f.id));
+    } else {
+      ({ error: err } = await sb.from('clients').insert(payload));
+    }
+    setSaving(false);
+    if (err) { alert('Error: ' + err.message); return; }
+    onSave();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{f.id ? 'Edit Client' : 'Add New Client'}</div>
+          <button className="slideover-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <div className="form-group" style={{gridColumn:'1/-1'}}>
+              <label className="form-label">Company Name *</label>
+              <input className="form-control" value={f.company_name} onChange={e => sf('company_name', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-control" value={f.status} onChange={e => sf('status', e.target.value)}>
+                <option>Active</option><option>Former</option><option>Prospective</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Company Type</label>
+              <select className="form-control" value={f.company_type} onChange={e => sf('company_type', e.target.value)}>
+                <option>On-Premise</option><option>Off-Premise</option><option>Retail</option><option>Chain</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Contact Name</label>
+              <input className="form-control" value={f.contact_name} onChange={e => sf('contact_name', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <input className="form-control" value={f.role} onChange={e => sf('role', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input className="form-control" value={f.phone} onChange={e => sf('phone', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-control" type="email" value={f.email} onChange={e => sf('email', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Value Tier</label>
+              <select className="form-control" value={f.value_tier} onChange={e => sf('value_tier', e.target.value)}>
+                <option>$</option><option>$$</option><option>$$$</option><option>$$$$</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Source of Reference</label>
+              <input className="form-control" value={f.source_of_reference} onChange={e => sf('source_of_reference', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Commission %</label>
+              <input className="form-control" type="number" step="0.1" value={f.commission_pct} onChange={e => sf('commission_pct', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Billback %</label>
+              <input className="form-control" type="number" step="0.1" value={f.billback_pct} onChange={e => sf('billback_pct', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Contract Months</label>
+              <input className="form-control" type="number" value={f.service_contract_months} onChange={e => sf('service_contract_months', e.target.value)} />
+            </div>
+            <div className="form-group" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Contract Start</label>
+              <input className="form-control" type="date" value={f.date_start} onChange={e => sf('date_start', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contract End</label>
+              <input className="form-control" type="date" value={f.date_end} onChange={e => sf('date_end', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Client'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Client Detail Slideover ───────────────────────────────────────────────────
+function ClientDetail({ client, onClose, onEdit, onRefresh }) {
+  const [dtab, setDtab] = useState('history');
+  const [visits,  setVisits]   = useState(null);
+  const [seen,    setSeen]     = useState(null);
+  const [unseen,  setUnseen]   = useState(null);
+
+  useEffect(() => {
+    // Visit history
+    sb.from('recaps')
+      .select('id, visit_date, nature, buyers(contact_name), recap_products_shown(id)')
+      .eq('client_id', client.id)
+      .order('visit_date', { ascending: false })
+      .then(({ data }) => setVisits(data || []));
+  }, [client.id]);
+
+  useEffect(() => {
+    if (dtab === 'seen' && seen === null) {
+      // Step 1: get all recap IDs for this client
+      sb.from('recaps')
+        .select('id')
+        .eq('client_id', client.id)
+        .then(({ data: recapRows }) => {
+          const recapIds = (recapRows || []).map(r => r.id);
+          if (recapIds.length === 0) { setSeen([]); return; }
+          // Step 2: get products shown in those recaps
+          sb.from('recap_products_shown')
+            .select('feedback, follow_up_date, recap_id, products(id, brand_name, wine_name, sku_number)')
+            .in('recap_id', recapIds)
+            .then(({ data }) => {
+              // Dedupe by product, keep most recent feedback
+              const map = {};
+              (data || []).forEach(r => {
+                const pid = r.products?.id;
+                if (pid && !map[pid]) map[pid] = r;
+              });
+              setSeen(Object.values(map));
+            });
+        });
+    }
+    if (dtab === 'unseen' && unseen === null) {
+      // Step 1: get recap IDs for this client, then product IDs shown
+      sb.from('recaps')
+        .select('id')
+        .eq('client_id', client.id)
+        .then(({ data: recapRows }) => {
+          const recapIds = (recapRows || []).map(r => r.id);
+          if (recapIds.length === 0) {
+            // No visits — show all targeted products
+            sb.from('products')
+              .select('id, brand_name, wine_name, sku_number, type, target_account_types')
+              .eq('is_active', true)
+              .order('brand_name')
+              .then(({ data }) => setUnseen(data || []));
+            return;
+          }
+          sb.from('recap_products_shown')
+            .select('product_id')
+            .in('recap_id', recapIds)
+            .then(({ data: shownData }) => {
+              const shownIds = [...new Set((shownData || []).map(r => r.product_id))];
+              let q = sb.from('products')
+                .select('id, brand_name, wine_name, sku_number, type, target_account_types')
+                .eq('is_active', true);
+              if (shownIds.length > 0) q = q.not('id', 'in', `(${shownIds.join(',')})`);
+              q.order('brand_name').then(({ data }) => setUnseen(data || []));
+            });
+        });
+    }
+  }, [dtab, client.id]);
+
+  const fbColor = (fb) => {
+    if (!fb) return '#aaa';
+    if (fb.startsWith('yes')) return '#1a5c2e';
+    if (fb === 'maybe_later') return '#c9973a';
+    return '#888';
+  };
+
+  return (
+    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="slideover">
+        <div className="slideover-header">
+          <div className="slideover-title">{client.company_name}</div>
+          <div style={{ display:'flex', gap:'.5rem', alignItems:'center' }}>
+            <button className="btn btn-outline btn-sm" onClick={() => onEdit(client)}>Edit</button>
+            <button className="slideover-close" onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="slideover-body">
+          {/* Info summary */}
+          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'1rem' }}>
+            <span className={`badge badge-status-${client.status?.toLowerCase()}`}>{client.status}</span>
+            <span className="tag">{client.company_type}</span>
+            {client.value_tier && <span className="badge badge-tier">{client.value_tier}</span>}
+          </div>
+          <div className="field-row" style={{ marginBottom:'.5rem' }}>
+            <div>
+              <div className="form-label">Contact</div>
+              <div className="field-val">{client.contact_name || '—'}{client.role ? ` · ${client.role}` : ''}</div>
+            </div>
+            <div>
+              <div className="form-label">Phone / Email</div>
+              <div className="field-val" style={{ fontSize:'.78rem' }}>{client.phone || '—'}<br/>{client.email || ''}</div>
+            </div>
+          </div>
+          <div className="field-row" style={{ marginBottom:'1rem' }}>
+            <div>
+              <div className="form-label">Commission / Billback</div>
+              <div className="field-val">{client.commission_pct != null ? client.commission_pct + '%' : '—'} / {client.billback_pct != null ? client.billback_pct + '%' : '—'}</div>
+            </div>
+            <div>
+              <div className="form-label">Contract</div>
+              <div className="field-val" style={{ fontSize:'.78rem' }}>{fmt(client.date_start)} → {fmt(client.date_end)}</div>
+            </div>
+          </div>
+
+          <div className="slideover-tabs">
+            {[['history','Visit History'],['seen','Products Seen'],['unseen','Not Yet Seen']].map(([id, lbl]) => (
+              <button key={id} className={`stab ${dtab === id ? 'active' : ''}`} onClick={() => setDtab(id)}>{lbl}</button>
+            ))}
+          </div>
+
+          {dtab === 'history' && (
+            visits === null ? <div className="loading">Loading…</div> :
+            visits.length === 0 ? <div className="empty">No visits yet.</div> :
+            visits.map(v => (
+              <div key={v.id} className="recap-item" style={{ cursor:'default' }}>
+                <div className="recap-row">
+                  <span className={`badge ${v.nature === 'Sales Call' ? 'badge-sales' : 'badge-dep'}`}>{v.nature}</span>
+                  <span className="recap-date">{v.visit_date}</span>
+                </div>
+                <div className="recap-meta" style={{ marginTop:'.25rem' }}>
+                  {v.buyers?.contact_name || ''} &nbsp;·&nbsp; {v.recap_products_shown?.length || 0} products shown
+                </div>
+              </div>
+            ))
+          )}
+
+          {dtab === 'seen' && (
+            seen === null ? <div className="loading">Loading…</div> :
+            seen.length === 0 ? <div className="empty">No products shown yet.</div> :
+            seen.map((s, i) => (
+              <div key={i} className="sku-row" style={{ marginBottom:'.5rem' }}>
+                <div style={{ flex:1 }}>
+                  <div className="sku-name">{s.products?.brand_name}{s.products?.wine_name ? ` — ${s.products.wine_name}` : ''}</div>
+                  <div className="sku-sub">{s.products?.sku_number}</div>
+                </div>
+                {s.feedback && <span className="badge" style={{ background: fbColor(s.feedback) + '22', color: fbColor(s.feedback) }}>{s.feedback.replace(/_/g,' ')}</span>}
+              </div>
+            ))
+          )}
+
+          {dtab === 'unseen' && (
+            unseen === null ? <div className="loading">Loading…</div> :
+            unseen.length === 0 ? <div className="empty">All targeted products have been shown!</div> :
+            <>
+              <div className="date-hint" style={{ marginBottom:'.6rem' }}>Showing products targeted for <strong>{client.company_type}</strong> accounts, or with no target set.</div>
+              {unseen.map(p => (
+                <div key={p.id} className="sku-row" style={{ marginBottom:'.5rem' }}>
+                  <div style={{ flex:1 }}>
+                    <div className="sku-name">{p.brand_name}{p.wine_name ? ` — ${p.wine_name}` : ''}</div>
+                    <div className="sku-sub">{p.sku_number} · {p.type}</div>
+                  </div>
+                  {p.target_account_types?.includes(client.company_type) &&
+                    <span className="badge badge-status-active" style={{ fontSize:'.62rem', whiteSpace:'nowrap' }}>Targeted</span>}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Clients Screen ────────────────────────────────────────────────────────────
+function ClientsScreen({ onToast }) {
+  const PAGE_SIZE = 50;
+  const [clients,      setClients]   = useState([]);
+  const [loading,      setLoading]   = useState(false);
+  const [totalCount,   setTotal]     = useState(0);
+  const [page,         setPage]      = useState(0);
+  const [filterStatus, setFS]        = useState('');
+  const [filterType,   setFT]        = useState('');
+  const [filterTier,   setFTier]     = useState('');
+  const [search,       setSearch]    = useState('');
+  const [sel,          setSel]       = useState(null);
+  const [editing,      setEditing]   = useState(null);
+  const [showModal,    setShowModal] = useState(false);
+  const [skuMap,       setSkuMap]    = useState({});
+  const [visitMap,     setVisitMap]  = useState({});
+  const searchTimer = useRef(null);
+  const stateRef = useRef({});
+  stateRef.current = { search, filterStatus, filterType, filterTier, page };
+
+  const query = async (term, status, type, tier, pg = 0) => {
+    setLoading(true);
+    const from = pg * PAGE_SIZE;
+    const to   = from + PAGE_SIZE - 1;
+
+    // Build query — always runs, blank = browse all
+    let q = sb.from('clients')
+      .select('*', { count: 'exact' })
+      .order('company_name')
+      .range(from, to);
+    if (term)   q = q.or(`company_name.ilike.*${term}*,contact_name.ilike.*${term}*,email.ilike.*${term}*,phone.ilike.*${term}*`);
+    if (status) q = q.eq('status', status);
+    if (type)   q = q.eq('company_type', type);
+    if (tier)   q = q.eq('value_tier', tier);
+
+    const { data: clientData, error, count } = await q;
+    if (error) { onToast('Error: ' + error.message); setLoading(false); return; }
+
+    const results = clientData || [];
+    setTotal(count || 0);
+
+    if (results.length === 0) { setClients([]); setLoading(false); return; }
+
+    // Fetch last visit + SKU counts for just this page's clients
+    const clientIds = results.map(c => c.id);
+
+    const [{ data: recapData }, { data: recapIdData }] = await Promise.all([
+      sb.from('recaps').select('client_id, visit_date')
+        .in('client_id', clientIds)
+        .order('visit_date', { ascending: false }),
+      sb.from('recaps').select('id, client_id')
+        .in('client_id', clientIds),
+    ]);
+
+    const recapIds = (recapIdData || []).map(r => r.id);
+    const recapClientMap = {};
+    (recapIdData || []).forEach(r => { recapClientMap[r.id] = r.client_id; });
+
+    const { data: shownData } = recapIds.length > 0
+      ? await sb.from('recap_products_shown').select('product_id, recap_id').in('recap_id', recapIds)
+      : { data: [] };
+
+    const vMap = {};
+    (recapData || []).forEach(r => {
+      if (r.client_id && !vMap[r.client_id]) vMap[r.client_id] = r.visit_date;
+    });
+
+    const sMap = {};
+    (shownData || []).forEach(r => {
+      const cid = recapClientMap[r.recap_id];
+      if (!cid) return;
+      if (!sMap[cid]) sMap[cid] = new Set();
+      sMap[cid].add(r.product_id);
+    });
+
+    setClients(results);
+    setVisitMap(vMap);
+    setSkuMap(sMap);
+    setLoading(false);
+  };
+
+  // On mount — load page 0 with no filters
+  useEffect(() => { query('', '', '', '', 0); }, []);
+
+  // Debounced search — resets to page 0
+  const handleSearch = (val) => {
+    setSearch(val);
+    setPage(0);
+    clearTimeout(searchTimer.current);
+    const { filterStatus: status, filterType: type, filterTier: tier } = stateRef.current;
+    searchTimer.current = setTimeout(() => query(val, status, type, tier, 0), 300);
+  };
+
+  // Filter change — resets to page 0
+  const handleFilter = (key, val) => {
+    const next = {
+      ...stateRef.current,
+      [key === 'status' ? 'filterStatus' : key === 'type' ? 'filterType' : 'filterTier']: val,
+    };
+    if (key === 'status') setFS(val);
+    if (key === 'type')   setFT(val);
+    if (key === 'tier')   setFTier(val);
+    setPage(0);
+    clearTimeout(searchTimer.current);
+    query(next.search, next.filterStatus, next.filterType, next.filterTier, 0);
+  };
+
+  // Page navigation
+  const goTo = (pg) => {
+    setPage(pg);
+    const { search: term, filterStatus: status, filterType: type, filterTier: tier } = stateRef.current;
+    query(term, status, type, tier, pg);
+  };
+
+  const load = () => {
+    const { search: term, filterStatus: status, filterType: type, filterTier: tier, page: pg } = stateRef.current;
+    query(term, status, type, tier, pg);
+  };
+
+  const totalPages  = Math.ceil(totalCount / PAGE_SIZE);
+  const lastVisit   = (c) => visitMap[c.id] || null;
+  const skuCount    = (c) => skuMap[c.id]?.size || 0;
+  const statusClass = (s) => s === 'Active' ? 'badge-status-active' : s === 'Former' ? 'badge-status-former' : 'badge-status-prospective';
+
+  const handleSaved = () => { setShowModal(false); setEditing(null); load(); onToast('Client saved ✓'); };
+
+  const deleteClient = async (c) => {
+    if (!confirm(`Delete "${c.company_name}"? This cannot be undone.`)) return;
+    const { error } = await sb.from('clients').delete().eq('id', c.id);
+    if (error) { onToast('Error: ' + error.message); return; }
+    setSel(null); load(); onToast('Client deleted.');
+  };
+
+  // Build page number buttons — show up to 7 around current page
+  const pageButtons = () => {
+    if (totalPages <= 1) return [];
+    const buttons = [];
+    const start = Math.max(0, Math.min(page - 3, totalPages - 7));
+    const end   = Math.min(totalPages - 1, start + 6);
+    for (let i = start; i <= end; i++) buttons.push(i);
+    return buttons;
+  };
+
+  return (
+    <div className="main-wide">
+      <div className="page-header">
+        <div className="page-title">Clients <em>&amp;</em> Accounts</div>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditing({}); setShowModal(true); }}>+ Add Client</button>
+      </div>
+
+      <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
+        <div className="search-wrap" style={{ flex: '1 1 200px', minWidth: '160px' }}>
+          <input className="form-control" placeholder="Search company, contact, email…" value={search}
+            onChange={e => handleSearch(e.target.value)}
+            style={{ padding:'.4rem .75rem', fontSize:'.82rem' }} />
+        </div>
+        <div className="filter-bar" style={{ margin:0, flex:'0 0 auto' }}>
+          <select value={filterStatus} onChange={e => handleFilter('status', e.target.value)}>
+            <option value="">All Statuses</option>
+            <option>Active</option><option>Former</option><option>Prospective</option>
+          </select>
+          <select value={filterType} onChange={e => handleFilter('type', e.target.value)}>
+            <option value="">All Types</option>
+            <option>On-Premise</option><option>Off-Premise</option><option>Retail</option><option>Chain</option><option>Other</option>
+          </select>
+          <select value={filterTier} onChange={e => handleFilter('tier', e.target.value)}>
+            <option value="">All Tiers</option>
+            <option>$</option><option>$$</option><option>$$$</option><option>$$$$</option>
+          </select>
+        </div>
+      </div>
+
+      {loading && <div className="loading">Loading clients…</div>}
+
+      {!loading && clients.length === 0 && (
+        <div className="empty" style={{ marginTop:'3rem' }}>No clients match your search.</div>
+      )}
+
+      {!loading && clients.length > 0 && (
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Tier</th>
+                <th>Contact</th>
+                <th>SKUs Shown</th>
+                <th>Last Visit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map(c => {
+                const lv = lastVisit(c);
+                const ds = daysSince(lv);
+                const stale = ds !== null && ds > 14;
+                return (
+                  <tr key={c.id} onClick={() => setSel(c)}>
+                    <td><div className="cell-primary">{c.company_name}</div></td>
+                    <td><span className="tag">{c.company_type}</span></td>
+                    <td><span className={`badge ${statusClass(c.status)}`}>{c.status}</span></td>
+                    <td>{c.value_tier ? <span className="badge badge-tier">{c.value_tier}</span> : '—'}</td>
+                    <td>
+                      <div style={{ fontSize:'.85rem' }}>{c.contact_name || '—'}</div>
+                      {c.role && <div className="cell-sub">{c.role}</div>}
+                    </td>
+                    <td style={{ textAlign:'center' }}>{skuCount(c) || '—'}</td>
+                    <td>
+                      {stale && <span className="stale-dot" title="No visit in 14+ days" />}
+                      <span style={{ fontSize:'.82rem', color: stale ? 'var(--wine)' : 'inherit' }}>{lv || '—'}</span>
+                      {stale && <div className="cell-sub">{ds}d ago</div>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="pagination">
+            <div className="pagination-info">
+              {totalCount > 0
+                ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} of ${totalCount.toLocaleString()} clients`
+                : ''}
+            </div>
+            <div className="pagination-btns">
+              <button className="pg-btn" onClick={() => goTo(0)}        disabled={page === 0}>«</button>
+              <button className="pg-btn" onClick={() => goTo(page - 1)} disabled={page === 0}>‹</button>
+              {pageButtons().map(i => (
+                <button key={i} className={`pg-btn ${i === page ? 'active' : ''}`} onClick={() => goTo(i)}>{i + 1}</button>
+              ))}
+              <button className="pg-btn" onClick={() => goTo(page + 1)} disabled={page >= totalPages - 1}>›</button>
+              <button className="pg-btn" onClick={() => goTo(totalPages - 1)} disabled={page >= totalPages - 1}>»</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sel && (
+        <ClientDetail
+          client={sel}
+          onClose={() => setSel(null)}
+          onEdit={(c) => { setEditing(c); setShowModal(true); }}
+          onRefresh={load}
+        />
+      )}
+
+      {showModal && (
+        <ClientModal
+          initial={editing || {}}
+          onSave={handleSaved}
+          onClose={() => { setShowModal(false); setEditing(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── BuyerModal (Add / Edit) ───────────────────────────────────────────────────
+const BUYER_BLANK = { contact_name: '', role: '', phone: '', email: '', premise_type: 'On-Premise' };
+
+function BuyerModal({ initial, clientId, onSave, onClose }) {
+  const [f, setF] = useState({ ...BUYER_BLANK, ...initial });
+  const [saving, setSaving] = useState(false);
+  const sf = (k, v) => setF(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!f.contact_name.trim()) return;
+    setSaving(true);
+    const payload = {
+      client_id: clientId,
+      contact_name: f.contact_name,
+      role: f.role || null, phone: f.phone || null,
+      email: f.email || null, premise_type: f.premise_type,
+    };
+    let err;
+    if (f.id) {
+      ({ error: err } = await sb.from('buyers').update(payload).eq('id', f.id));
+    } else {
+      ({ error: err } = await sb.from('buyers').insert(payload));
+    }
+    setSaving(false);
+    if (err) { alert('Error: ' + err.message); return; }
+    onSave();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{f.id ? 'Edit Buyer' : 'Add Buyer'}</div>
+          <button className="slideover-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <div className="form-group" style={{ gridColumn:'1/-1' }}>
+              <label className="form-label">Contact Name *</label>
+              <input className="form-control" value={f.contact_name} onChange={e => sf('contact_name', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <input className="form-control" value={f.role} onChange={e => sf('role', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Premise Type</label>
+              <select className="form-control" value={f.premise_type} onChange={e => sf('premise_type', e.target.value)}>
+                <option>On-Premise</option><option>Off-Premise</option><option>Both</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input className="form-control" value={f.phone} onChange={e => sf('phone', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-control" type="email" value={f.email} onChange={e => sf('email', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Buyer'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Buyers Screen ─────────────────────────────────────────────────────────────
+function BuyersScreen({ onToast }) {
+  const [groups,    setGroups]    = useState([]);   // [{client, buyers:[]}]
+  const [loading,   setLoading]   = useState(true);
+  const [modal,     setModal]     = useState(null); // null | { clientId, buyer? }
+  const today = new Date().toISOString().split('T')[0];
+
+  const load = () => {
+    setLoading(true);
+    // Load all clients with their buyers and each buyer's last recap date
+    sb.from('clients')
+      .select('id, company_name, status')
+      .eq('status', 'Active')
+      .order('company_name')
+      .then(async ({ data: clientList }) => {
+        if (!clientList) { setLoading(false); return; }
+        const { data: buyerList } = await sb.from('buyers')
+          .select('id, client_id, contact_name, role, premise_type, recaps(visit_date)')
+          .order('contact_name');
+        const { data: recapList } = await sb.from('recaps')
+          .select('buyer_id, visit_date').order('visit_date', { ascending: false });
+
+        const lastVisitByBuyer = {};
+        (recapList || []).forEach(r => {
+          if (r.buyer_id && !lastVisitByBuyer[r.buyer_id]) lastVisitByBuyer[r.buyer_id] = r.visit_date;
+        });
+
+        const grouped = clientList.map(c => ({
+          client: c,
+          buyers: (buyerList || []).filter(b => b.client_id === c.id).map(b => ({
+            ...b, lastVisit: lastVisitByBuyer[b.id] || null,
+          })),
+        })).filter(g => g.buyers.length > 0);
+
+        setGroups(grouped);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const deleteBuyer = async (b) => {
+    if (!confirm(`Delete "${b.contact_name}"?`)) return;
+    const { error } = await sb.from('buyers').delete().eq('id', b.id);
+    if (error) { onToast('Error: ' + error.message); return; }
+    load(); onToast('Buyer deleted.');
+  };
+
+  const handleSaved = () => { setModal(null); load(); onToast('Buyer saved ✓'); };
+
+  return (
+    <div className="main-wide">
+      <div className="page-header">
+        <div className="page-title">Buyers <em>&amp;</em> Contacts</div>
+        <div style={{ fontSize:'.78rem', color:'#8a7a64' }}>Grouped by active account</div>
+      </div>
+
+      {loading ? <div className="loading">Loading buyers…</div> :
+        groups.length === 0 ? <div className="empty">No buyers found. Add buyers from the Clients screen.</div> :
+        groups.map(g => (
+          <div key={g.client.id} className="buyer-group">
+            <div className="buyer-group-header">
+              <span>{g.client.company_name}</span>
+              <button className="btn btn-outline btn-sm" onClick={() => setModal({ clientId: g.client.id, buyer: null })}>+ Add</button>
+            </div>
+            {g.buyers.map(b => {
+              const ds = daysSince(b.lastVisit);
+              const stale = ds !== null && ds > 14;
+              return (
+                <div key={b.id} className="buyer-row">
+                  <div style={{ flex: 1 }}>
+                    <div className="buyer-name">{b.contact_name}</div>
+                    <div className="buyer-meta">{b.role || 'No role'} · {b.premise_type}</div>
+                  </div>
+                  <div style={{ textAlign:'right', marginRight:'.75rem' }}>
+                    {b.lastVisit
+                      ? <div className="buyer-meta">{b.lastVisit}</div>
+                      : <div className="buyer-meta">Never visited</div>
+                    }
+                    {stale && <span className="stale-badge">⚠ {ds}d ago</span>}
+                  </div>
+                  <button className="btn btn-outline btn-sm" style={{ marginRight:'.35rem' }}
+                    onClick={() => setModal({ clientId: g.client.id, buyer: b })}>Edit</button>
+                  <button className="btn btn-outline btn-sm" style={{ color:'var(--wine)', borderColor:'var(--wine)' }}
+                    onClick={() => deleteBuyer(b)}>Del</button>
+                </div>
+              );
+            })}
+          </div>
+        ))
+      }
+
+      {modal && (
+        <BuyerModal
+          initial={modal.buyer || {}}
+          clientId={modal.clientId}
+          onSave={handleSaved}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Phase 4: Product (SKU) Catalog ───────────────────────────────────────────
+
+const PRODUCT_BLANK = {
+  sku_number: '', type: 'Wine', brand_name: '', wine_name: '',
+  supplier_id: '', distributor: '', country: '', region: '',
+  appellation: '', varietals: '', laid_in_cost: '', wholesale_cost: '',
+  is_active: true, target_account_types: [],
+};
+
+const typeClass = (t) => {
+  if (!t) return 'badge-type-other';
+  const m = { Wine:'badge-type-wine', Beer:'badge-type-beer', Spirits:'badge-type-spirits', 'N/A Beverage':'badge-type-na' };
+  return m[t] || 'badge-type-other';
+};
+
+// ── ConversionBar ─────────────────────────────────────────────────────────────
+function ConvBar({ rate }) {
+  const pct = Math.min(100, Math.round((rate || 0) * 100));
+  return (
+    <div className="conv-bar">
+      <div className="conv-bg"><div className="conv-fill" style={{ width: pct + '%' }} /></div>
+      <div className="conv-pct">{pct}%</div>
+    </div>
+  );
+}
+
+// ── ProductModal (Add / Edit) ─────────────────────────────────────────────────
+function ProductModal({ initial, suppliers, onSave, onClose }) {
+  const [f, setF] = useState({ ...PRODUCT_BLANK, ...initial,
+    varietals: Array.isArray(initial.varietals) ? initial.varietals.join(', ') : (initial.varietals || ''),
+    target_account_types: Array.isArray(initial.target_account_types) ? initial.target_account_types : [],
+  });
+  const [saving, setSaving] = useState(false);
+  const sf = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const toggleTarget = (t) => setF(p => ({
+    ...p,
+    target_account_types: p.target_account_types.includes(t)
+      ? p.target_account_types.filter(x => x !== t)
+      : [...p.target_account_types, t],
+  }));
+
+  const save = async () => {
+    if (!f.sku_number.trim() || !f.brand_name.trim()) return;
+    setSaving(true);
+    const varietalArr = f.varietals ? f.varietals.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const payload = {
+      sku_number: f.sku_number.trim(),
+      type: f.type,
+      brand_name: f.brand_name.trim(),
+      wine_name: f.wine_name || null,
+      supplier_id: f.supplier_id || null,
+      distributor: f.distributor || null,
+      country: f.country || null,
+      region: f.region || null,
+      appellation: f.appellation || null,
+      varietals: varietalArr.length ? varietalArr : null,
+      laid_in_cost: f.laid_in_cost !== '' ? parseFloat(f.laid_in_cost) : null,
+      wholesale_cost: f.wholesale_cost !== '' ? parseFloat(f.wholesale_cost) : null,
+      is_active: f.is_active,
+      target_account_types: f.target_account_types.length ? f.target_account_types : null,
+    };
+    let err;
+    if (f.id) {
+      ({ error: err } = await sb.from('products').update(payload).eq('id', f.id));
+    } else {
+      ({ error: err } = await sb.from('products').insert(payload));
+    }
+    setSaving(false);
+    if (err) { alert('Error: ' + err.message); return; }
+    onSave();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{f.id ? 'Edit Product' : 'Add New Product'}</div>
+          <button className="slideover-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">SKU Number *</label>
+              <input className="form-control" value={f.sku_number} onChange={e => sf('sku_number', e.target.value)} placeholder="e.g. WN-0042" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-control" value={f.type} onChange={e => sf('type', e.target.value)}>
+                <option>Wine</option><option>Beer</option><option>Spirits</option><option>N/A Beverage</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Brand Name *</label>
+              <input className="form-control" value={f.brand_name} onChange={e => sf('brand_name', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Wine / Product Name</label>
+              <input className="form-control" value={f.wine_name} onChange={e => sf('wine_name', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Supplier</label>
+              <select className="form-control" value={f.supplier_id} onChange={e => sf('supplier_id', e.target.value)}>
+                <option value="">— None —</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Distributor</label>
+              <input className="form-control" value={f.distributor} onChange={e => sf('distributor', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Country</label>
+              <input className="form-control" value={f.country} onChange={e => sf('country', e.target.value)} placeholder="e.g. France" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Region</label>
+              <input className="form-control" value={f.region} onChange={e => sf('region', e.target.value)} placeholder="e.g. Burgundy" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Appellation</label>
+              <input className="form-control" value={f.appellation} onChange={e => sf('appellation', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Varietals (comma-separated)</label>
+              <input className="form-control" value={f.varietals} onChange={e => sf('varietals', e.target.value)} placeholder="e.g. Pinot Noir, Chardonnay" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Laid-In Cost ($)</label>
+              <input className="form-control" type="number" step="0.01" value={f.laid_in_cost} onChange={e => sf('laid_in_cost', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Wholesale Cost ($)</label>
+              <input className="form-control" type="number" step="0.01" value={f.wholesale_cost} onChange={e => sf('wholesale_cost', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Target Account Types <span style={{ fontWeight:400, textTransform:'none', letterSpacing:0, color:'#aaa' }}>(used to filter "Not Yet Shown")</span></label>
+            <div style={{ display:'flex', gap:'.4rem', flexWrap:'wrap', marginTop:'.25rem' }}>
+              {['On-Premise','Off-Premise','Retail','Chain','Other'].map(t => (
+                <button key={t} type="button"
+                  onClick={() => toggleTarget(t)}
+                  style={{
+                    padding:'.3rem .75rem', borderRadius:20, border:'1.5px solid',
+                    fontSize:'.78rem', fontFamily:'DM Sans, sans-serif', cursor:'pointer',
+                    background: f.target_account_types.includes(t) ? 'var(--wine)' : 'var(--cream)',
+                    color:      f.target_account_types.includes(t) ? '#fff' : '#6b5d4a',
+                    borderColor: f.target_account_types.includes(t) ? 'var(--wine)' : 'var(--mist)',
+                    transition: 'all .15s',
+                  }}>{t}</button>
+              ))}
+            </div>
+            <div className="date-hint" style={{ marginTop:'.35rem' }}>Leave blank to show this product for all account types.</div>
+          </div>
+          <div className="form-group" style={{ display:'flex', alignItems:'center', gap:'.75rem' }}>
+            <input type="checkbox" id="is_active" checked={f.is_active} onChange={e => sf('is_active', e.target.checked)} style={{ accentColor: 'var(--wine)', width:'16px', height:'16px' }} />
+            <label htmlFor="is_active" className="form-label" style={{ margin:0 }}>Active (visible in product picker)</label>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={saving || !f.sku_number.trim() || !f.brand_name.trim()}>
+            {saving ? 'Saving…' : 'Save Product'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CSV Import Modal ──────────────────────────────────────────────────────────
+function CsvImportModal({ onDone, onClose }) {
+  const [rows,    setRows]    = useState(null); // parsed preview
+  const [errors,  setErrors]  = useState([]);
+  const [saving,  setSaving]  = useState(false);
+  const [result,  setResult]  = useState(null);
+  const fileRef = useRef();
+
+  const EXPECTED = ['sku_number','type','brand_name','wine_name','country','region','wholesale_cost'];
+
+  const parseFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) { setErrors(['File appears empty.']); return; }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const errs = [];
+      EXPECTED.forEach(h => { if (!headers.includes(h)) errs.push(`Missing column: ${h}`); });
+      if (errs.length) { setErrors(errs); setRows(null); return; }
+
+      const parsed = lines.slice(1).map((line, i) => {
+        const vals = line.split(',');
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = vals[idx]?.trim() || ''; });
+        return obj;
+      });
+      setErrors([]);
+      setRows(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files[0] || e.target.files[0];
+    if (file) parseFile(file);
+  };
+
+  const doImport = async () => {
+    if (!rows || rows.length === 0) return;
+    setSaving(true);
+    const payload = rows.map(r => ({
+      sku_number: r.sku_number,
+      type: r.type || 'Wine',
+      brand_name: r.brand_name,
+      wine_name: r.wine_name || null,
+      country: r.country || null,
+      region: r.region || null,
+      wholesale_cost: r.wholesale_cost ? parseFloat(r.wholesale_cost) : null,
+      is_active: true,
+    })).filter(p => p.sku_number && p.brand_name);
+
+    const { error, data } = await sb.from('products').upsert(payload, { onConflict: 'sku_number' });
+    setSaving(false);
+    if (error) { setErrors([error.message]); return; }
+    setResult(payload.length);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">Import Products via CSV</div>
+          <button className="slideover-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          {result !== null ? (
+            <div style={{ textAlign:'center', padding:'1.5rem 0' }}>
+              <div style={{ fontSize:'2rem', marginBottom:'.5rem' }}>✓</div>
+              <div style={{ fontFamily:'Playfair Display, serif', fontSize:'1.1rem', color:'var(--wine)' }}>{result} product{result !== 1 ? 's' : ''} imported</div>
+              <button className="btn btn-primary btn-sm" style={{ marginTop:'1rem', width:'auto', padding:'.5rem 1.5rem' }} onClick={() => { onDone(); onClose(); }}>Done</button>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize:'.82rem', color:'#6b5d4a', marginBottom:'1rem' }}>
+                CSV must include columns: <code style={{ background:'var(--parchment)', padding:'.1rem .3rem', borderRadius:3 }}>{EXPECTED.join(', ')}</code>
+              </p>
+              <div className="csv-drop" onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => fileRef.current.click()}>
+                <div style={{ fontSize:'1.5rem', marginBottom:'.5rem' }}>📁</div>
+                Drop CSV file here or click to browse
+                <input ref={fileRef} type="file" accept=".csv" style={{ display:'none' }} onChange={handleDrop} />
+              </div>
+              {errors.length > 0 && (
+                <div style={{ marginTop:'.75rem' }}>
+                  {errors.map((e, i) => <div key={i} style={{ fontSize:'.78rem', color:'var(--wine)', marginBottom:'.2rem' }}>⚠ {e}</div>)}
+                </div>
+              )}
+              {rows && rows.length > 0 && (
+                <>
+                  <div style={{ fontSize:'.72rem', color:'#8a7a64', margin:'.75rem 0 .35rem', fontWeight:600, letterSpacing:'.06em', textTransform:'uppercase' }}>Preview ({rows.length} rows)</div>
+                  <div style={{ maxHeight:'180px', overflowY:'auto', border:'1px solid var(--mist)', borderRadius:5 }}>
+                    {rows.slice(0, 20).map((r, i) => (
+                      <div key={i} className="import-row ok">
+                        <span style={{ fontWeight:500 }}>{r.sku_number}</span>
+                        <span style={{ color:'#6b5d4a' }}>{r.brand_name}{r.wine_name ? ` — ${r.wine_name}` : ''}</span>
+                        <span style={{ color:'#8a7a64' }}>{r.type}</span>
+                      </div>
+                    ))}
+                    {rows.length > 20 && <div className="import-row" style={{ justifyContent:'center', color:'#8a7a64' }}>…and {rows.length - 20} more</div>}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+        {result === null && rows && rows.length > 0 && (
+          <div className="modal-footer">
+            <button className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={doImport} disabled={saving}>
+              {saving ? 'Importing…' : `Import ${rows.length} Rows`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── ProductDetail Slideover ───────────────────────────────────────────────────
+function ProductDetail({ product, suppliers, onClose, onEdit, convRates }) {
+  const [ptab,     setPtab]    = useState('accounts');
+  const [accounts, setAccounts] = useState(null); // clients who saw this
+  const [unseen,   setUnseen]   = useState(null); // clients who haven't
+
+  const rate = convRates[product.id] || { times_shown: 0, orders: 0, rate: 0 };
+  const supplierName = suppliers.find(s => s.id === product.supplier_id)?.name || '—';
+
+  useEffect(() => {
+    // Accounts shown — clients/buyers who saw this product, with most recent feedback
+    sb.from('recap_products_shown')
+      .select('feedback, follow_up_date, recaps(visit_date, clients(id, company_name), buyers(contact_name))')
+      .eq('product_id', product.id)
+      .order('recaps(visit_date)', { ascending: false })
+      .then(({ data }) => {
+        // Dedupe by client, keep most recent
+        const map = {};
+        (data || []).forEach(r => {
+          const cid = r.recaps?.clients?.id;
+          if (cid && !map[cid]) map[cid] = r;
+        });
+        setAccounts(Object.values(map));
+      });
+  }, [product.id]);
+
+  useEffect(() => {
+    if (ptab === 'unseen' && unseen === null) {
+      sb.from('recap_products_shown')
+        .select('recaps!inner(client_id)')
+        .eq('product_id', product.id)
+        .then(({ data: shownData }) => {
+          const seenIds = [...new Set((shownData || []).map(r => r.recaps?.client_id).filter(Boolean))];
+          let q = sb.from('clients').select('id, company_name, status, company_type').eq('status', 'Active');
+          if (seenIds.length > 0) q = q.not('id', 'in', `(${seenIds.join(',')})`);
+          q.order('company_name').then(({ data }) => setUnseen(data || []));
+        });
+    }
+  }, [ptab, product.id]);
+
+  const fbColor = (fb) => {
+    if (!fb) return '#aaa';
+    if (fb === 'yes_today') return '#1a5c2e';
+    if (fb === 'yes_later') return '#7a8c6e';
+    if (fb === 'maybe_later') return '#c9973a';
+    return '#888';
+  };
+  const fbLabel = (fb) => fb ? fb.replace(/_/g,' ') : '—';
+
+  return (
+    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="slideover">
+        <div className="slideover-header">
+          <div className="slideover-title">{product.brand_name}{product.wine_name ? ` — ${product.wine_name}` : ''}</div>
+          <div style={{ display:'flex', gap:'.5rem', alignItems:'center' }}>
+            <button className="btn btn-outline btn-sm" onClick={() => onEdit(product)}>Edit</button>
+            <button className="slideover-close" onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="slideover-body">
+          {/* Header badges */}
+          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'1rem' }}>
+            <span className={`badge ${typeClass(product.type)}`}>{product.type}</span>
+            <span className="tag">{product.sku_number}</span>
+            <span className={`badge ${product.is_active ? 'badge-active' : 'badge-archived'}`}>{product.is_active ? 'Active' : 'Archived'}</span>
+          </div>
+
+          {/* Conversion summary */}
+          <div style={{ background:'var(--parchment)', border:'1px solid var(--mist)', borderRadius:6, padding:'.75rem 1rem', marginBottom:'1rem' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'.5rem' }}>
+              <div style={{ fontSize:'.72rem', fontWeight:600, letterSpacing:'.07em', textTransform:'uppercase', color:'#7a6a54' }}>Conversion Rate</div>
+              <div style={{ fontSize:'.75rem', color:'#8a7a64' }}>{rate.times_shown} shown · {rate.orders} orders</div>
+            </div>
+            <ConvBar rate={rate.rate} />
+          </div>
+
+          {/* Details grid */}
+          <div className="product-detail-grid">
+            <div><div className="form-label">Supplier</div><div className="field-val">{supplierName}</div></div>
+            <div><div className="form-label">Distributor</div><div className="field-val">{product.distributor || '—'}</div></div>
+            <div><div className="form-label">Country</div><div className="field-val">{product.country || '—'}</div></div>
+            <div><div className="form-label">Region</div><div className="field-val">{product.region || '—'}</div></div>
+            <div><div className="form-label">Appellation</div><div className="field-val">{product.appellation || '—'}</div></div>
+            <div><div className="form-label">Varietals</div><div className="field-val">{Array.isArray(product.varietals) ? product.varietals.join(', ') : (product.varietals || '—')}</div></div>
+            <div><div className="form-label">Laid-In Cost</div><div className="field-val">{product.laid_in_cost != null ? `$${Number(product.laid_in_cost).toFixed(2)}` : '—'}</div></div>
+            <div><div className="form-label">Wholesale Cost</div><div className="field-val">{product.wholesale_cost != null ? `$${Number(product.wholesale_cost).toFixed(2)}` : '—'}</div></div>
+          </div>
+
+          {/* Tabs */}
+          <div className="slideover-tabs">
+            {[['accounts','Accounts Shown'],['unseen','Not Yet Shown']].map(([id, lbl]) => (
+              <button key={id} className={`stab ${ptab === id ? 'active' : ''}`} onClick={() => setPtab(id)}>{lbl}</button>
+            ))}
+          </div>
+
+          {ptab === 'accounts' && (
+            accounts === null ? <div className="loading">Loading…</div> :
+            accounts.length === 0 ? <div className="empty">No accounts have seen this product yet.</div> :
+            accounts.map((a, i) => (
+              <div key={i} className="sku-row" style={{ marginBottom:'.5rem', flexWrap:'wrap', gap:'.5rem' }}>
+                <div style={{ flex:1 }}>
+                  <div className="sku-name">{a.recaps?.clients?.company_name || '—'}</div>
+                  <div className="sku-sub">{a.recaps?.buyers?.contact_name || ''}{a.recaps?.visit_date ? ` · ${a.recaps.visit_date}` : ''}</div>
+                </div>
+                <span className="badge" style={{ background: fbColor(a.feedback) + '22', color: fbColor(a.feedback), alignSelf:'center' }}>{fbLabel(a.feedback)}</span>
+              </div>
+            ))
+          )}
+
+          {ptab === 'unseen' && (
+            unseen === null ? <div className="loading">Loading…</div> :
+            unseen.length === 0 ? <div className="empty">All active accounts have seen this product!</div> :
+            unseen.map(c => (
+              <div key={c.id} className="sku-row" style={{ marginBottom:'.5rem' }}>
+                <div style={{ flex:1 }}>
+                  <div className="sku-name">{c.company_name}</div>
+                  <div className="sku-sub">{c.company_type}</div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ProductsScreen ────────────────────────────────────────────────────────────
+function ProductsScreen({ onToast, deepProduct, onDeepProductClear }) {
+  const [products,   setProducts]   = useState([]);
+  const [suppliers,  setSuppliers]  = useState([]);
+  const [convRates,  setConvRates]  = useState({}); // productId -> {times_shown, orders, rate}
+  const [loading,    setLoading]    = useState(true);
+  const [filterType, setFType]      = useState('');
+  const [filterSupp, setFSupp]      = useState('');
+  const [filterCtry, setFCtry]      = useState('');
+  const [filterActv, setFActv]      = useState('active');
+  const [search,     setSearch]     = useState('');
+  const [sel,        setSel]        = useState(null);
+  const [editing,    setEditing]    = useState(null);
+  const [showModal,  setShowModal]  = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
+  // Auto-open product detail slideover when navigated here from another screen
+  useEffect(() => {
+    if (deepProduct) {
+      setSel(deepProduct);
+      onDeepProductClear && onDeepProductClear();
+    }
+  }, [deepProduct]);
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: prodData }, { data: suppData }, { data: convData }] = await Promise.all([
+      sb.from('products').select('*').order('brand_name'),
+      sb.from('suppliers').select('id, name').order('name'),
+      sb.from('product_conversion_rates').select('*'),
+    ]);
+
+    setProducts(prodData || []);
+    setSuppliers(suppData || []);
+
+    // Build convRates map
+    const cMap = {};
+    (convData || []).forEach(r => {
+      cMap[r.product_id] = {
+        times_shown: r.times_shown || 0,
+        orders: r.orders_placed || 0,
+        rate: parseFloat(r.conversion_rate_pct || 0) / 100,
+      };
+    });
+    setConvRates(cMap);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // Derived filter lists
+  const allCountries = [...new Set(products.map(p => p.country).filter(Boolean))].sort();
+
+  const filtered = products.filter(p => {
+    if (filterActv === 'active'    && !p.is_active) return false;
+    if (filterActv === 'archived'  &&  p.is_active) return false;
+    if (filterType && p.type !== filterType) return false;
+    if (filterSupp && p.supplier_id !== filterSupp) return false;
+    if (filterCtry && p.country !== filterCtry) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!p.brand_name?.toLowerCase().includes(q) &&
+          !p.wine_name?.toLowerCase().includes(q) &&
+          !p.sku_number?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const handleSaved = () => {
+    setShowModal(false); setEditing(null);
+    load(); onToast('Product saved ✓');
+  };
+
+  const deleteProduct = async (p) => {
+    if (!confirm(`Archive "${p.brand_name}"? It will be hidden from product picker.`)) return;
+    const { error } = await sb.from('products').update({ is_active: false }).eq('id', p.id);
+    if (error) { onToast('Error: ' + error.message); return; }
+    setSel(null); load(); onToast('Product archived.');
+  };
+
+  const supplierName = (id) => suppliers.find(s => s.id === id)?.name || '—';
+
+  return (
+    <div className="main-wide">
+      <div className="page-header">
+        <div className="page-title">Product <em>Catalog</em></div>
+        <div style={{ display:'flex', gap:'.5rem' }}>
+          <button className="btn btn-outline btn-sm" onClick={() => setShowImport(true)}>↑ Import CSV</button>
+          <button className="btn btn-primary btn-sm" onClick={() => { setEditing({}); setShowModal(true); }}>+ Add Product</button>
+        </div>
+      </div>
+
+      {/* Search + Filters */}
+      <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
+        <div className="search-wrap" style={{ flex: '1 1 200px', minWidth: '160px' }}>
+          <input className="form-control" placeholder="Search SKU, brand, wine name…" value={search} onChange={e => setSearch(e.target.value)}
+            style={{ padding:'.4rem .75rem', fontSize:'.82rem' }} />
+        </div>
+        <div className="filter-bar" style={{ margin:0, flex:'0 0 auto' }}>
+          <select value={filterActv} onChange={e => setFActv(e.target.value)}>
+            <option value="">All</option><option value="active">Active</option><option value="archived">Archived</option>
+          </select>
+          <select value={filterType} onChange={e => setFType(e.target.value)}>
+            <option value="">All Types</option>
+            <option>Wine</option><option>Beer</option><option>Spirits</option><option>N/A Beverage</option><option>Other</option>
+          </select>
+          <select value={filterSupp} onChange={e => setFSupp(e.target.value)}>
+            <option value="">All Suppliers</option>
+            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select value={filterCtry} onChange={e => setFCtry(e.target.value)}>
+            <option value="">All Countries</option>
+            {allCountries.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? <div className="loading">Loading catalog…</div> : (
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Brand / Product</th>
+                <th>Type</th>
+                <th>Supplier</th>
+                <th>Origin</th>
+                <th>Wholesale</th>
+                <th>Times Shown</th>
+                <th>Conversion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={8} style={{ textAlign:'center', color:'#8a7a64', fontStyle:'italic', padding:'2rem' }}>No products match filters.</td></tr>
+              )}
+              {filtered.map(p => {
+                const cr = convRates[p.id] || { times_shown: 0, orders: 0, rate: 0 };
+                return (
+                  <tr key={p.id} onClick={() => setSel(p)}>
+                    <td><span className="tag" style={{ fontFamily:'monospace', fontSize:'.75rem' }}>{p.sku_number}</span></td>
+                    <td>
+                      <div className="cell-primary" style={{ fontSize:'.88rem' }}>{p.brand_name}</div>
+                      {p.wine_name && <div className="cell-sub">{p.wine_name}</div>}
+                      {!p.is_active && <span className="badge badge-archived" style={{ fontSize:'.6rem', marginTop:'.1rem', display:'inline-block' }}>archived</span>}
+                    </td>
+                    <td><span className={`badge ${typeClass(p.type)}`}>{p.type}</span></td>
+                    <td style={{ fontSize:'.82rem', color:'#6b5d4a' }}>{supplierName(p.supplier_id)}</td>
+                    <td>
+                      <div style={{ fontSize:'.82rem' }}>{p.country || '—'}</div>
+                      {p.region && <div className="cell-sub">{p.region}</div>}
+                    </td>
+                    <td style={{ fontSize:'.82rem' }}>{p.wholesale_cost != null ? `$${Number(p.wholesale_cost).toFixed(2)}` : '—'}</td>
+                    <td style={{ textAlign:'center', fontSize:'.82rem', color: cr.times_shown > 0 ? 'var(--ink)' : '#aaa' }}>{cr.times_shown || '—'}</td>
+                    <td style={{ minWidth:'120px' }}><ConvBar rate={cr.rate} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {sel && (
+        <ProductDetail
+          product={sel}
+          suppliers={suppliers}
+          convRates={convRates}
+          onClose={() => setSel(null)}
+          onEdit={(p) => { setEditing(p); setSel(null); setShowModal(true); }}
+        />
+      )}
+
+      {showModal && (
+        <ProductModal
+          initial={editing || {}}
+          suppliers={suppliers}
+          onSave={handleSaved}
+          onClose={() => { setShowModal(false); setEditing(null); }}
+        />
+      )}
+
+      {showImport && (
+        <CsvImportModal
+          onDone={() => load()}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Tabs + App ────────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'new',       label: 'New Recap'     },
+  { id: 'history',   label: 'Visit History' },
+  { id: 'followups', label: 'Follow-Ups'    },
+  { id: 'clients',   label: 'Clients'       },
+  { id: 'buyers',    label: 'Buyers'        },
+  { id: 'products',  label: 'Products'      },
+];
+
+function App() {
+  const [tab,       setTab]       = useState('new');
+  const [toast,     setToast]     = useState(null);
+  const [deepProduct, setDeepProduct] = useState(null); // product obj to auto-open in Products tab
+
+  const saved   = (msg) => { setToast(msg); if (!msg.startsWith('Error')) setTab('history'); };
+  const notify  = (msg) => setToast(msg);
+  const wide    = tab === 'clients' || tab === 'buyers' || tab === 'products';
+
+  const navigateToProduct = (product) => {
+    setDeepProduct(product);
+    setTab('products');
+  };
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="topbar-brand">Pour Advice <span>CRM</span></div>
+      </header>
+      <nav className="nav">
+        {TABS.map(t => (
+          <button key={t.id} className={`nav-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>
+        ))}
+      </nav>
+      {wide ? (
+        <>
+          {tab === 'clients'  && <ClientsScreen  onToast={notify} />}
+          {tab === 'buyers'   && <BuyersScreen   onToast={notify} />}
+          {tab === 'products' && <ProductsScreen onToast={notify} deepProduct={deepProduct} onDeepProductClear={() => setDeepProduct(null)} />}
+        </>
+      ) : (
+        <main className="main">
+          {tab === 'new'       && <NewRecap    onSaved={saved} />}
+          {tab === 'history'   && <RecapHistory onNavigateProduct={navigateToProduct} />}
+          {tab === 'followups' && <FollowUps   />}
+        </main>
+      )}
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
