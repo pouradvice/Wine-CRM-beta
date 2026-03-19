@@ -99,6 +99,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     nature:              'Sales Call',
     occasion:            '',
     expense_receipt_url: null,
+    expense_amount:      '',
     notes:               null,
     products:            [],
     ...initialValues,
@@ -166,8 +167,10 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   const handleReceiptUpload = async (file: File) => {
     setReceiptUploading(true);
     try {
+      const { data: { user }, error: authError } = await sb.auth.getUser();
+      if (authError || !user) throw new Error('Not authenticated');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `receipts/${Date.now()}-${safeName}`;
+      const path = `${user.id}/receipts/${Date.now()}-${safeName}`;
       const { error: uploadErr } = await sb.storage
         .from('expense-receipts')
         .upload(path, file, { upsert: true });
@@ -292,6 +295,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         nature:              form.nature,
         occasion:            form.occasion || '',
         expense_receipt_url: form.expense_receipt_url || '',
+        expense_amount:      form.expense_amount ? parseFloat(form.expense_amount) : null,
         notes:               form.notes || '',
       };
 
@@ -506,6 +510,20 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
               View uploaded receipt →
             </a>
           )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="expense_amount" className={styles.label}>Expense Amount ($)</label>
+          <input
+            id="expense_amount"
+            type="number"
+            step="0.01"
+            min="0"
+            className={styles.input}
+            placeholder="0.00"
+            value={form.expense_amount}
+            onChange={(e) => setForm((f) => ({ ...f, expense_amount: e.target.value }))}
+          />
         </div>
       </section>
 

@@ -72,6 +72,7 @@ export function ExpensesClient({ expenses }: Props) {
                 <th>Salesperson</th>
                 <th>Account</th>
                 <th>Receipt</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -92,6 +93,7 @@ export function ExpensesClient({ expenses }: Props) {
                       </a>
                     ) : '—'}
                   </td>
+                  <td>{e.expense_amount != null ? `$${e.expense_amount.toFixed(2)}` : '—'}</td>
                 </tr>
               ))}
             </tbody>

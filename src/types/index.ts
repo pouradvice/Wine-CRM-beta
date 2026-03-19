@@ -225,6 +225,7 @@ export interface Recap {
   nature:              RecapNature;
   occasion:            string | null;
   expense_receipt_url: string | null;
+  expense_amount:      number | null;
   notes:               string | null;
   created_at:          string;
   updated_at:          string;
@@ -405,7 +406,8 @@ export interface ExpenseRecap {
   visit_date:          string;
   salesperson:         string;
   account_name:        string;
-  expense_receipt_url: string;
+  expense_receipt_url: string | null;
+  expense_amount:      number | null;
 }
 
 export interface AccountReportRow {
@@ -484,6 +486,7 @@ export interface RecapFormState {
   nature:              RecapNature;
   occasion:            string;
   expense_receipt_url: string | null;
+  expense_amount:      string;
   notes:               string | null;
   products:            RecapFormProduct[];
 }
