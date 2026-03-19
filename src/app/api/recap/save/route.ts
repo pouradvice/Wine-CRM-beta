@@ -47,20 +47,30 @@ export async function POST(request: NextRequest) {
     // 6a. Fetch session — RLS enforces ownership
     const { data: session } = await sb
       .from('daily_plan_sessions')
-      .select('id, account_ids, completed_account_ids, plan_date')
+      .select('id, account_ids, completed_account_ids, unplanned_account_ids, plan_date')
       .eq('id', sessionId)
       .maybeSingle();
 
     // 6b. Only act when session exists and belongs to today
     if (session && session.plan_date === todayLocal()) {
-      const isInPlan   = (session.account_ids as string[]).includes(accountId);
+      const isInPlan    = (session.account_ids as string[]).includes(accountId);
       const alreadyDone = (session.completed_account_ids as string[]).includes(accountId);
 
-      if (isInPlan && !alreadyDone) {
-        await sb.rpc('append_completed_account', {
-          p_session_id: sessionId,
-          p_account_id: accountId,
-        });
+      if (!alreadyDone) {
+        if (isInPlan) {
+          // Planned account — mark complete via existing RPC
+          await sb.rpc('append_completed_account', {
+            p_session_id: sessionId,
+            p_account_id: accountId,
+          });
+        } else {
+          // Unplanned stop — append to account_ids, completed_account_ids,
+          // and unplanned_account_ids atomically via new RPC
+          await sb.rpc('append_unplanned_account', {
+            p_session_id: sessionId,
+            p_account_id: accountId,
+          });
+        }
       }
       redirectToPlan = true;
     }

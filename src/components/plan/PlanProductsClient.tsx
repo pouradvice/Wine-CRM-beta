@@ -93,8 +93,9 @@ export function PlanProductsClient({ teamId: _teamId }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          account_ids: Array.from(selectedAccountIds),
-          product_ids: selectedProducts.map((p) => p.id),
+          account_ids:   Array.from(selectedAccountIds),
+          product_ids:   selectedProducts.map((p) => p.id),
+          planning_mode: 'product_first',
         }),
       });
       if (!res.ok) {

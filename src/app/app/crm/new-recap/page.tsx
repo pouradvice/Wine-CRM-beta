@@ -19,7 +19,12 @@ import type { Product, RecapFormState } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-export default async function NewRecapPage() {
+export default async function NewRecapPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ account_id?: string; unplanned?: string }>;
+}) {
+  const params = await searchParams;
   const sb = await createClient();
 
   const { data: { user } } = await sb.auth.getUser();
@@ -54,13 +59,31 @@ export default async function NewRecapPage() {
       .maybeSingle();
 
     if (session && session.plan_date === todayLocal()) {
-      // Pre-populate account if session has accounts
-      if ((session.account_ids as string[]).length > 0) {
-        // Find the first account not yet completed
-        const nextAccountId = (session.account_ids as string[]).find(
+      // Determine which account to pre-populate
+      let nextAccountId: string | undefined;
+
+      const requestedAccountId = params.account_id;
+
+      if (requestedAccountId) {
+        // Rep tapped a specific account card
+        if ((session.account_ids as string[]).includes(requestedAccountId)) {
+          // It's in the plan — use it directly
+          nextAccountId = requestedAccountId;
+        } else {
+          // It's NOT in the plan — unplanned stop; do NOT pre-populate
+          nextAccountId = undefined;
+        }
+      } else if (params.unplanned === 'true') {
+        // "Add unplanned stop" button — do NOT pre-populate
+        nextAccountId = undefined;
+      } else {
+        // No query param — use existing fallback: first incomplete account
+        nextAccountId = (session.account_ids as string[]).find(
           (id: string) => !(session.completed_account_ids as string[]).includes(id),
         ) ?? (session.account_ids as string[])[0];
+      }
 
+      if (nextAccountId) {
         initialValues = { account_id: nextAccountId };
       }
 

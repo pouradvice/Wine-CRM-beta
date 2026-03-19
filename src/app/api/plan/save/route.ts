@@ -5,10 +5,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { todayLocal } from '@/lib/dateUtils';
+import type { PlanningMode } from '@/types';
 
 interface SavePlanBody {
-  account_ids: string[];
-  product_ids: string[];
+  account_ids:   string[];
+  product_ids:   string[];
+  planning_mode?: PlanningMode;
 }
 
 export async function POST(req: NextRequest) {
@@ -65,6 +67,8 @@ export async function POST(req: NextRequest) {
         account_ids,
         product_ids,
         completed_account_ids: [],
+        planning_mode:         body.planning_mode === 'product_first' ? 'product_first' : 'account_first',
+        // ^ Coerce any missing or invalid value to 'account_first' (spec: do NOT return a validation error)
       },
       { onConflict: 'user_id,plan_date' },
     )
