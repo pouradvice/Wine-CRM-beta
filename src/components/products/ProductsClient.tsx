@@ -244,7 +244,8 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         shownAccountIds.add(rp.recap.account.id);
 
         // Track active placements — keep the most recent placement_date per account
-        if (rp.menu_placement) {
+        // A placement is active if menu_placement is true OR outcome is 'Yes Today'
+        if (rp.menu_placement || rp.outcome === 'Yes Today') {
           const existing = activeAccountMap.get(rp.recap.account.id);
           if (!existing || rp.recap.visit_date > existing.placement_date) {
             activeAccountMap.set(rp.recap.account.id, {

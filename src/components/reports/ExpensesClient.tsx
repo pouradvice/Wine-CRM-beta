@@ -71,6 +71,7 @@ export function ExpensesClient({ expenses }: Props) {
                 <th>Date</th>
                 <th>Salesperson</th>
                 <th>Account</th>
+                <th>Amount</th>
                 <th>Receipt</th>
                 <th>Amount</th>
               </tr>
@@ -81,6 +82,9 @@ export function ExpensesClient({ expenses }: Props) {
                   <td className={styles.mono}>{e.visit_date}</td>
                   <td>{e.salesperson}</td>
                   <td>{e.account_name}</td>
+                  <td className={styles.mono}>
+                    {e.expense_amount != null ? `$${e.expense_amount.toFixed(2)}` : '—'}
+                  </td>
                   <td>
                     {e.expense_receipt_url ? (
                       <a
