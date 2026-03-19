@@ -115,6 +115,9 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   // Photo upload states: productId → uploading/uploaded
   const [photoUploading, setPhotoUploading] = useState<Record<string, boolean>>({});
 
+  // Receipt upload state
+  const [receiptUploading, setReceiptUploading] = useState(false);
+
   const isChecklistMode = CHECKLIST_NATURES.includes(form.nature);
 
   // ── Product management ────────────────────────────────────────
@@ -149,6 +152,27 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     },
     [],
   );
+
+  // ── Receipt upload ────────────────────────────────────────────
+  const handleReceiptUpload = async (file: File) => {
+    setReceiptUploading(true);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `receipts/${Date.now()}-${safeName}`;
+      const { error: uploadErr } = await sb.storage
+        .from('expense-receipts')
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = sb.storage.from('expense-receipts').getPublicUrl(path);
+      setForm((f) => ({ ...f, expense_receipt_url: urlData.publicUrl }));
+    } catch (err) {
+      console.error('Receipt upload failed:', err);
+      setError('Receipt upload failed. Please try again.');
+    } finally {
+      setReceiptUploading(false);
+    }
+  };
 
   // ── Photo upload ──────────────────────────────────────────────
   const handlePhotoUpload = async (productId: string, file: File) => {
@@ -445,6 +469,34 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
             value={form.notes ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           />
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="expense_receipt" className={styles.label}>Expense Receipt</label>
+          <input
+            id="expense_receipt"
+            type="file"
+            accept="image/*,application/pdf"
+            className={styles.input}
+            disabled={receiptUploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleReceiptUpload(file);
+            }}
+          />
+          {receiptUploading && (
+            <span className={styles.uploadingHint}>Uploading…</span>
+          )}
+          {form.expense_receipt_url && !receiptUploading && (
+            <a
+              href={form.expense_receipt_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.photoLink}
+            >
+              View uploaded receipt →
+            </a>
+          )}
         </div>
       </section>
 
