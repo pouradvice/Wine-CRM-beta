@@ -110,7 +110,7 @@ function OutcomePill({ outcome }: { outcome: string }) {
 }
 
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
-type DetailTab = 'history' | 'placements' | 'seen' | 'not_seen';
+type DetailTab = 'history' | 'former_placements' | 'seen' | 'not_seen';
 
 const PAGE_SIZE = 25;
 
@@ -140,6 +140,13 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
 
   // Active SKUs
   const [accountSkus, setAccountSkus_] = useState<Product[]>([]);
+
+  // Former placements: ever placed (menu_placement = true in recap_products) but no longer in active SKUs
+  const formerPlacements = useMemo(() => {
+    const activeSkuProductIds = new Set(accountSkus.map((p) => p.id));
+    return placements.filter((p) => !activeSkuProductIds.has(p.product_id));
+  }, [placements, accountSkus]);
+
   const [editSkus, setEditSkus] = useState<Product[]>([]);
   const [skuSearch, setSkuSearch] = useState('');
   const [skuResults, setSkuResults] = useState<Product[]>([]);
@@ -663,14 +670,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                     </span>
                   </div>
                 )}
-                {!detailLoading && placements.length > 0 && (
-                  <div className={styles.infoCardRow}>
-                    <span className={styles.infoCardLabel}>Placed</span>
-                    <span className={styles.dossierStat}>
-                      {placements.length} active placement{placements.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                )}
                 {activeClient.notes && (
                   <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
                     <span className={styles.infoCardLabel}>Notes</span>
@@ -691,12 +690,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
               </button>
               <button
                 type="button"
-                className={`${styles.slideTab} ${detailTab === 'placements' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('placements')}
+                className={`${styles.slideTab} ${detailTab === 'former_placements' ? styles.slideTabActive : ''}`}
+                onClick={() => setDetailTab('former_placements')}
               >
-                Active Placements
-                {!detailLoading && placements.length > 0 && (
-                  <span className={styles.tabCount}>{placements.length}</span>
+                Former Placements
+                {!detailLoading && formerPlacements.length > 0 && (
+                  <span className={styles.tabCount}>{formerPlacements.length}</span>
                 )}
               </button>
               <button
@@ -754,12 +753,12 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                   ))}
                 </div>
               )
-            ) : detailTab === 'placements' ? (
-              placements.length === 0 ? (
-                <p className={styles.detailEmpty}>No active placements recorded for this account.</p>
+            ) : detailTab === 'former_placements' ? (
+              formerPlacements.length === 0 ? (
+                <p className={styles.detailEmpty}>No former placements recorded for this account.</p>
               ) : (
                 <ul className={styles.placementList}>
-                  {placements.map((p) => (
+                  {formerPlacements.map((p) => (
                     <li key={p.product_id} className={styles.placementRow}>
                       <div className={styles.placementInfo}>
                         <span className={styles.placementName}>{p.wine_name}</span>
