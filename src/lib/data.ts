@@ -34,6 +34,7 @@ import type {
   PipelineHealth,
   ExpenseRecap,
   AccountReportRow,
+  WeeklySummary,
 } from '@/types';
 import { mapDbError } from '@/types';
 
@@ -954,3 +955,183 @@ export async function getAccountsReport(
 
 // Re-export error type for API routes
 export type { ApiErrorResponse };
+
+// ── Weekly Summaries ──────────────────────────────────────────
+
+export async function getWeeklySummaries(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<WeeklySummary[]> {
+  const { data, error } = await sb
+    .from('weekly_summaries')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('week_start', { ascending: false });
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? []) as WeeklySummary[];
+}
+
+export async function getWeeklySummaryByWeek(
+  sb: SupabaseClient,
+  teamId: string,
+  weekStart: string,
+): Promise<WeeklySummary | null> {
+  const { data, error } = await sb
+    .from('weekly_summaries')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('week_start', weekStart)
+    .maybeSingle();
+  if (error) throw new Error(mapDbError(error));
+  return data as WeeklySummary | null;
+}
+
+export async function generateAndSaveWeeklySummary(
+  sb: SupabaseClient,
+  teamId: string,
+  weekStart: string,
+  userId: string,
+): Promise<WeeklySummary> {
+  // 1. Calculate weekEnd (weekStart + 6 days)
+  const startDate = new Date(weekStart + 'T00:00:00Z');
+  const endDate   = new Date(startDate);
+  endDate.setUTCDate(endDate.getUTCDate() + 6);
+  const weekEnd = endDate.toISOString().split('T')[0];
+
+  // 2. Query recaps for the week
+  const { data: recaps, error: recapsError } = await sb
+    .from('recaps')
+    .select('id, account_id, recap_products(id, outcome, product_id)')
+    .eq('team_id', teamId)
+    .gte('visit_date', weekStart)
+    .lte('visit_date', weekEnd);
+  if (recapsError) throw new Error(mapDbError(recapsError));
+
+  const weekRecaps = recaps ?? [];
+
+  // 3. Compute basic metrics
+  const total_visits     = weekRecaps.length;
+  const accountIds       = new Set(weekRecaps.map((r) => r.account_id as string));
+  const accounts_visited = accountIds.size;
+
+  type RecapProduct = { id: string; outcome: string; product_id: string };
+  const allProducts: RecapProduct[] = weekRecaps.flatMap(
+    (r) => (r.recap_products as RecapProduct[]) ?? [],
+  );
+  const total_orders          = allProducts.filter((p) => p.outcome === 'Yes Today').length;
+  const total_products_shown  = allProducts.length;
+  const conversion_rate_pct   = total_products_shown > 0
+    ? Math.round((total_orders / total_products_shown) * 1000) / 10
+    : null;
+
+  // 4. Active follow-ups
+  const { count: followUpCount, error: fuError } = await sb
+    .from('follow_ups')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .eq('status', 'Open');
+  if (fuError) throw new Error(mapDbError(fuError));
+  const active_follow_ups = followUpCount ?? 0;
+
+  // 5. Inactive accounts
+  const inactiveList   = await getInactiveAccounts(sb, 60, teamId);
+  const inactive_accounts = inactiveList.length;
+
+  // 6. Top 5 products by orders in the week
+  const productOrderCounts = new Map<string, number>();
+  for (const p of allProducts) {
+    if (p.outcome === 'Yes Today') {
+      productOrderCounts.set(p.product_id, (productOrderCounts.get(p.product_id) ?? 0) + 1);
+    }
+  }
+  const productShownCounts = new Map<string, number>();
+  for (const p of allProducts) {
+    productShownCounts.set(p.product_id, (productShownCounts.get(p.product_id) ?? 0) + 1);
+  }
+
+  const topProductIds = Array.from(productOrderCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id);
+
+  let top_products: WeeklySummary['top_products'] = [];
+  if (topProductIds.length > 0) {
+    const { data: prodRows, error: prodError } = await sb
+      .from('products')
+      .select('id, wine_name, sku_number')
+      .in('id', topProductIds);
+    if (prodError) throw new Error(mapDbError(prodError));
+    top_products = (prodRows ?? []).map((prod) => {
+      const orders = productOrderCounts.get(prod.id) ?? 0;
+      const shown  = productShownCounts.get(prod.id) ?? 0;
+      return {
+        wine_name:          prod.wine_name as string,
+        sku_number:         prod.sku_number as string,
+        orders_placed:      orders,
+        conversion_rate_pct: shown > 0 ? Math.round((orders / shown) * 1000) / 10 : null,
+      };
+    }).sort((a, b) => b.orders_placed - a.orders_placed);
+  }
+
+  // 7. Top 5 accounts by visit count in the week
+  const accountVisitCounts = new Map<string, number>();
+  const accountOrderCounts = new Map<string, number>();
+  for (const r of weekRecaps) {
+    const aid = r.account_id as string;
+    accountVisitCounts.set(aid, (accountVisitCounts.get(aid) ?? 0) + 1);
+    const orders = ((r.recap_products as RecapProduct[]) ?? [])
+      .filter((p) => p.outcome === 'Yes Today').length;
+    accountOrderCounts.set(aid, (accountOrderCounts.get(aid) ?? 0) + orders);
+  }
+
+  const topAccountIds = Array.from(accountVisitCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id);
+
+  let top_accounts: WeeklySummary['top_accounts'] = [];
+  if (topAccountIds.length > 0) {
+    const { data: accRows, error: accError } = await sb
+      .from('accounts')
+      .select('id, name')
+      .in('id', topAccountIds);
+    if (accError) throw new Error(mapDbError(accError));
+    top_accounts = (accRows ?? []).map((acc) => ({
+      account_name: acc.name as string,
+      visit_count:  accountVisitCounts.get(acc.id) ?? 0,
+      orders_placed: accountOrderCounts.get(acc.id) ?? 0,
+    })).sort((a, b) => b.visit_count - a.visit_count);
+  }
+
+  // 8. Pipeline summary from getPipelineHealth
+  const pipelineRows   = await getPipelineHealth(sb, teamId);
+  const pipeline_summary: Record<string, number> = {};
+  for (const row of pipelineRows) {
+    pipeline_summary[row.outcome] = row.count;
+  }
+
+  // 9. Upsert into weekly_summaries
+  const record = {
+    team_id:             teamId,
+    week_start:          weekStart,
+    week_end:            weekEnd,
+    total_visits,
+    total_orders,
+    accounts_visited,
+    conversion_rate_pct: conversion_rate_pct,
+    active_follow_ups,
+    inactive_accounts,
+    top_products,
+    top_accounts,
+    pipeline_summary,
+    generated_by:        userId,
+  };
+
+  const { data: upserted, error: upsertError } = await sb
+    .from('weekly_summaries')
+    .upsert(record, { onConflict: 'team_id,week_start' })
+    .select('*')
+    .single();
+  if (upsertError) throw new Error(mapDbError(upsertError));
+  return upserted as WeeklySummary;
+}

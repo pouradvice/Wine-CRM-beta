@@ -418,6 +418,24 @@ export interface AccountReportRow {
   orders_placed:   number;
 }
 
+export interface WeeklySummary {
+  id:                  string;
+  team_id:             string;
+  week_start:          string;   // 'YYYY-MM-DD'
+  week_end:            string;   // 'YYYY-MM-DD'
+  total_visits:        number;
+  total_orders:        number;
+  accounts_visited:    number;
+  conversion_rate_pct: number | null;
+  active_follow_ups:   number;
+  inactive_accounts:   number;
+  top_products:        Array<{ wine_name: string; sku_number: string; orders_placed: number; conversion_rate_pct: number | null }>;
+  top_accounts:        Array<{ account_name: string; visit_count: number; orders_placed: number }>;
+  pipeline_summary:    Record<string, number>;
+  generated_by:        string | null;
+  created_at:          string;
+}
+
 
 // ── Onboarding ───────────────────────────────────────────────
 
