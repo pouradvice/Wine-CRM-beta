@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { DashboardClient } from './DashboardClient';
 import { ExpensesClient } from './ExpensesClient';
 import { ByAccountsClient } from './ByAccountsClient';
+import { WeeklySummariesClient } from './WeeklySummariesClient';
 import type {
   ProductPerformance,
   VisitsBySupplierRow,
@@ -14,17 +15,19 @@ import type {
   PipelineHealth,
   ExpenseRecap,
   AccountReportRow,
+  WeeklySummary,
 } from '@/types';
 import styles from './ReportsClient.module.css';
 
-type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses';
+type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses' | 'weekly-summaries';
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'dashboard',   label: 'Dashboard' },
-  { id: 'by-accounts', label: 'By Accounts' },
-  { id: 'performance', label: 'By Product' },
-  { id: 'by-supplier', label: 'By Supplier' },
-  { id: 'expenses',    label: 'Expenses' },
+  { id: 'dashboard',        label: 'Dashboard' },
+  { id: 'by-accounts',      label: 'By Accounts' },
+  { id: 'performance',      label: 'By Product' },
+  { id: 'by-supplier',      label: 'By Supplier' },
+  { id: 'expenses',         label: 'Expenses' },
+  { id: 'weekly-summaries', label: 'Weekly Summaries' },
 ];
 
 interface ReportsClientProps {
@@ -37,6 +40,7 @@ interface ReportsClientProps {
   pipelineHealth:   PipelineHealth[];
   expenses:         ExpenseRecap[];
   accountsReport:   AccountReportRow[];
+  weeklySummaries:  WeeklySummary[];
 }
 
 export function ReportsClient({
@@ -49,6 +53,7 @@ export function ReportsClient({
   pipelineHealth,
   expenses,
   accountsReport,
+  weeklySummaries,
 }: ReportsClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
 
@@ -178,6 +183,10 @@ export function ReportsClient({
 
         {activeTab === 'expenses' && (
           <ExpensesClient expenses={expenses} />
+        )}
+
+        {activeTab === 'weekly-summaries' && (
+          <WeeklySummariesClient summaries={weeklySummaries} />
         )}
       </div>
     </>
