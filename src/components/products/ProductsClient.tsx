@@ -258,6 +258,32 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         }
       }
 
+      // Also include accounts where the product was manually added as an active SKU
+      type RawSkuData = {
+        account_id: string;
+        created_at: string;
+        account: { id: string; name: string; value_tier: string | null } | null;
+      };
+
+      const { data: skuRows } = await sb
+        .from('account_skus')
+        .select('account_id, created_at, account:accounts(id, name, value_tier)')
+        .eq('product_id', p.id);
+
+      for (const sku of (skuRows ?? []) as unknown as RawSkuData[]) {
+        if (!sku.account) continue;
+        const placementDate = sku.created_at ? sku.created_at.slice(0, 10) : '';
+        const existing = activeAccountMap.get(sku.account_id);
+        if (!existing || placementDate > existing.placement_date) {
+          activeAccountMap.set(sku.account_id, {
+            account_id: sku.account.id,
+            account_name: sku.account.name,
+            value_tier: sku.account.value_tier,
+            placement_date: placementDate,
+          });
+        }
+      }
+
       shownRows.sort((a, b) => b.visit_date.localeCompare(a.visit_date));
 
       const notShown = (allAccounts ?? []).filter((a) => !shownAccountIds.has(a.id));
