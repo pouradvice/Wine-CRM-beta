@@ -33,8 +33,17 @@
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   letter-spacing: -0.01em;
+}
+
+.wordmarkLogo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .wordmark:hover {
@@ -166,6 +175,9 @@
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .mobileWordmark:hover {
