@@ -549,7 +549,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                     <td className={styles.skuCell}>{p.sku_number}</td>
                     <td className={styles.wineNameCell}>{p.wine_name}</td>
                     <td>{p.type ?? '—'}</td>
-                    <td>{p.brand?.supplier?.name ?? p.supplier?.name ?? '—'}</td>
+                    <td>{p.brand?.supplier?.name ?? p.supplier?.name ?? suppliersList.find(s => s.id === (p.supplier_id ?? p.brand?.supplier_id))?.name ?? '—'}</td>
                     <td>{p.distributor ?? p.brand?.name ?? '—'}</td>
                     <td>{p.btg_cost != null ? `$${p.btg_cost.toFixed(2)}` : '—'}</td>
                   </tr>
@@ -625,10 +625,10 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                 )}
               </div>
               <div className={styles.infoCardGrid}>
-                {(activeProduct.brand?.supplier?.name || activeProduct.supplier?.name) && (
+                {(activeProduct.brand?.supplier?.name || activeProduct.supplier?.name || activeProduct.supplier_id || activeProduct.brand?.supplier_id) && (
                   <div className={styles.infoCardRow}>
                     <span className={styles.infoCardLabel}>Supplier</span>
-                    <span>{activeProduct.brand?.supplier?.name ?? activeProduct.supplier?.name}</span>
+                    <span>{activeProduct.brand?.supplier?.name ?? activeProduct.supplier?.name ?? suppliersList.find(s => s.id === (activeProduct.supplier_id ?? activeProduct.brand?.supplier_id))?.name}</span>
                   </div>
                 )}
                 {activeProduct.brand?.name && (
