@@ -361,6 +361,8 @@
   .btn-ghost:hover { background: #FDF5F6; }
   .btn-success { background: var(--success); color: white; }
   .btn-success:hover { background: #2D5438; }
+  .btn-warning { background: var(--warning); color: white; }
+  .btn-warning:hover { background: #5C4520; }
 
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
@@ -500,6 +502,11 @@
   <div class="section-label" style="margin-top:16px">recaps_import.csv — Preview (first 10 rows)</div>
   <div class="preview-scroll" id="recaps-preview"></div>
 
+  <div id="error-bucket-section" class="hidden">
+    <div class="section-label" style="margin-top:16px;color:var(--warning)" id="error-bucket-label">unmatched_accounts_manual.csv — Error Bucket (0 rows)</div>
+    <div class="preview-scroll" id="error-bucket-preview"></div>
+  </div>
+
   <div class="actions" id="export-actions"></div>
 
   <div class="next-steps">
@@ -508,6 +515,7 @@
       <li><strong>accounts_import.csv</strong> → Accounts › Import (existing CSVImporter — skips duplicates automatically)</li>
       <li>Create new <strong>brand</strong> via Products UI; then add both <strong>products</strong> — note their UUIDs</li>
       <li><strong>recaps_import.csv</strong> → hand off to eng team for SQL-level recap + recap_products insert (Stage 3b/3c)</li>
+      <li><strong>unmatched_accounts_manual.csv</strong> → resolve account names manually, then re-run or enter directly into CRM</li>
     </ol>
   </div>
 </div>
@@ -520,6 +528,12 @@ let detectedHeaders = [];
 let detectedRows = [];
 let accountRows = [];
 let recapRows = [];
+let unmatchedAccountRows = []; // account rows with no UUID resolution
+let unmatchedRecapRows   = []; // recap rows for unmatched accounts
+
+// ─── Error-bucket CSV columns ─────────────────────────────────────────────────
+const UNMATCHED_COLS = ['account_name','type','city','state','phone','email','notes',
+                        'visit_date','product_sku','bottles_depleted','recap_notes','error_reason'];
 
 // ─── Field schemas ────────────────────────────────────────────────────────────
 const ACCOUNT_FIELDS = [
@@ -835,18 +849,34 @@ function renderStep4() {
   accountRows.forEach(a => { a.account_id = resolveUuid(a.name) || ''; });
   recapRows.forEach(r => { r.account_id = resolveUuid(r.account_name) || ''; });
 
-  const resolvedAcc = accountRows.filter(r => r.account_id).length;
-  const unresolvedAcc = accountRows.filter(r => !r.account_id).length;
-  const resolvedRec = recapRows.filter(r => r.account_id).length;
-  const unresolvedRec = recapRows.filter(r => !r.account_id).length;
+  // Segregate into clean vs error bucket
+  if (hasUuids) {
+    unmatchedAccountRows = accountRows.filter(a => !a.account_id);
+    unmatchedRecapRows   = recapRows.filter(r => !r.account_id);
+  } else {
+    unmatchedAccountRows = [];
+    unmatchedRecapRows   = [];
+  }
+  const cleanAccountRows = hasUuids ? accountRows.filter(a => a.account_id) : accountRows;
+  const cleanRecapRows   = hasUuids ? recapRows.filter(r => r.account_id)   : recapRows;
+
+  const resolvedAcc   = cleanAccountRows.length;
+  const unresolvedAcc = unmatchedAccountRows.length;
+  const resolvedRec   = cleanRecapRows.length;
+  const unresolvedRec = unmatchedRecapRows.length;
+
+  const accSubText = hasUuids && unresolvedAcc > 0
+    ? `<div class="result-sub" style="color:var(--warning)">${resolvedAcc} matched · ${unresolvedAcc} in error bucket</div>`
+    : hasUuids
+      ? `<div class="result-sub" style="color:var(--success)">${resolvedAcc} matched · 0 in error bucket</div>`
+      : '';
 
   document.getElementById('results-grid').innerHTML = `
     <div class="result-card">
       <h4>Unique Accounts</h4>
       <div class="result-stat">${accountRows.length}<span>rows</span></div>
       <div class="result-sub">→ accounts_import.csv</div>
-      ${hasUuids ? `<div class="result-sub" style="color:${unresolvedAcc ? 'var(--warning)' : 'var(--success)'}">
-        ${resolvedAcc} UUIDs resolved · ${unresolvedAcc} unmatched</div>` : ''}
+      ${accSubText}
     </div>
     <div class="result-card">
       <h4>Recap Rows</h4>
@@ -892,7 +922,7 @@ function renderStep4() {
   panelCard.className = 'card';
   uuidPanel.appendChild(panelCard);
 
-  // Previews
+  // Previews — show only clean rows
   const accCols = hasUuids
     ? ['account_id','name','type','city','state','phone','email','notes']
     : ['name','type','city','state','phone','email','notes'];
@@ -900,8 +930,20 @@ function renderStep4() {
     ? ['account_id','account_name','visit_date','product_sku','bottles_depleted','notes']
     : ['account_name','visit_date','product_sku','bottles_depleted','notes'];
 
-  renderPreview('accounts-preview', accountRows, accCols);
-  renderPreview('recaps-preview',   recapRows,   recCols);
+  renderPreview('accounts-preview', cleanAccountRows, accCols);
+  renderPreview('recaps-preview',   cleanRecapRows,   recCols);
+
+  // Error bucket section
+  const errorSection = document.getElementById('error-bucket-section');
+  if (hasUuids && unresolvedAcc > 0) {
+    const unmatchedRows = buildUnmatchedRows();
+    document.getElementById('error-bucket-label').textContent =
+      `unmatched_accounts_manual.csv — Error Bucket (${unmatchedRows.length} rows)`;
+    renderPreview('error-bucket-preview', unmatchedRows, UNMATCHED_COLS);
+    errorSection.classList.remove('hidden');
+  } else {
+    errorSection.classList.add('hidden');
+  }
 
   // Warnings
   const alertsEl = document.getElementById('export-alerts');
@@ -911,8 +953,7 @@ function renderStep4() {
   if (noDate) alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${noDate} recap row(s) have no visit date.</div>`;
   if (noSku)  alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${noSku} row(s) have no product SKU mapped.</div>`;
   if (hasUuids && unresolvedAcc) {
-    const names = accountRows.filter(r => !r.account_id).map(r => r.name).join(', ');
-    alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${unresolvedAcc} account(s) not matched to a UUID — these are new and need importing first: <strong>${names}</strong></div>`;
+    alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${unresolvedAcc} account(s) could not be matched to a UUID and were moved to the error bucket — download <strong>unmatched_accounts_manual.csv</strong> for manual entry.</div>`;
   }
   if (!noDate && !noSku && (!hasUuids || unresolvedAcc === 0)) {
     alertsEl.innerHTML = '<div class="alert alert-success">✓ Files look clean — no missing required fields detected.</div>';
@@ -922,12 +963,17 @@ function renderStep4() {
   const actions = document.getElementById('export-actions');
   actions.innerHTML = '';
   const btnAcc = makeBtn('⬇ accounts_import.csv', 'btn-success',
-    () => downloadCSV(accountRows, accCols, 'accounts_import.csv'));
+    () => downloadCSV(cleanAccountRows, accCols, 'accounts_import.csv'));
   const btnRec = makeBtn('⬇ recaps_import.csv', 'btn-success',
-    () => downloadCSV(recapRows, recCols, 'recaps_import.csv'));
-  const btnReset = makeBtn('↺ Start Over', 'btn-ghost', () => location.reload());
+    () => downloadCSV(cleanRecapRows, recCols, 'recaps_import.csv'));
   actions.appendChild(btnAcc);
   actions.appendChild(btnRec);
+  if (hasUuids && unresolvedAcc > 0) {
+    const btnErr = makeBtn('⬇ unmatched_accounts_manual.csv', 'btn-warning',
+      () => downloadCSV(buildUnmatchedRows(), UNMATCHED_COLS, 'unmatched_accounts_manual.csv'));
+    actions.appendChild(btnErr);
+  }
+  const btnReset = makeBtn('↺ Start Over', 'btn-ghost', () => location.reload());
   actions.appendChild(btnReset);
 }
 
@@ -1003,6 +1049,39 @@ function renderPreview(id, rows, keys) {
   });
   html += '</tbody></table>';
   el.innerHTML = html;
+}
+
+function buildUnmatchedRows() {
+  const out = [];
+  // Build a lookup map for O(n) instead of O(n²) filtering
+  const recapsByAccount = new Map();
+  unmatchedRecapRows.forEach(r => {
+    const key = r.account_name.toLowerCase();
+    if (!recapsByAccount.has(key)) recapsByAccount.set(key, []);
+    recapsByAccount.get(key).push(r);
+  });
+  unmatchedAccountRows.forEach(acc => {
+    const recaps = recapsByAccount.get(acc.name.toLowerCase()) || [];
+    if (recaps.length === 0) {
+      out.push({
+        account_name: acc.name, type: acc.type, city: acc.city,
+        state: acc.state, phone: acc.phone, email: acc.email, notes: acc.notes,
+        visit_date: '', product_sku: '', bottles_depleted: '', recap_notes: '',
+        error_reason: 'no UUID match'
+      });
+    } else {
+      recaps.forEach(r => {
+        out.push({
+          account_name: acc.name, type: acc.type, city: acc.city,
+          state: acc.state, phone: acc.phone, email: acc.email, notes: acc.notes,
+          visit_date: r.visit_date, product_sku: r.product_sku,
+          bottles_depleted: r.bottles_depleted, recap_notes: r.notes,
+          error_reason: 'no UUID match'
+        });
+      });
+    }
+  });
+  return out;
 }
 
 function downloadCSV(rows, keys, filename) {
