@@ -42,21 +42,13 @@ export function Nav({ displayName, isOwner }: NavProps) {
       {/* Mobile top bar */}
       <div className={styles.mobileTopBar}>
         <Link href="/app/crm/new-recap" className={styles.mobileWordmark}>
-          <svg
+          <img
+            src="/logo.jpeg"
+            alt=""
             className={styles.wordmarkLogo}
-            viewBox="0 0 36 36"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <circle cx="18" cy="18" r="18" fill="#541828" />
-            <path
-              d="M18 8 C14 12 11 17 12 21 C13 25 16 27 18 27 C20 27 23 25 24 21 C25 17 22 12 18 8Z"
-              fill="#f5f0e8"
-              opacity="0.9"
-            />
-            <rect x="17" y="27" width="2" height="5" rx="1" fill="#f5f0e8" opacity="0.7" />
-          </svg>
+            width={28}
+            height={28}
+          />
           Pour Advice
         </Link>
         <button
@@ -86,21 +78,13 @@ export function Nav({ displayName, isOwner }: NavProps) {
       <nav className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <Link href="/app/crm/new-recap" className={styles.wordmark}>
-            <svg
+            <img
+              src="/logo.jpeg"
+              alt=""
               className={styles.wordmarkLogo}
-              viewBox="0 0 36 36"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle cx="18" cy="18" r="18" fill="#541828" />
-              <path
-                d="M18 8 C14 12 11 17 12 21 C13 25 16 27 18 27 C20 27 23 25 24 21 C25 17 22 12 18 8Z"
-                fill="#f5f0e8"
-                opacity="0.9"
-              />
-              <rect x="17" y="27" width="2" height="5" rx="1" fill="#f5f0e8" opacity="0.7" />
-            </svg>
+              width={28}
+              height={28}
+            />
             Pour Advice
           </Link>
         </div>
