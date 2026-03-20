@@ -533,3 +533,135 @@ export interface SuggestedAccount {
   products_matched: number;
   score:            number;
 }
+
+
+// ── Billing ───────────────────────────────────────────────────
+
+export type InvoiceStatus = 'Draft' | 'Reviewed' | 'Sent' | 'Paid' | 'Disputed' | 'Void';
+export type ActivityType  = 'Demo' | 'Event';
+export type LineItemType  = 'Placement' | 'Demo' | 'Event' | 'Demo Hours' | 'Event Hours';
+
+export interface SupplierBillingTerms {
+  id:                     string;
+  supplier_id:            string;
+  team_id:                string;
+  billing_period:         string;
+  placement_rate:         number;
+  placement_lockout_days: number;
+  demo_rate:              number;
+  demo_complimentary:     number;
+  demo_hourly_rate:       number | null;
+  event_rate:             number;
+  event_complimentary:    number;
+  event_hourly_rate:      number | null;
+  min_recaps_required:    number;
+  effective_from:         string;
+  effective_to:           string | null;
+  notes:                  string | null;
+  created_at:             string;
+  updated_at:             string;
+}
+
+export type SupplierBillingTermsInsert = Omit<SupplierBillingTerms, 'id' | 'created_at' | 'updated_at'>;
+export type SupplierBillingTermsUpdate = Partial<SupplierBillingTermsInsert>;
+
+export interface DepletionReport {
+  id:           string;
+  supplier_id:  string;
+  team_id:      string;
+  period_month: string;
+  raw_data:     Record<string, unknown> | null;
+  row_count:    number | null;
+  imported_by:  string | null;
+  imported_at:  string;
+  created_at:   string;
+}
+
+export type DepletionReportInsert = Omit<DepletionReport, 'id' | 'imported_at' | 'created_at'>;
+
+export interface SupplierVerifiedPlacement {
+  id:                   string;
+  team_id:              string;
+  supplier_id:          string;
+  account_id:           string;
+  product_id:           string;
+  recap_product_id:     string;
+  salesperson:          string;
+  depletion_report_id:  string;
+  depletion_period:     string;
+  billing_eligible:     boolean;
+  billed_on_invoice_id: string | null;
+  lockout_expires_at:   string;
+  verified_at:          string;
+  created_at:           string;
+  // Joined
+  account?: { name: string } | null;
+  product?: { wine_name: string; sku_number: string } | null;
+}
+
+export interface SupplierActivityLog {
+  id:                   string;
+  team_id:              string;
+  supplier_id:          string;
+  recap_id:             string | null;
+  salesperson:          string;
+  activity_type:        ActivityType;
+  activity_date:        string;
+  additional_hours:     number;
+  notes:                string | null;
+  billing_period:       string;
+  billed_on_invoice_id: string | null;
+  created_at:           string;
+  updated_at:           string;
+}
+
+export type SupplierActivityLogInsert = Omit<SupplierActivityLog, 'id' | 'created_at' | 'updated_at'>;
+
+export interface SupplierInvoice {
+  id:                 string;
+  team_id:            string;
+  supplier_id:        string;
+  billing_period:     string;
+  status:             InvoiceStatus;
+  placements_count:   number;
+  demo_count:         number;
+  event_count:        number;
+  subtotal:           number;
+  square_invoice_id:  string | null;
+  square_invoice_url: string | null;
+  sent_at:            string | null;
+  paid_at:            string | null;
+  notes:              string | null;
+  created_at:         string;
+  updated_at:         string;
+  // Joined
+  supplier?:   { name: string } | null;
+  line_items?: SupplierInvoiceLineItem[];
+}
+
+export interface SupplierInvoiceLineItem {
+  id:          string;
+  invoice_id:  string;
+  line_type:   LineItemType;
+  description: string;
+  quantity:    number;
+  unit_rate:   number;
+  amount:      number;
+  salesperson: string | null;
+  source_ids:  string[] | null;
+  created_at:  string;
+}
+
+// Return shape from generate_invoice_draft RPC
+export type InvoiceDraftResult =
+  | { status: 'OK'; invoice_id: string; subtotal: number }
+  | { status: 'THRESHOLD_NOT_MET'; recap_count: number; required: number }
+  | { status: 'NOTHING_TO_BILL' }
+  | { status: 'ALREADY_EXISTS'; invoice_id: string };
+
+// Return shape from match_depletion_to_placements RPC
+export interface DepletionMatchResult {
+  new_placements:    number;
+  skipped_lockout:   number;
+  skipped_no_match:  number;
+}
