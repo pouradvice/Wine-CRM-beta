@@ -34,6 +34,13 @@ import type {
   ExpenseRecap,
   AccountReportRow,
   WeeklySummary,
+  // Billing
+  InvoiceStatus,
+  SupplierBillingTerms,
+  SupplierBillingTermsInsert,
+  SupplierInvoice,
+  InvoiceDraftResult,
+  DepletionMatchResult,
 } from '@/types';
 import { mapDbError } from '@/types';
 
@@ -1210,4 +1217,150 @@ export async function generateAndSaveWeeklySummary(
     .single();
   if (upsertError) throw new Error(mapDbError(upsertError));
   return upserted as WeeklySummary;
+}
+
+
+// ── Billing ───────────────────────────────────────────────────
+
+export async function getBillingTerms(
+  sb: SupabaseClient,
+  supplierId: string,
+): Promise<SupplierBillingTerms | null> {
+  const { data, error } = await sb
+    .from('supplier_billing_terms')
+    .select('*')
+    .eq('supplier_id', supplierId)
+    .is('effective_to', null)
+    .order('effective_from', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertBillingTerms(
+  sb: SupabaseClient,
+  terms: SupplierBillingTermsInsert & { id?: string },
+): Promise<SupplierBillingTerms> {
+  const { data, error } = await sb
+    .from('supplier_billing_terms')
+    .upsert(terms)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as SupplierBillingTerms;
+}
+
+export async function getBillingActivity(
+  sb: SupabaseClient,
+  supplierId: string,
+  options?: { page?: number; pageSize?: number },
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const page     = options?.page     ?? 1;
+  const pageSize = options?.pageSize ?? 20;
+  const from     = (page - 1) * pageSize;
+
+  const { data, error, count } = await sb
+    .from('v_supplier_billing_activity')
+    .select('*', { count: 'exact' })
+    .eq('supplier_id', supplierId)
+    .order('billing_period', { ascending: false })
+    .range(from, from + pageSize - 1);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0, page, pageSize };
+}
+
+export async function getInvoices(
+  sb: SupabaseClient,
+  options?: { supplierId?: string; status?: string; page?: number; pageSize?: number },
+): Promise<PaginatedResult<SupplierInvoice>> {
+  const page     = options?.page     ?? 1;
+  const pageSize = options?.pageSize ?? 20;
+  const from     = (page - 1) * pageSize;
+
+  let query = sb
+    .from('supplier_invoices')
+    .select('*, supplier:suppliers(name)', { count: 'exact' })
+    .order('billing_period', { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
+  if (options?.status)     query = query.eq('status', options.status);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { data: (data ?? []) as SupplierInvoice[], count: count ?? 0, page, pageSize };
+}
+
+export async function getInvoiceDetail(
+  sb: SupabaseClient,
+  invoiceId: string,
+): Promise<SupplierInvoice | null> {
+  const { data, error } = await sb
+    .from('supplier_invoices')
+    .select('*, supplier:suppliers(name), line_items:supplier_invoice_line_items(*)')
+    .eq('id', invoiceId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as SupplierInvoice | null;
+}
+
+export async function updateInvoiceStatus(
+  sb: SupabaseClient,
+  invoiceId: string,
+  status: InvoiceStatus,
+): Promise<void> {
+  const { error } = await sb
+    .from('supplier_invoices')
+    .update({ status })
+    .eq('id', invoiceId);
+  if (error) throw error;
+}
+
+export async function getRepPayouts(
+  sb: SupabaseClient,
+  options?: { salesperson?: string; supplierId?: string; page?: number; pageSize?: number },
+): Promise<PaginatedResult<Record<string, unknown>>> {
+  const page     = options?.page     ?? 1;
+  const pageSize = options?.pageSize ?? 50;
+  const from     = (page - 1) * pageSize;
+
+  let query = sb
+    .from('v_rep_payout_summary')
+    .select('*', { count: 'exact' })
+    .order('billing_period', { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (options?.salesperson) query = query.eq('salesperson', options.salesperson);
+  if (options?.supplierId)  query = query.eq('supplier_id', options.supplierId);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0, page, pageSize };
+}
+
+export async function generateInvoiceDraft(
+  sb: SupabaseClient,
+  supplierId: string,
+  billingPeriod: string,
+): Promise<InvoiceDraftResult> {
+  const { data, error } = await sb.rpc('generate_invoice_draft', {
+    p_supplier_id:    supplierId,
+    p_billing_period: billingPeriod,
+  });
+  if (error) throw error;
+  return data as InvoiceDraftResult;
+}
+
+export async function matchDepletionToPlacements(
+  sb: SupabaseClient,
+  supplierId: string,
+  periodMonth: string,
+): Promise<DepletionMatchResult> {
+  const { data, error } = await sb.rpc('match_depletion_to_placements', {
+    p_supplier_id:  supplierId,
+    p_period_month: periodMonth,
+  });
+  if (error) throw error;
+  return data as DepletionMatchResult;
 }

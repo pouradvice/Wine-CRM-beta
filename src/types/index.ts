@@ -27,8 +27,10 @@ export interface PaginationOptions {
 }
 
 export interface PaginatedResult<T> {
-  data:  T[];
-  count: number;
+  data:      T[];
+  count:     number;
+  page?:     number;
+  pageSize?: number;
 }
 
 export interface ApiErrorResponse {
