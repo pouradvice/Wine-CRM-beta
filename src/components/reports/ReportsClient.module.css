@@ -202,19 +202,107 @@
   }
 }
 
-/* ── By Supplier grouping ───────────────────────────────────── */
-.supplierGroup {
-  margin-bottom: var(--space-8);
+/* ── By Supplier accordion ──────────────────────────────────── */
+.supplierAccordion {
+  border-bottom: 1px solid var(--mist);
 }
 
-.supplierGroupHeading {
-  font-family: var(--font-display);
-  font-size: var(--text-base);
+.supplierAccordion:last-child {
+  border-bottom: none;
+}
+
+.supplierToggleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  gap: var(--space-3);
+  transition: background 0.1s;
+}
+
+.supplierToggleBtn:hover {
+  background: var(--parchment);
+}
+
+.supplierToggleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.supplierToggleName {
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text);
-  margin: 0 0 var(--space-2);
-  padding-bottom: var(--space-1);
-  border-bottom: 2px solid var(--mist);
+}
+
+.supplierToggleChip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--wine);
+  background: rgba(133, 30, 51, 0.08);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.supplierToggleChevron {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.supplierBody {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--parchment);
+  border-top: 1px solid var(--mist);
+}
+
+/* KPI strip inside each supplier */
+.supplierKpiRow {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.supplierKpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid var(--mist);
+  border-radius: 7px;
+  padding: var(--space-3) var(--space-4);
+  min-width: 100px;
+}
+
+.supplierKpiValue {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.supplierKpiWine {
+  color: var(--wine);
+}
+
+.supplierKpiLabel {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
 /* ── Empty state ────────────────────────────────────────────── */

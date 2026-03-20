@@ -57,25 +57,21 @@ function DetailPanel({ summary }: { summary: WeeklySummary }) {
           </div>
           <div className={styles.kpiCard}>
             <span className={styles.kpiValue}>{summary.accounts_visited}</span>
-            <span className={styles.kpiLabel}>Accounts Visited</span>
+            <span className={styles.kpiLabel}>New Accounts</span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiValue}>{summary.total_orders}</span>
-            <span className={styles.kpiLabel}>Orders</span>
+            <span className={styles.kpiValue}>{(summary.event_recaps ?? []).length}</span>
+            <span className={styles.kpiLabel}>Events</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiValue}>{(summary.off_site_recaps ?? []).length}</span>
+            <span className={styles.kpiLabel}>Demos (In-Store)</span>
           </div>
           <div className={styles.kpiCard}>
             <span className={`${styles.kpiValue} ${styles.kpiWine}`}>
-              {summary.conversion_rate_pct != null ? `${summary.conversion_rate_pct}%` : '—'}
+              {(summary.new_menu_placements ?? []).length}
             </span>
-            <span className={styles.kpiLabel}>Conversion</span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiValue}>{summary.active_follow_ups}</span>
-            <span className={styles.kpiLabel}>Open Follow-Ups</span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiValue}>{summary.inactive_accounts}</span>
-            <span className={styles.kpiLabel}>Inactive Accounts</span>
+            <span className={styles.kpiLabel}>Menu Placements</span>
           </div>
         </div>
       </div>
