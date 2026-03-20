@@ -8,15 +8,18 @@ import { getRecaps } from '@/lib/data';
 import { OutcomeBadge } from '@/components/ui/Badge';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
+import { AccountCombobox } from '@/components/shared/AccountCombobox';
 import type { Recap, Account, Contact, Product, RecapNature, RecapOutcome } from '@/types';
 import styles from './HistoryClient.module.css';
 
 interface HistoryClientProps {
   initialRecaps: Recap[];
   totalCount: number;
+  accounts: Account[];
 }
 
 interface EditForm {
+  account_id:   string;
   visit_date:   string;
   nature:       RecapNature;
   contact_name: string;
@@ -56,7 +59,7 @@ function defaultEditProduct(product: Product): EditProduct {
   };
 }
 
-export function HistoryClient({ initialRecaps }: HistoryClientProps) {
+export function HistoryClient({ initialRecaps, accounts }: HistoryClientProps) {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get('highlight');
 
@@ -71,7 +74,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
   // Edit state — recap fields
   const [editOpen, setEditOpen] = useState(false);
   const [editingRecap, setEditingRecap] = useState<Recap | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ visit_date: '', nature: 'Sales Call', contact_name: '', notes: '', occasion: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ account_id: '', visit_date: '', nature: 'Sales Call', contact_name: '', notes: '', occasion: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -168,6 +171,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
     e.stopPropagation();
     setEditingRecap(recap);
     setEditForm({
+      account_id:   recap.account_id,
       visit_date:   recap.visit_date,
       nature:       recap.nature,
       contact_name: recap.contact_name ?? '',
@@ -227,6 +231,7 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
       const { error: recapErr } = await sb
         .from('recaps')
         .update({
+          account_id:   editForm.account_id,
           visit_date:   editForm.visit_date,
           nature:       editForm.nature,
           contact_name: editForm.contact_name || null,
@@ -303,8 +308,11 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
             created_at:         '',
             product: { id: p.product_id, wine_name: p.wine_name, sku_number: p.sku_number } as Product,
           }));
+          const updatedAccount = accounts.find((a) => a.id === editForm.account_id) ?? r.account;
           return {
             ...r,
+            account_id:   editForm.account_id,
+            account:      updatedAccount,
             visit_date:   editForm.visit_date,
             nature:       editForm.nature,
             contact_name: editForm.contact_name || null,
@@ -507,6 +515,18 @@ export function HistoryClient({ initialRecaps }: HistoryClientProps) {
       >
         <div className={styles.editForm}>
           {/* ── Visit fields ── */}
+          <div className={styles.editField}>
+            <label className={styles.editLabel}>Account</label>
+            <AccountCombobox
+              accounts={accounts}
+              value={editForm.account_id}
+              onChange={(id) => setEditForm((f) => ({ ...f, account_id: id }))}
+              onAddAccount={() => {}}
+              className={styles.editInput}
+              dropdownClassName={styles.editProductDropdown}
+              dropdownItemClassName={styles.editDropdownItem}
+            />
+          </div>
           <div className={styles.editField}>
             <label className={styles.editLabel}>Date</label>
             <input
