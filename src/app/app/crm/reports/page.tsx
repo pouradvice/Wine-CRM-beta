@@ -12,6 +12,7 @@ import {
   getExpenseRecaps,
   getAccountsReport,
   getWeeklySummaries,
+  getSuppliers,
 } from '@/lib/data';
 import { ReportsClient } from '@/components/reports/ReportsClient';
 import { resolveTeamId } from '@/lib/team';
@@ -49,6 +50,7 @@ export default async function ReportsPage() {
     expenses,
     accountsReport,
     weeklySummaries,
+    suppliers,
   ] = await Promise.all([
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
@@ -60,6 +62,7 @@ export default async function ReportsPage() {
     safe(getExpenseRecaps(sb, { teamId }), []),
     safe(getAccountsReport(sb, teamId), []),
     safe(getWeeklySummaries(sb, teamId), []),
+    safe(getSuppliers(sb), []),
   ]);
 
   return (
@@ -75,6 +78,7 @@ export default async function ReportsPage() {
       expenses={expenses}
       accountsReport={accountsReport}
       weeklySummaries={weeklySummaries}
+      suppliers={suppliers}
     />
   );
 }

@@ -11,6 +11,7 @@ import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type {
   ProductPerformance,
+  Supplier,
   VisitsBySupplierRow,
   DashboardStats,
   TopAccount,
@@ -64,6 +65,7 @@ interface ReportsClientProps {
   expenses:         ExpenseRecap[];
   accountsReport:   AccountReportRow[];
   weeklySummaries:  WeeklySummary[];
+  suppliers:        Supplier[];
 }
 
 export function ReportsClient({
@@ -77,8 +79,10 @@ export function ReportsClient({
   expenses,
   accountsReport,
   weeklySummaries,
+  suppliers,
 }: ReportsClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [expandedSupplier, setExpandedSupplier] = useState<string | null>(null);
 
   // Account slideover
   const [acctSlideOpen, setAcctSlideOpen] = useState(false);
@@ -254,10 +258,13 @@ export function ReportsClient({
         )}
 
         {activeTab === 'by-supplier' && (() => {
-          // Build supplier name lookup from visitsBySupplier
+          // Build supplier name lookup: full suppliers list takes priority, supplemented by visitsBySupplier
           const supplierNameMap = new Map<string, string>();
           for (const r of visitsBySupplier) {
             if (r.supplier_id && r.supplier_name) supplierNameMap.set(r.supplier_id, r.supplier_name);
+          }
+          for (const s of suppliers) {
+            supplierNameMap.set(s.id, s.name);
           }
 
           // Group performance SKUs by supplier_id
@@ -272,7 +279,7 @@ export function ReportsClient({
           const sortedGroups = Array.from(grouped.entries()).sort(([a], [b]) => {
             if (a === null) return 1;
             if (b === null) return -1;
-            return (supplierNameMap.get(a) ?? a).localeCompare(supplierNameMap.get(b) ?? b);
+            return (supplierNameMap.get(a) ?? '').localeCompare(supplierNameMap.get(b) ?? '');
           });
 
           if (sortedGroups.length === 0) {
@@ -286,43 +293,88 @@ export function ReportsClient({
                 <button type="button" className={styles.printBtn} onClick={() => window.print()}>Print</button>
               </div>
               {sortedGroups.map(([supplierId, skus]) => {
-                const supplierLabel = supplierId ? (supplierNameMap.get(supplierId) ?? supplierId) : 'No Supplier';
+                const key = supplierId ?? '__none';
+                const supplierLabel = supplierId ? (supplierNameMap.get(supplierId) ?? 'Unknown Supplier') : 'No Supplier';
                 const sorted = [...skus].sort((a, b) => b.times_shown - a.times_shown);
+                const isOpen = expandedSupplier === key;
+
+                // Per-supplier KPIs
+                const totalShown    = sorted.reduce((s, p) => s + p.times_shown, 0);
+                const totalOrders   = sorted.reduce((s, p) => s + p.orders_placed, 0);
+                const totalPlace    = sorted.reduce((s, p) => s + (p.menu_placements ?? 0), 0);
+                const convPct       = totalShown > 0 ? Math.round((totalOrders / totalShown) * 1000) / 10 : 0;
+
                 return (
-                  <div key={supplierId ?? '__none'} className={styles.supplierGroup}>
-                    <h3 className={styles.supplierGroupHeading}>{supplierLabel}</h3>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>SKU</th>
-                          <th>Wine Name</th>
-                          <th>Brand</th>
-                          <th className={styles.numCell}>Shown</th>
-                          <th className={styles.numCell}>Orders</th>
-                          <th className={styles.numCell}>Placements</th>
-                          <th>Conversion</th>
-                          <th>Last Shown</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sorted.map((p) => (
-                          <tr
-                            key={p.product_id}
-                            onClick={() => loadProductDetail(p.product_id, p.wine_name)}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <td className={styles.skuCell}>{p.sku_number}</td>
-                            <td>{p.wine_name}</td>
-                            <td>{p.brand_name ?? '—'}</td>
-                            <td className={styles.numCell}>{p.times_shown}</td>
-                            <td className={styles.numCell}>{p.orders_placed}</td>
-                            <td className={styles.numCell}>{p.menu_placements ?? 0}</td>
-                            <td><ConversionBar pct={p.conversion_rate_pct ?? 0} /></td>
-                            <td>{p.last_shown_date ?? '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div key={key} className={styles.supplierAccordion}>
+                    <button
+                      type="button"
+                      className={styles.supplierToggleBtn}
+                      onClick={() => setExpandedSupplier(isOpen ? null : key)}
+                    >
+                      <span className={styles.supplierToggleLeft}>
+                        <span className={styles.supplierToggleName}>{supplierLabel}</span>
+                        <span className={styles.supplierToggleChip}>{sorted.length} SKU{sorted.length !== 1 ? 's' : ''}</span>
+                      </span>
+                      <span className={styles.supplierToggleChevron}>{isOpen ? '▲' : '▼'}</span>
+                    </button>
+
+                    {isOpen && (
+                      <div className={styles.supplierBody}>
+                        {/* KPI strip */}
+                        <div className={styles.supplierKpiRow}>
+                          <div className={styles.supplierKpiCard}>
+                            <span className={styles.supplierKpiValue}>{totalShown}</span>
+                            <span className={styles.supplierKpiLabel}>Times Shown</span>
+                          </div>
+                          <div className={styles.supplierKpiCard}>
+                            <span className={styles.supplierKpiValue}>{totalOrders}</span>
+                            <span className={styles.supplierKpiLabel}>Orders</span>
+                          </div>
+                          <div className={styles.supplierKpiCard}>
+                            <span className={styles.supplierKpiValue}>{totalPlace}</span>
+                            <span className={styles.supplierKpiLabel}>Placements</span>
+                          </div>
+                          <div className={styles.supplierKpiCard}>
+                            <span className={`${styles.supplierKpiValue} ${styles.supplierKpiWine}`}>{convPct}%</span>
+                            <span className={styles.supplierKpiLabel}>Conversion</span>
+                          </div>
+                        </div>
+
+                        {/* SKU table */}
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th>SKU</th>
+                              <th>Wine Name</th>
+                              <th>Brand</th>
+                              <th className={styles.numCell}>Shown</th>
+                              <th className={styles.numCell}>Orders</th>
+                              <th className={styles.numCell}>Placements</th>
+                              <th>Conversion</th>
+                              <th>Last Shown</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sorted.map((p) => (
+                              <tr
+                                key={p.product_id}
+                                onClick={() => loadProductDetail(p.product_id, p.wine_name)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <td className={styles.skuCell}>{p.sku_number}</td>
+                                <td>{p.wine_name}</td>
+                                <td>{p.brand_name ?? '—'}</td>
+                                <td className={styles.numCell}>{p.times_shown}</td>
+                                <td className={styles.numCell}>{p.orders_placed}</td>
+                                <td className={styles.numCell}>{p.menu_placements ?? 0}</td>
+                                <td><ConversionBar pct={p.conversion_rate_pct ?? 0} /></td>
+                                <td>{p.last_shown_date ?? '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 );
               })}
