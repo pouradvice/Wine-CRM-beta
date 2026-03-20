@@ -2,6 +2,7 @@
 // src/app/(auth)/login/page.tsx
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import styles from './login.module.css';
@@ -36,6 +37,16 @@ export default function LoginPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        <div className={styles.logoWrap}>
+          <Image
+            src="/logo.jpeg"
+            alt="Pour Advice logo"
+            width={80}
+            height={80}
+            className={styles.logo}
+            priority
+          />
+        </div>
         <h1 className={styles.wordmark}>Pour Advice</h1>
         <p className={styles.tagline}>Wine sales relationship management</p>
 

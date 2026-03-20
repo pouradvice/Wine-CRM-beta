@@ -2,6 +2,7 @@
 // src/components/layout/Nav.tsx
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -42,9 +43,9 @@ export function Nav({ displayName, isOwner }: NavProps) {
       {/* Mobile top bar */}
       <div className={styles.mobileTopBar}>
         <Link href="/app/crm/new-recap" className={styles.mobileWordmark}>
-          <img
+          <Image
             src="/logo.jpeg"
-            alt=""
+            alt="Pour Advice logo"
             className={styles.wordmarkLogo}
             width={28}
             height={28}
@@ -78,9 +79,9 @@ export function Nav({ displayName, isOwner }: NavProps) {
       <nav className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <Link href="/app/crm/new-recap" className={styles.wordmark}>
-            <img
+            <Image
               src="/logo.jpeg"
-              alt=""
+              alt="Pour Advice logo"
               className={styles.wordmarkLogo}
               width={28}
               height={28}
