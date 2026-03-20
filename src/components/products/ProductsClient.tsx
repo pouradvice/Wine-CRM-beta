@@ -23,7 +23,7 @@ interface ProductForm {
   sku_number:     string;
   wine_name:      string;
   brand_name:     string;
-  supplier_id:    string;
+  supplier_name:  string;
   type:           string;
   varietal:       string;
   country:        string;
@@ -64,7 +64,7 @@ const emptyForm = (): ProductForm => ({
   sku_number:     '',
   wine_name:      '',
   brand_name:     '',
-  supplier_id:    '',
+  supplier_name:  '',
   type:           '',
   varietal:       '',
   country:        '',
@@ -80,12 +80,13 @@ const emptyForm = (): ProductForm => ({
   is_active:      true,
 });
 
-function productToForm(p: Product): ProductForm {
+function productToForm(p: Product, suppliersList: { id: string; name: string }[]): ProductForm {
+  const supplierId = p.supplier_id ?? p.brand?.supplier_id ?? null;
   return {
     sku_number:     p.sku_number,
     wine_name:      p.wine_name,
     brand_name:     p.brand?.name ?? '',
-    supplier_id:    p.supplier_id ?? p.brand?.supplier_id ?? '',
+    supplier_name:  p.brand?.supplier?.name ?? p.supplier?.name ?? suppliersList.find(s => s.id === supplierId)?.name ?? '',
     type:           p.type ?? '',
     varietal:       p.varietal ?? '',
     country:        p.country ?? '',
@@ -322,7 +323,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
   const openEdit = (p: Product) => {
     setActiveProduct(p);
-    setForm(productToForm(p));
+    setForm(productToForm(p, suppliersList));
     setErrors({});
     setSaveError(null);
     setMode('edit');
@@ -365,7 +366,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             name:        form.brand_name.trim(),
             team_id:     teamId,
             is_active:   true,
-            supplier_id: form.supplier_id || null,
+            supplier_id: suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? null,
             description: null,
             country:     null,
             region:      null,
@@ -373,12 +374,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             notes:       null,
           });
           brandId = newBrand.id;
-          brandSupplierId = form.supplier_id || null;
+          brandSupplierId = suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? null;
         }
       }
 
-      // Use the explicitly selected supplier_id, falling back to brand's supplier
-      const resolvedSupplierId = form.supplier_id || brandSupplierId || null;
+      // Resolve typed supplier name to an ID, falling back to brand's supplier
+      const resolvedSupplierId = suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? brandSupplierId ?? null;
 
       const payload: ProductInsert & { id?: string } = {
         sku_number:     form.sku_number.trim(),
@@ -455,7 +456,8 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
           .eq('team_id', teamId)
           .maybeSingle();
         if (data?.supplier_id) {
-          setForm((f) => ({ ...f, supplier_id: f.supplier_id || data.supplier_id }));
+          const name = suppliersList.find(s => s.id === data.supplier_id)?.name ?? '';
+          setForm((f) => ({ ...f, supplier_name: f.supplier_name || name }));
         }
       } catch { /* ignore */ }
     }, 500);
@@ -831,16 +833,13 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
             <div className={styles.formField}>
               <label className={styles.formLabel}>Supplier</label>
-              <select
-                className={styles.formSelect}
-                value={form.supplier_id}
-                onChange={(e) => setField('supplier_id', e.target.value)}
-              >
-                <option value="">No supplier</option>
-                {suppliersList.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <input
+                type="text"
+                className={styles.formInput}
+                value={form.supplier_name}
+                onChange={(e) => setField('supplier_name', e.target.value)}
+                placeholder="Supplier name"
+              />
             </div>
 
             <div className={styles.formField}>
