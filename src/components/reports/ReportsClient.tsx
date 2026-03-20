@@ -253,46 +253,82 @@ export function ReportsClient({
           </>
         )}
 
-        {activeTab === 'by-supplier' && (
-          <>
-            {visitsBySupplier.length === 0 ? (
-              <Empty title="No supplier visits yet" desc="Visit recaps with product data will appear here grouped by brand." />
-            ) : (
-              <>
-                <div className={styles.sectionHeader}>
-                  <span className={styles.sectionTitle}>Visits by Supplier</span>
-                  <button
-                    type="button"
-                    className={styles.printBtn}
-                    onClick={() => window.print()}
-                  >
-                    Print
-                  </button>
-                </div>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Supplier</th>
-                      <th>Brand</th>
-                      <th className={styles.numCell}>Total Visits</th>
-                      <th className={styles.numCell}>Orders Placed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visitsBySupplier.map((r, i) => (
-                      <tr key={i}>
-                        <td>{r.supplier_name ?? '—'}</td>
-                        <td>{r.brand_name ?? '—'}</td>
-                        <td className={styles.numCell}>{r.total_visits}</td>
-                        <td className={styles.numCell}>{r.orders_placed}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </>
-        )}
+        {activeTab === 'by-supplier' && (() => {
+          // Build supplier name lookup from visitsBySupplier
+          const supplierNameMap = new Map<string, string>();
+          for (const r of visitsBySupplier) {
+            if (r.supplier_id && r.supplier_name) supplierNameMap.set(r.supplier_id, r.supplier_name);
+          }
+
+          // Group performance SKUs by supplier_id
+          const grouped = new Map<string | null, typeof performance>();
+          for (const p of performance) {
+            const key = p.supplier_id ?? null;
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)!.push(p);
+          }
+
+          // Sort groups: named suppliers alphabetically, then null last
+          const sortedGroups = Array.from(grouped.entries()).sort(([a], [b]) => {
+            if (a === null) return 1;
+            if (b === null) return -1;
+            return (supplierNameMap.get(a) ?? a).localeCompare(supplierNameMap.get(b) ?? b);
+          });
+
+          if (sortedGroups.length === 0) {
+            return <Empty title="No SKU performance data yet" desc="Record visit recaps with products to see performance by supplier." />;
+          }
+
+          return (
+            <>
+              <div className={styles.sectionHeader}>
+                <span className={styles.sectionTitle}>SKU Performance by Supplier</span>
+                <button type="button" className={styles.printBtn} onClick={() => window.print()}>Print</button>
+              </div>
+              {sortedGroups.map(([supplierId, skus]) => {
+                const supplierLabel = supplierId ? (supplierNameMap.get(supplierId) ?? supplierId) : 'No Supplier';
+                const sorted = [...skus].sort((a, b) => b.times_shown - a.times_shown);
+                return (
+                  <div key={supplierId ?? '__none'} className={styles.supplierGroup}>
+                    <h3 className={styles.supplierGroupHeading}>{supplierLabel}</h3>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>SKU</th>
+                          <th>Wine Name</th>
+                          <th>Brand</th>
+                          <th className={styles.numCell}>Shown</th>
+                          <th className={styles.numCell}>Orders</th>
+                          <th className={styles.numCell}>Placements</th>
+                          <th>Conversion</th>
+                          <th>Last Shown</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sorted.map((p) => (
+                          <tr
+                            key={p.product_id}
+                            onClick={() => loadProductDetail(p.product_id, p.wine_name)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <td className={styles.skuCell}>{p.sku_number}</td>
+                            <td>{p.wine_name}</td>
+                            <td>{p.brand_name ?? '—'}</td>
+                            <td className={styles.numCell}>{p.times_shown}</td>
+                            <td className={styles.numCell}>{p.orders_placed}</td>
+                            <td className={styles.numCell}>{p.menu_placements ?? 0}</td>
+                            <td><ConversionBar pct={p.conversion_rate_pct ?? 0} /></td>
+                            <td>{p.last_shown_date ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </>
+          );
+        })()}
 
         {activeTab === 'by-accounts' && (
           <ByAccountsClient

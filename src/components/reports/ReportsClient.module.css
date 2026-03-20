@@ -202,6 +202,21 @@
   }
 }
 
+/* ── By Supplier grouping ───────────────────────────────────── */
+.supplierGroup {
+  margin-bottom: var(--space-8);
+}
+
+.supplierGroupHeading {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 2px solid var(--mist);
+}
+
 /* ── Empty state ────────────────────────────────────────────── */
 .empty {
   text-align: center;
