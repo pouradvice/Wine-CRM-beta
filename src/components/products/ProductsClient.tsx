@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertProduct, upsertBrand, archiveProduct, getProducts, getSuppliers } from '@/lib/data';
+import { upsertProduct, upsertBrand, archiveProduct, getProducts } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type { Product, ProductInsert, WineType, Supplier } from '@/types';
@@ -129,17 +129,16 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
   const brandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch suppliers on mount
+  // Fetch suppliers on mount — no is_active filter so name lookup always resolves
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
         const sb = createClient();
-        const data = await getSuppliers(sb);
-        setSuppliersList(data);
+        const { data } = await sb.from('suppliers').select('id, name').order('name');
+        setSuppliersList((data ?? []) as Supplier[]);
       } catch (err) {
         const e = err as { error?: string; message?: string };
         console.error('Failed to load suppliers:', e.error ?? e.message ?? err);
-        setSaveError('Failed to load suppliers. Please refresh the page.');
         setSuppliersList([]);
       }
     };
