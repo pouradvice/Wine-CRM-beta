@@ -105,7 +105,7 @@ export async function upsertSupplierContract(
 
 export async function getBrands(
   sb: SupabaseClient,
-  options?: { supplierId?: string },
+  options?: { supplierId?: string; teamId?: string },
 ): Promise<Brand[]> {
   let query = sb
     .from('brands')
@@ -113,6 +113,7 @@ export async function getBrands(
     .eq('is_active', true)
     .order('name');
 
+  if (options?.teamId)     query = query.eq('team_id', options.teamId);
   if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
 
   const { data, error } = await query;
@@ -515,6 +516,7 @@ export async function getVisitsBySupplier(
       order_probability,
       buyer_feedback,
       supplier_id,
+      supplier:suppliers(name),
       recap:recaps(
         visit_date,
         account:accounts(name)
@@ -537,6 +539,7 @@ export async function getVisitsBySupplier(
       order_probability:  number | null;
       buyer_feedback:     string | null;
       supplier_id:        string | null;
+      supplier:           { name: string } | null;
       recap:    Array<{ visit_date: string; account: Array<{ name: string }> }>;
       product:  Array<{ sku_number: string; wine_name: string; brand: Array<{ name: string; supplier: Array<{ name: string }> }> }>;
     };
@@ -545,7 +548,7 @@ export async function getVisitsBySupplier(
     const brand    = product?.brand?.[0] ?? null;
     return {
       supplier_id:       r.supplier_id ?? null,
-      supplier_name:     brand?.supplier?.[0]?.name ?? null,
+      supplier_name:     r.supplier?.name ?? brand?.supplier?.[0]?.name ?? null,
       brand_name:        brand?.name ?? null,
       total_visits:      1,
       orders_placed:     r.outcome === 'Yes Today' ? 1 : 0,
