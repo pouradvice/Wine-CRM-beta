@@ -261,6 +261,13 @@ export function ReportsClient({
               <>
                 <div className={styles.sectionHeader}>
                   <span className={styles.sectionTitle}>Visits by Supplier</span>
+                  <button
+                    type="button"
+                    className={styles.printBtn}
+                    onClick={() => window.print()}
+                  >
+                    Print
+                  </button>
                 </div>
                 <table className={styles.table}>
                   <thead>

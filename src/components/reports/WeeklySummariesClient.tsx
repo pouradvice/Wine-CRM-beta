@@ -325,7 +325,7 @@ export function WeeklySummariesClient({ summaries: initialSummaries }: Props) {
   };
 
   return (
-    <>
+    <div className={styles.root}>
       <div className={styles.header}>
         <span className={styles.headerTitle}>Weekly Summaries</span>
         <button
@@ -399,6 +399,6 @@ export function WeeklySummariesClient({ summaries: initialSummaries }: Props) {
           </tbody>
         </table>
       )}
-    </>
+    </div>
   );
 }
