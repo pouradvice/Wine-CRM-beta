@@ -221,10 +221,10 @@ function buildClientRow(
   if (!name) return {};
 
   const row: Record<string, unknown> = {
-    team_id:   teamId,
-    is_active: true,
-    name,
-    status:    get('status') || 'Active',
+    team_id:      teamId,
+    is_active:    true,
+    company_name: name,
+    status:       get('status') || 'Active',
   };
 
   row.type            = get('type')            || null;
