@@ -1026,7 +1026,7 @@ export async function generateAndSaveWeeklySummary(
   const accountIds       = new Set(weekRecaps.map((r) => r.account_id as string));
   const accounts_visited = accountIds.size;
 
-  type RecapProduct = { id: string; outcome: string; product_id: string; menu_placement: boolean; products: { wine_name: string } | null };
+  type RecapProduct = { id: string; outcome: string; product_id: string; menu_placement: boolean; products: { wine_name: string }[] | null };
   const allProducts: RecapProduct[] = weekRecaps.flatMap(
     (r) => (r.recap_products as RecapProduct[]) ?? [],
   );
@@ -1160,7 +1160,7 @@ export async function generateAndSaveWeeklySummary(
       if (p.menu_placement) {
         new_menu_placements.push({
           account_name: accountName,
-          wine_name:    p.products?.wine_name ?? '',
+          wine_name:    p.products?.[0]?.wine_name ?? '',
           visit_date:   visitDate,
         });
       }
