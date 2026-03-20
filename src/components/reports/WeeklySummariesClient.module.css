@@ -262,8 +262,10 @@
 
 /* ── Print styles ───────────────────────────────────────────── */
 @media print {
-  /* Hide everything except the expanded summary detail */
-  body * {
+  /* Hide everything inside this component except the expanded summary detail.
+     Uses .root (scoped by CSS Modules) instead of `body *` to avoid
+     accidentally hiding other tabs when WeeklySummaries is not active. */
+  .root * {
     visibility: hidden;
   }
   .detailRow,
