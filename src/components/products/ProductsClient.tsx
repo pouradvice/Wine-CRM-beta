@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { upsertProduct, upsertBrand, archiveProduct, getProducts } from '@/lib/data';
+import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type { Product, ProductInsert, WineType, Supplier } from '@/types';
@@ -23,7 +24,7 @@ interface ProductForm {
   sku_number:     string;
   wine_name:      string;
   brand_name:     string;
-  supplier_name:  string;
+  supplier_id:    string;
   type:           string;
   varietal:       string;
   country:        string;
@@ -64,7 +65,7 @@ const emptyForm = (): ProductForm => ({
   sku_number:     '',
   wine_name:      '',
   brand_name:     '',
-  supplier_name:  '',
+  supplier_id:    '',
   type:           '',
   varietal:       '',
   country:        '',
@@ -80,13 +81,12 @@ const emptyForm = (): ProductForm => ({
   is_active:      true,
 });
 
-function productToForm(p: Product, suppliersList: { id: string; name: string }[]): ProductForm {
-  const supplierId = p.supplier_id ?? p.brand?.supplier_id ?? null;
+function productToForm(p: Product): ProductForm {
   return {
     sku_number:     p.sku_number,
     wine_name:      p.wine_name,
     brand_name:     p.brand?.name ?? '',
-    supplier_name:  p.brand?.supplier?.name ?? p.supplier?.name ?? suppliersList.find(s => s.id === supplierId)?.name ?? '',
+    supplier_id:    p.supplier_id ?? p.brand?.supplier_id ?? '',
     type:           p.type ?? '',
     varietal:       p.varietal ?? '',
     country:        p.country ?? '',
@@ -323,7 +323,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
   const openEdit = (p: Product) => {
     setActiveProduct(p);
-    setForm(productToForm(p, suppliersList));
+    setForm(productToForm(p));
     setErrors({});
     setSaveError(null);
     setMode('edit');
@@ -366,7 +366,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             name:        form.brand_name.trim(),
             team_id:     teamId,
             is_active:   true,
-            supplier_id: suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? null,
+            supplier_id: form.supplier_id || null,
             description: null,
             country:     null,
             region:      null,
@@ -374,12 +374,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
             notes:       null,
           });
           brandId = newBrand.id;
-          brandSupplierId = suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? null;
+          brandSupplierId = form.supplier_id || null;
         }
       }
 
-      // Resolve typed supplier name to an ID, falling back to brand's supplier
-      const resolvedSupplierId = suppliersList.find(s => s.name === form.supplier_name.trim())?.id ?? brandSupplierId ?? null;
+      // Use the selected supplier_id, falling back to brand's supplier
+      const resolvedSupplierId = form.supplier_id || brandSupplierId || null;
 
       const payload: ProductInsert & { id?: string } = {
         sku_number:     form.sku_number.trim(),
@@ -456,8 +456,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
           .eq('team_id', teamId)
           .maybeSingle();
         if (data?.supplier_id) {
-          const name = suppliersList.find(s => s.id === data.supplier_id)?.name ?? '';
-          setForm((f) => ({ ...f, supplier_name: f.supplier_name || name }));
+          setForm((f) => ({ ...f, supplier_id: f.supplier_id || data.supplier_id }));
         }
       } catch { /* ignore */ }
     }, 500);
@@ -833,19 +832,13 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
             <div className={styles.formField}>
               <label className={styles.formLabel}>Supplier</label>
-              <input
-                type="text"
-                list="suppliers-list"
+              <SupplierCombobox
+                suppliers={suppliersList}
+                value={form.supplier_id}
+                onChange={(id) => setField('supplier_id', id)}
                 className={styles.formInput}
-                value={form.supplier_name}
-                onChange={(e) => setField('supplier_name', e.target.value)}
-                placeholder="Supplier name"
+                placeholder="Type to search suppliers…"
               />
-              <datalist id="suppliers-list">
-                {suppliersList.map((s) => (
-                  <option key={s.id} value={s.name} />
-                ))}
-              </datalist>
             </div>
 
             <div className={styles.formField}>
