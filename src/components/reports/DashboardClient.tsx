@@ -44,22 +44,28 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
       {/* ── KPI strip ─────────────────────────────────────── */}
       <div className={styles.kpiRow}>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiValue}>{stats.total_accounts}</span>
-          <span className={styles.kpiLabel}>Total Accounts</span>
-        </div>
-        <div className={styles.kpiCard}>
           <span className={styles.kpiValue}>{stats.visits_this_month}</span>
           <span className={styles.kpiLabel}>Visits This Month</span>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiValue}>{stats.active_follow_ups}</span>
-          <span className={styles.kpiLabel}>Active Follow-Ups</span>
         </div>
         <div className={styles.kpiCard}>
           <span className={`${styles.kpiValue} ${styles.kpiWine}`}>
             {stats.conversion_rate_pct != null ? `${stats.conversion_rate_pct}%` : '—'}
           </span>
           <span className={styles.kpiLabel}>Conversion Rate</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <span className={styles.kpiValue}>{stats.events_this_month}</span>
+          <span className={styles.kpiLabel}>Events This Month</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <span className={styles.kpiValue}>{stats.off_site_this_month}</span>
+          <span className={styles.kpiLabel}>Off-Site Demos</span>
+        </div>
+        <div className={styles.kpiCard}>
+          <span className={`${styles.kpiValue} ${styles.kpiWine}`}>
+            {stats.new_placements_this_month}
+          </span>
+          <span className={styles.kpiLabel}>New Menu Placements</span>
         </div>
       </div>
 

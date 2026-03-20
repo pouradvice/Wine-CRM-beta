@@ -1,14 +1,15 @@
 // src/lib/buildWeeklySummary.ts
 // Builds a deterministic, data-driven weekly summary string from dashboard data.
 
-import type { DashboardStats, ProductPerformance, TopAccount, InactiveAccount, PipelineHealth } from '@/types';
+import type { ProductPerformance, TopAccount, InactiveAccount, PipelineHealth } from '@/types';
 
 function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return count === 1 ? singular : plural;
 }
 
 export function buildWeeklySummary(
-  stats: DashboardStats,
+  visitsThisMonth: number,
+  conversionRatePct: number | null,
   topSkus: ProductPerformance[],
   topAccounts: TopAccount[],
   inactiveAccounts: InactiveAccount[],
@@ -17,17 +18,12 @@ export function buildWeeklySummary(
   const lines: string[] = [];
 
   // KPI headline
-  const conversionSuffix = stats.conversion_rate_pct != null
-    ? ` with a ${stats.conversion_rate_pct}% conversion rate.`
+  const conversionSuffix = conversionRatePct != null
+    ? ` with a ${conversionRatePct}% conversion rate.`
     : '.';
   lines.push(
-    `This month: ${stats.visits_this_month} ${pluralize(stats.visits_this_month, 'visit')} across ${stats.total_accounts} ${pluralize(stats.total_accounts, 'account')}${conversionSuffix}`,
+    `This month: ${visitsThisMonth} ${pluralize(visitsThisMonth, 'visit')}${conversionSuffix}`,
   );
-
-  // Active follow-ups
-  if (stats.active_follow_ups > 0) {
-    lines.push(`${stats.active_follow_ups} ${pluralize(stats.active_follow_ups, 'follow-up')} are currently open.`);
-  }
 
   // Top product
   if (topSkus.length > 0) {

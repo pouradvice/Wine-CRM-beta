@@ -20,6 +20,7 @@
   z-index: 201;
   transform: translateX(0);
   animation: slideIn 0.25s ease;
+  overflow: hidden; /* contain children so inner divs can scroll horizontally */
 }
 
 @keyframes slideIn {
@@ -74,9 +75,11 @@
 }
 
 .body {
+  overflow-x: hidden; /* constrain children so their overflow-x: auto scrollbars fire */
   overflow-y: auto;
   padding: var(--space-6);
   flex: 1;
+  min-height: 0; /* allow flex item to shrink below content height */
   display: flex;
   flex-direction: column;
   gap: var(--space-4);

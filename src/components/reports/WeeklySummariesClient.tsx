@@ -278,6 +278,36 @@ export function WeeklySummariesClient({ summaries: initialSummaries }: Props) {
       }
     }
 
+    // Section 5 — Events
+    if ((summary.event_recaps ?? []).length > 0) {
+      rows.push('');
+      rows.push('Events');
+      rows.push(['Date', 'Location (Account)', 'Occasion'].map(csvEscape).join(','));
+      for (const e of summary.event_recaps) {
+        rows.push([e.visit_date, e.account_name, e.occasion ?? ''].map(csvEscape).join(','));
+      }
+    }
+
+    // Section 6 — Off-Site / Demo Visits
+    if ((summary.off_site_recaps ?? []).length > 0) {
+      rows.push('');
+      rows.push('Off-Site / Demo Visits');
+      rows.push(['Date', 'Location (Account)'].map(csvEscape).join(','));
+      for (const o of summary.off_site_recaps) {
+        rows.push([o.visit_date, o.account_name].map(csvEscape).join(','));
+      }
+    }
+
+    // Section 7 — New Menu Placements
+    if ((summary.new_menu_placements ?? []).length > 0) {
+      rows.push('');
+      rows.push('New Menu Placements');
+      rows.push(['Date', 'Account', 'Product'].map(csvEscape).join(','));
+      for (const m of summary.new_menu_placements) {
+        rows.push([m.visit_date, m.account_name, m.wine_name].map(csvEscape).join(','));
+      }
+    }
+
     const csvString = rows.join('\n');
     const url = URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
     const a = document.createElement('a');

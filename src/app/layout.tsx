@@ -5,8 +5,14 @@ import './globals.css';
 import '../styles/outcome-tokens.css';
 
 export const metadata: Metadata = {
-  title: 'Pour Advice CRM',
+  title:       'Pour Advice CRM',
   description: 'Wine sales relationship management',
+  // Enables full-screen standalone mode when added to iOS Home Screen
+  appleWebApp: {
+    capable:        true,
+    statusBarStyle: 'default',
+    title:          'Pour Advice',
+  },
 };
 
 export default function RootLayout({

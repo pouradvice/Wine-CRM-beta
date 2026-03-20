@@ -362,10 +362,11 @@ export interface VisitsBySupplierRow {
 // ── Dashboard / analytics ────────────────────────────────────
 
 export interface DashboardStats {
-  total_accounts:      number;
-  active_follow_ups:   number;
-  visits_this_month:   number;
-  conversion_rate_pct: number | null;
+  visits_this_month:        number;
+  conversion_rate_pct:      number | null;
+  events_this_month:        number;
+  off_site_this_month:      number;
+  new_placements_this_month: number;
 }
 
 export interface TopAccount {
@@ -435,6 +436,9 @@ export interface WeeklySummary {
   top_products:        Array<{ wine_name: string; sku_number: string; orders_placed: number; conversion_rate_pct: number | null }>;
   top_accounts:        Array<{ account_name: string; visit_count: number; orders_placed: number }>;
   pipeline_summary:    Record<string, number>;
+  event_recaps:        Array<{ account_name: string; visit_date: string; occasion: string | null }>;
+  off_site_recaps:     Array<{ account_name: string; visit_date: string }>;
+  new_menu_placements: Array<{ account_name: string; wine_name: string; visit_date: string }>;
   generated_by:        string | null;
   created_at:          string;
 }
