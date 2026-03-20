@@ -43,7 +43,7 @@ export function Nav({ displayName, isOwner }: NavProps) {
       <div className={styles.mobileTopBar}>
         <Link href="/app/crm/new-recap" className={styles.mobileWordmark}>
           <img
-            src="/logo.png"
+            src="/logo.jpeg"
             alt=""
             className={styles.wordmarkLogo}
             width={28}
@@ -79,7 +79,7 @@ export function Nav({ displayName, isOwner }: NavProps) {
         <div className={styles.brand}>
           <Link href="/app/crm/new-recap" className={styles.wordmark}>
             <img
-              src="/logo.png"
+              src="/logo.jpeg"
               alt=""
               className={styles.wordmarkLogo}
               width={28}

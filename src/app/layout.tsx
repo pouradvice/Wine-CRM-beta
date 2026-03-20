@@ -7,7 +7,7 @@ import '../styles/outcome-tokens.css';
 export const metadata: Metadata = {
   title:       'Pour Advice CRM',
   description: 'Wine sales relationship management',
-  icons:       { icon: '/logo.png' },
+  icons:       { icon: '/logo.jpeg' },
   // Enables full-screen standalone mode when added to iOS Home Screen
   appleWebApp: {
     capable:        true,
