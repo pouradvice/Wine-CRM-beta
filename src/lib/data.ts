@@ -46,14 +46,12 @@ function pageRange(page = 0, pageSize = 50): [number, number] {
 
 // ── Suppliers ─────────────────────────────────────────────────
 
-export async function getSuppliers(sb: SupabaseClient, teamId?: string): Promise<Supplier[]> {
-  let query = sb
+export async function getSuppliers(sb: SupabaseClient): Promise<Supplier[]> {
+  const { data, error } = await sb
     .from('suppliers')
     .select('*')
     .eq('is_active', true)
     .order('name');
-  if (teamId) query = query.eq('team_id', teamId);
-  const { data, error } = await query;
   if (error) throw new Error(mapDbError(error));
   return data ?? [];
 }

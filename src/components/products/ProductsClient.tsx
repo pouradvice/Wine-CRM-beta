@@ -135,7 +135,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     const fetchSuppliers = async () => {
       try {
         const sb = createClient();
-        const { data } = await sb.from('suppliers').select('id, name').eq('team_id', teamId).order('name');
+        const { data } = await sb.from('suppliers').select('id, name').order('name');
         setSuppliersList((data ?? []) as Supplier[]);
       } catch (err) {
         const e = err as { error?: string; message?: string };
