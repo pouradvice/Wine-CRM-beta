@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Depletion Report Parser — Pour Advice</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --wine: #6B1E2F;
+    --wine-light: #8B2E42;
+    --sage: #7A8C6E;
+    --parchment: #F5F0E8;
+    --parchment-dark: #EAE3D2;
+    --ink: #1C1C1E;
+    --muted: #6B6B6B;
+    --border: #D4C9B5;
+    --success: #2D6A4F;
+    --success-bg: #D8F3DC;
+    --error: #9B2226;
+    --error-bg: #FFE8E8;
+    --radius: 8px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--parchment);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--wine);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+  }
+
+  header span {
+    font-size: 0.75rem;
+    opacity: 0.65;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--wine);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--parchment-dark);
+  }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--parchment);
+  }
+
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--wine);
+    background: #F8F0F2;
+  }
+
+  .dropzone .icon { font-size: 2rem; margin-bottom: 8px; }
+  .dropzone p { color: var(--muted); font-size: 0.9rem; }
+  .dropzone strong { color: var(--ink); }
+  #file-input { display: none; }
+
+  /* Config row */
+  .config-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 0;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--wine);
+  }
+
+  /* Preview table */
+  .preview-scroll {
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  th {
+    background: var(--parchment-dark);
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--parchment-dark);
+    color: var(--ink);
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--parchment); }
+
+  /* Column mapper */
+  .mapper-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+  }
+
+  .badge.success { background: var(--success-bg); color: var(--success); }
+  .badge.error { background: var(--error-bg); color: var(--error); }
+  .badge.info { background: var(--parchment-dark); color: var(--muted); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 9px 16px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    transition: color 0.15s;
+    margin-bottom: -1px;
+    letter-spacing: 0.04em;
+  }
+  .tab.active { border-bottom-color: var(--wine); color: var(--wine); font-weight: bold; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, opacity 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-primary {
+    background: var(--wine);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--wine-light); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-outline {
+    background: white;
+    border: 1px solid var(--border);
+    color: var(--ink);
+  }
+  .btn-outline:hover { background: var(--parchment); }
+
+  .btn-sage {
+    background: var(--sage);
+    color: white;
+  }
+  .btn-sage:hover { opacity: 0.85; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* Stats row */
+  .stats { display: flex; gap: 24px; margin: 12px 0; flex-wrap: wrap; }
+  .stat { }
+  .stat .val { font-size: 1.4rem; color: var(--wine); }
+  .stat .lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+  /* Alert */
+  .alert {
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin: 12px 0;
+  }
+  .alert.info { background: #EBF4FF; color: #1a4a7a; border-left: 3px solid #4a90d9; }
+  .alert.warn { background: #FFF8E1; color: #7a5100; border-left: 3px solid #f5a623; }
+  .alert.success { background: var(--success-bg); color: var(--success); border-left: 3px solid var(--sage); }
+
+  .hidden { display: none !important; }
+
+  .section-note {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .pill {
+    background: var(--parchment-dark);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    color: var(--ink);
+  }
+  .pill.selected {
+    background: var(--wine);
+    color: white;
+    border-color: var(--wine);
+    cursor: pointer;
+  }
+  .pill.clickable { cursor: pointer; }
+  .pill.clickable:hover { background: var(--parchment); border-color: var(--wine); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>🍷</div>
+  <h1>Depletion Report Parser</h1>
+  <span>Pour Advice CRM · Data Import Tool</span>
+</header>
+
+<div class="container">
+
+  <!-- STEP 1: Upload -->
+  <div class="card" id="step-upload">
+    <h2>Step 1 — Upload Depletion Report</h2>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📊</div>
+      <p><strong>Drop your Excel file here</strong></p>
+      <p>or click to browse · .xlsx / .xls</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" />
+    <p class="section-note" style="margin-top:10px;">The tool will detect all tables in the file and let you select the depletion table (table 3).</p>
+  </div>
+
+  <!-- STEP 2: Sheet + Table detection -->
+  <div class="card hidden" id="step-detect">
+    <h2>Step 2 — Identify the Depletion Table</h2>
+
+    <div class="field" style="margin-bottom:14px;">
+      <label>Sheet</label>
+      <select id="sheet-select"></select>
+    </div>
+
+    <div id="table-detection-area">
+      <p class="section-note">Detected table regions (separated by blank rows):</p>
+      <div class="pill-row" id="table-pills"></div>
+    </div>
+
+    <div class="alert info" style="margin-top:14px;">
+      Select the table that contains account-level depletion data. Typically the 3rd table in the sheet.
+    </div>
+
+    <div class="preview-scroll" id="raw-preview" style="margin-top:16px; max-height:260px; overflow-y:auto;"></div>
+  </div>
+
+  <!-- STEP 3: Column Mapping -->
+  <div class="card hidden" id="step-map">
+    <h2>Step 3 — Map Columns</h2>
+    <p class="section-note">Tell the tool which column in your report corresponds to each field. Required fields are marked *.</p>
+
+    <div class="mapper-grid" id="mapper-grid" style="margin-top:16px;"></div>
+
+    <div class="config-row" style="margin-top:20px;">
+      <div class="field">
+        <label>Product 1 SKU *</label>
+        <input type="text" id="sku1" placeholder="e.g. LIB-CAB-001" />
+      </div>
+      <div class="field">
+        <label>Product 2 SKU *</label>
+        <input type="text" id="sku2" placeholder="e.g. LIB-CHARD-001" />
+      </div>
+    </div>
+    <div class="config-row" style="margin-top:12px;">
+      <div class="field">
+        <label>Product 1 Name *</label>
+        <input type="text" id="pname1" placeholder="e.g. Libra Cabernet 2022" />
+      </div>
+      <div class="field">
+        <label>Product 2 Name *</label>
+        <input type="text" id="pname2" placeholder="e.g. Libra Chardonnay 2022" />
+      </div>
+    </div>
+    <div class="config-row" style="margin-top:12px;">
+      <div class="field">
+        <label>Seed Recap Date * (used for all placement records)</label>
+        <input type="date" id="recap-date" />
+      </div>
+      <div class="field">
+        <label>Account Type default (if not in report)</label>
+        <select id="default-account-type">
+          <option value="">— leave blank —</option>
+          <option value="Restaurant">Restaurant</option>
+          <option value="Retail">Retail</option>
+          <option value="Hotel">Hotel</option>
+          <option value="Bar">Bar</option>
+          <option value="Club">Club</option>
+          <option value="Corporate">Corporate</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="product-col-config" style="margin-top:16px;">
+      <p class="section-note">If the report has separate columns per product (e.g. "Product A bottles", "Product B bottles"), map them below. If all products are in one column, skip this.</p>
+      <div class="config-row" style="margin-top:10px;">
+        <div class="field">
+          <label>Column representing Product 1 activity</label>
+          <select id="prod1-col"><option value="">— not applicable —</option></select>
+        </div>
+        <div class="field">
+          <label>Column representing Product 2 activity</label>
+          <select id="prod2-col"><option value="">— not applicable —</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="generateOutputs()">Generate CSVs →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Output -->
+  <div class="card hidden" id="step-output">
+    <h2>Step 4 — Review &amp; Download</h2>
+
+    <div class="stats" id="output-stats"></div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('accounts')">accounts_import.csv</div>
+      <div class="tab" onclick="switchTab('placements')">placements_import.csv</div>
+    </div>
+
+    <div id="tab-accounts">
+      <div class="preview-scroll" style="max-height:300px; overflow-y:auto;">
+        <table id="accounts-table"></table>
+      </div>
+    </div>
+
+    <div id="tab-placements" class="hidden">
+      <div class="preview-scroll" style="max-height:300px; overflow-y:auto;">
+        <table id="placements-table"></table>
+      </div>
+    </div>
+
+    <div class="alert success" id="output-summary" style="margin-top:12px;"></div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="downloadCSV('accounts')">⬇ Download accounts_import.csv</button>
+      <button class="btn btn-sage" onclick="downloadCSV('placements')">⬇ Download placements_import.csv</button>
+      <button class="btn btn-outline" onclick="location.reload()">Start over</button>
+    </div>
+
+    <div class="alert info" style="margin-top:16px;">
+      <strong>Import order:</strong><br/>
+      1. Upload <code>accounts_import.csv</code> via the Accounts importer (skips duplicates automatically)<br/>
+      2. Share <code>placements_import.csv</code> with the engineering team for the seed recap SQL insert
+    </div>
+  </div>
+
+</div>
+
+<script>
+let workbook = null;
+let allRows = [];
+let headers = [];
+let detectedTables = [];
+let selectedTableIdx = null;
+let outputAccounts = [];
+let outputPlacements = [];
+
+// ── Upload ────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      workbook = XLSX.read(e.target.result, { type: 'array' });
+      populateSheetSelect();
+      document.getElementById('step-detect').classList.remove('hidden');
+      dropzone.innerHTML = `<div class="icon">✅</div><p><strong>${file.name}</strong></p><p>${(file.size/1024).toFixed(1)} KB · ${workbook.SheetNames.length} sheet(s)</p>`;
+    } catch(err) {
+      alert('Could not read file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Sheet select ──────────────────────────────────────────────
+function populateSheetSelect() {
+  const sel = document.getElementById('sheet-select');
+  sel.innerHTML = '';
+  workbook.SheetNames.forEach((name, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => detectTables());
+  detectTables();
+}
+
+function detectTables() {
+  const sheetIdx = parseInt(document.getElementById('sheet-select').value);
+  const sheetName = workbook.SheetNames[sheetIdx];
+  const ws = workbook.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+  // Find table regions: separated by completely blank rows
+  detectedTables = [];
+  let current = null;
+
+  raw.forEach((row, i) => {
+    const hasData = row.some(c => String(c).trim() !== '');
+    if (hasData) {
+      if (!current) current = { startRow: i, rows: [] };
+      current.rows.push(row);
+    } else {
+      if (current && current.rows.length >= 2) {
+        detectedTables.push(current);
+      }
+      current = null;
+    }
+  });
+  if (current && current.rows.length >= 2) detectedTables.push(current);
+
+  // Render pills
+  const pillRow = document.getElementById('table-pills');
+  pillRow.innerHTML = '';
+  detectedTables.forEach((t, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'pill clickable';
+    const headerRow = t.rows[0].filter(c => String(c).trim()).slice(0, 3).join(', ');
+    pill.textContent = `Table ${i+1}: ${t.rows.length} rows · "${headerRow}…"`;
+    pill.onclick = () => selectTable(i);
+    pillRow.appendChild(pill);
+  });
+
+  if (detectedTables.length === 0) {
+    pillRow.innerHTML = '<span class="badge error">No tables detected — check the sheet selection</span>';
+  }
+
+  // Auto-select table 3 if it exists, else last
+  const autoIdx = Math.min(2, detectedTables.length - 1);
+  if (autoIdx >= 0) selectTable(autoIdx);
+}
+
+function selectTable(idx) {
+  selectedTableIdx = idx;
+  const pills = document.querySelectorAll('#table-pills .pill');
+  pills.forEach((p, i) => p.classList.toggle('selected', i === idx));
+
+  const table = detectedTables[idx];
+  headers = table.rows[0].map(c => String(c).trim());
+  allRows = table.rows.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+
+  renderRawPreview(table.rows.slice(0, 6));
+  buildMapper();
+  document.getElementById('step-map').classList.remove('hidden');
+}
+
+function renderRawPreview(rows) {
+  const container = document.getElementById('raw-preview');
+  if (rows.length === 0) { container.innerHTML = ''; return; }
+  const hdrs = rows[0];
+  const body = rows.slice(1);
+  let html = '<table><thead><tr>' + hdrs.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+  body.forEach(r => {
+    html += '<tr>' + hdrs.map((_, i) => `<td>${r[i] ?? ''}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ── Column Mapper ─────────────────────────────────────────────
+const REQUIRED_FIELDS = [
+  { key: 'account_name', label: 'Account Name *' },
+];
+const OPTIONAL_FIELDS = [
+  { key: 'account_type', label: 'Account Type' },
+  { key: 'city', label: 'City' },
+  { key: 'state', label: 'State' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'email', label: 'Email' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'sku_column', label: 'SKU / Product column (if single-product rows)' },
+];
+
+function buildMapper() {
+  const grid = document.getElementById('mapper-grid');
+  grid.innerHTML = '';
+
+  [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].forEach(field => {
+    const div = document.createElement('div');
+    div.className = 'field';
+
+    const lbl = document.createElement('label');
+    lbl.textContent = field.label;
+    div.appendChild(lbl);
+
+    const sel = document.createElement('select');
+    sel.id = `map-${field.key}`;
+    sel.innerHTML = '<option value="">— not in report —</option>';
+    headers.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      // Auto-match heuristics
+      const hl = h.toLowerCase();
+      if (field.key === 'account_name' && (hl.includes('account') || hl.includes('name') || hl.includes('customer') || hl.includes('client'))) opt.selected = true;
+      if (field.key === 'city' && hl.includes('city')) opt.selected = true;
+      if (field.key === 'state' && (hl === 'state' || hl === 'st')) opt.selected = true;
+      if (field.key === 'phone' && hl.includes('phone')) opt.selected = true;
+      if (field.key === 'email' && hl.includes('email')) opt.selected = true;
+      if (field.key === 'account_type' && (hl.includes('type') || hl.includes('premise'))) opt.selected = true;
+      if (field.key === 'notes' && hl.includes('note')) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    div.appendChild(sel);
+    grid.appendChild(div);
+  });
+
+  // Populate product column dropdowns
+  ['prod1-col', 'prod2-col'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">— not applicable —</option>';
+    headers.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      sel.appendChild(opt);
+    });
+  });
+
+  // Default recap date to today
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('recap-date').value = today;
+}
+
+function getMapping() {
+  const m = {};
+  [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].forEach(f => {
+    const sel = document.getElementById(`map-${f.key}`);
+    if (sel) m[f.key] = sel.value;
+  });
+  return m;
+}
+
+function colVal(row, colName) {
+  if (!colName) return '';
+  const idx = headers.indexOf(colName);
+  if (idx === -1) return '';
+  return String(row[idx] ?? '').trim();
+}
+
+// ── Generate outputs ──────────────────────────────────────────
+function generateOutputs() {
+  const mapping = getMapping();
+  const sku1 = document.getElementById('sku1').value.trim();
+  const sku2 = document.getElementById('sku2').value.trim();
+  const pname1 = document.getElementById('pname1').value.trim();
+  const pname2 = document.getElementById('pname2').value.trim();
+  const recapDate = document.getElementById('recap-date').value;
+  const defaultType = document.getElementById('default-account-type').value;
+  const prod1Col = document.getElementById('prod1-col').value;
+  const prod2Col = document.getElementById('prod2-col').value;
+
+  if (!mapping.account_name) { alert('Please map the Account Name column.'); return; }
+  if (!recapDate) { alert('Please set a seed recap date.'); return; }
+  if (!sku1 || !pname1) { alert('Please fill in Product 1 SKU and name.'); return; }
+
+  const accountsSeen = new Map(); // name → row object
+  const placements = [];
+
+  allRows.forEach(row => {
+    const name = colVal(row, mapping.account_name);
+    if (!name) return;
+
+    // Build account row (deduplicated by name)
+    if (!accountsSeen.has(name)) {
+      accountsSeen.set(name, {
+        company_name: name,
+        type: colVal(row, mapping.account_type) || defaultType,
+        city: colVal(row, mapping.city),
+        state: colVal(row, mapping.state),
+        phone: colVal(row, mapping.phone),
+        email: colVal(row, mapping.email),
+        notes: colVal(row, mapping.notes),
+        status: 'Active',
+      });
+    }
+
+    // Determine which products this account row has activity for
+    const hasP1 = prod1Col ? colVal(row, prod1Col) && colVal(row, prod1Col) !== '0' : true;
+    const hasP2 = prod2Col ? colVal(row, prod2Col) && colVal(row, prod2Col) !== '0' : sku2 !== '';
+
+    if (hasP1 && sku1) {
+      placements.push({
+        account_name: name,
+        product_sku: sku1,
+        product_name: pname1,
+        recap_date: recapDate,
+        outcome: 'Yes Today',
+        notes: prod1Col ? `Depletion qty: ${colVal(row, prod1Col)}` : 'Retroactive placement record',
+      });
+    }
+
+    if (hasP2 && sku2) {
+      placements.push({
+        account_name: name,
+        product_sku: sku2,
+        product_name: pname2,
+        recap_date: recapDate,
+        outcome: 'Yes Today',
+        notes: prod2Col ? `Depletion qty: ${colVal(row, prod2Col)}` : 'Retroactive placement record',
+      });
+    }
+  });
+
+  outputAccounts = Array.from(accountsSeen.values());
+  outputPlacements = placements;
+
+  renderOutputTable('accounts-table', outputAccounts, ['company_name','type','city','state','phone','email','status','notes']);
+  renderOutputTable('placements-table', outputPlacements, ['account_name','product_sku','product_name','recap_date','outcome','notes']);
+
+  document.getElementById('output-stats').innerHTML = `
+    <div class="stat"><div class="val">${outputAccounts.length}</div><div class="lbl">Unique Accounts</div></div>
+    <div class="stat"><div class="val">${outputPlacements.length}</div><div class="lbl">Placement Records</div></div>
+    <div class="stat"><div class="val">${recapDate}</div><div class="lbl">Seed Recap Date</div></div>
+  `;
+
+  document.getElementById('output-summary').innerHTML =
+    `<strong>${outputAccounts.length} accounts</strong> ready for bulk import · <strong>${outputPlacements.length} placement records</strong> ready for engineering seed insert.`;
+
+  document.getElementById('step-output').classList.remove('hidden');
+  document.getElementById('step-output').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderOutputTable(id, data, cols) {
+  const table = document.getElementById(id);
+  if (data.length === 0) { table.innerHTML = '<tr><td>No data</td></tr>'; return; }
+  let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  data.forEach(row => {
+    html += '<tr>' + cols.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(name) {
+  document.getElementById('tab-accounts').classList.toggle('hidden', name !== 'accounts');
+  document.getElementById('tab-placements').classList.toggle('hidden', name !== 'placements');
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (name === 'accounts')));
+}
+
+// ── CSV download ──────────────────────────────────────────────
+function downloadCSV(type) {
+  const isAccounts = type === 'accounts';
+  const data = isAccounts ? outputAccounts : outputPlacements;
+  const cols = isAccounts
+    ? ['company_name','type','city','state','phone','email','status','notes']
+    : ['account_name','product_sku','product_name','recap_date','outcome','notes'];
+
+  const lines = [cols.join(',')];
+  data.forEach(row => {
+    lines.push(cols.map(c => {
+      const v = String(row[c] ?? '');
+      return v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g,'""')}"` : v;
+    }).join(','));
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = isAccounts ? 'accounts_import.csv' : 'placements_import.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
