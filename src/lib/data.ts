@@ -24,7 +24,6 @@ import type {
   RecapFormState,
   PaginationOptions,
   PaginatedResult,
-  ApiErrorResponse,
   RecapOutcome,
   DashboardStats,
   TopAccount,
@@ -420,10 +419,10 @@ export async function saveRecap(
     salesperson:         form.salesperson,
     user_id:             user?.id ?? null,
     account_id:          form.account_id,
-    contact_id:          form.contact_id || '',
+    contact_id:          form.contact_id || null,
     nature:              form.nature,
-    expense_receipt_url: form.expense_receipt_url || '',
-    notes:               form.notes || '',
+    expense_receipt_url: form.expense_receipt_url || null,
+    notes:               form.notes || null,
   };
 
   const p_products = form.products.map((p) => ({
@@ -513,17 +512,9 @@ export async function getVisitsBySupplier(
     .from('recap_products')
     .select(`
       outcome,
-      order_probability,
-      buyer_feedback,
       supplier_id,
       supplier:suppliers(name),
-      recap:recaps(
-        visit_date,
-        account:accounts(name)
-      ),
       product:products(
-        sku_number,
-        wine_name,
         brand:brands(name, supplier_id, supplier:suppliers(name))
       )
     `)
@@ -533,27 +524,49 @@ export async function getVisitsBySupplier(
 
   if (error) throw new Error(mapDbError(error));
 
-  return (data ?? []).map((row) => {
-    const r = row as unknown as {
-      outcome:            RecapOutcome;
-      order_probability:  number | null;
-      buyer_feedback:     string | null;
-      supplier_id:        string | null;
-      supplier:           { name: string } | null;
-      recap:    Array<{ visit_date: string; account: Array<{ name: string }> }>;
-      product:  Array<{ sku_number: string; wine_name: string; brand: Array<{ name: string; supplier: Array<{ name: string }> }> }>;
-    };
-    const recap    = r.recap?.[0]   ?? null;
-    const product  = r.product?.[0] ?? null;
-    const brand    = product?.brand?.[0] ?? null;
-    return {
-      supplier_id:       r.supplier_id ?? null,
-      supplier_name:     r.supplier?.name ?? brand?.supplier?.[0]?.name ?? null,
-      brand_name:        brand?.name ?? null,
-      total_visits:      1,
-      orders_placed:     r.outcome === 'Yes Today' ? 1 : 0,
-    };
-  });
+  type RawRow = {
+    outcome:     RecapOutcome;
+    supplier_id: string | null;
+    supplier:    { name: string } | null;
+    product:     Array<{ brand: Array<{ name: string; supplier_id: string | null; supplier: Array<{ name: string }> }> }> | null;
+  };
+
+  const map = new Map<string, {
+    supplier_name: string | null;
+    brand_names:   Set<string>;
+    total_visits:  number;
+    orders_placed: number;
+  }>();
+
+  for (const row of (data ?? []) as unknown as RawRow[]) {
+    const brand        = row.product?.[0]?.brand?.[0] ?? null;
+    const supplierName = row.supplier?.name ?? brand?.supplier?.[0]?.name ?? null;
+    const supplierId   = row.supplier_id ?? brand?.supplier_id ?? null;
+
+    if (!supplierId) continue;
+
+    if (!map.has(supplierId)) {
+      map.set(supplierId, {
+        supplier_name: supplierName,
+        brand_names:   new Set(),
+        total_visits:  0,
+        orders_placed: 0,
+      });
+    }
+    const entry = map.get(supplierId)!;
+    entry.total_visits += 1;
+    if (row.outcome === 'Yes Today') entry.orders_placed += 1;
+    if (brand?.name) entry.brand_names.add(brand.name);
+    if (!entry.supplier_name && supplierName) entry.supplier_name = supplierName;
+  }
+
+  return Array.from(map.entries()).map(([supplier_id, v]) => ({
+    supplier_id,
+    supplier_name: v.supplier_name,
+    brand_name:    v.brand_names.size > 0 ? Array.from(v.brand_names).join(', ') : null,
+    total_visits:  v.total_visits,
+    orders_placed: v.orders_placed,
+  }));
 }
 
 export async function getProductsByContact(
@@ -969,7 +982,7 @@ export async function getAccountsReport(
 }
 
 // Re-export error type for API routes
-export type { ApiErrorResponse };
+export type { ApiErrorResponse } from '@/types';
 
 // ── Weekly Summaries ──────────────────────────────────────────
 
