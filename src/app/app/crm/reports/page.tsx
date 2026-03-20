@@ -20,10 +20,11 @@ import type { DashboardStats } from '@/types';
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_STATS: DashboardStats = {
-  total_accounts: 0,
-  active_follow_ups: 0,
-  visits_this_month: 0,
-  conversion_rate_pct: null,
+  visits_this_month:         0,
+  conversion_rate_pct:       null,
+  events_this_month:         0,
+  off_site_this_month:       0,
+  new_placements_this_month: 0,
 };
 
 async function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {

@@ -28,8 +28,14 @@ export default async function TeamPage() {
     redirect('/app/crm/clients');
   }
 
+  // Service client needed for both the member list read and the admin API.
+  // The RLS policy on team_members restricts reads to each user's OWN row
+  // (user_id = auth.uid()), so the authenticated client would return only
+  // the owner's row and newly-added members would be invisible.
+  const svc = createServiceClient();
+
   // Fetch all members of this team
-  const { data: rows } = await sb
+  const { data: rows } = await svc
     .from('team_members')
     .select('user_id, role')
     .eq('team_id', teamId)
@@ -38,7 +44,6 @@ export default async function TeamPage() {
   const memberRows = rows ?? [];
 
   // Look up email / display name for each member via the admin API
-  const svc = createServiceClient();
   const members: TeamMember[] = await Promise.all(
     memberRows.map(async (row) => {
       const { data } = await svc.auth.admin.getUserById(row.user_id);

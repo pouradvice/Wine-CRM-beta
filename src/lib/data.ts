@@ -587,10 +587,25 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
   let convQuery = sb.from('v_product_performance').select('conversion_rate_pct');
   if (teamId) convQuery = convQuery.eq('team_id', teamId);
 
-  let openQuery = sb.from('v_follow_up_queue').select('id', { count: 'exact', head: true }).eq('status', 'Open');
-  if (teamId) openQuery = openQuery.eq('team_id', teamId);
+  // Event recaps this month
+  let eventsQuery = sb.from('recaps').select('id', { count: 'exact', head: true })
+    .eq('nature', 'Event').gte('visit_date', startOfMonth);
+  if (teamId) eventsQuery = eventsQuery.eq('team_id', teamId);
 
-  const [monthRes, convRes, openRes] = await Promise.all([monthQuery, convQuery, openQuery]);
+  // Off-Premise Tasting recaps this month
+  let offSiteQuery = sb.from('recaps').select('id', { count: 'exact', head: true })
+    .eq('nature', 'Off-Premise Tasting').gte('visit_date', startOfMonth);
+  if (teamId) offSiteQuery = offSiteQuery.eq('team_id', teamId);
+
+  // New menu placements this month — recap_products has no team_id column;
+  // RLS on the authenticated client already scopes results to the team.
+  // created_at is used as proxy for visit date.
+  const placementsQuery = sb.from('recap_products').select('id', { count: 'exact', head: true })
+    .eq('menu_placement', true).gte('created_at', startOfMonth + 'T00:00:00Z');
+
+  const [monthRes, convRes, eventsRes, offSiteRes, placementsRes] = await Promise.all([
+    monthQuery, convQuery, eventsQuery, offSiteQuery, placementsQuery,
+  ]);
 
   const rates = (convRes.data ?? [])
     .map((r) => r.conversion_rate_pct as number | null)
@@ -600,16 +615,12 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
       ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length)
       : null;
 
-  // total active accounts
-  let accountsQuery = sb.from('accounts').select('id', { count: 'exact', head: true }).eq('is_active', true);
-  if (teamId) accountsQuery = accountsQuery.eq('team_id', teamId);
-  const { count: totalAccounts } = await accountsQuery;
-
   return {
-    total_accounts:      totalAccounts ?? 0,
-    active_follow_ups:   openRes.count ?? 0,
-    visits_this_month:   monthRes.count ?? 0,
-    conversion_rate_pct: conversion_rate_pct,
+    visits_this_month:         monthRes.count ?? 0,
+    conversion_rate_pct:       conversion_rate_pct,
+    events_this_month:         eventsRes.count ?? 0,
+    off_site_this_month:       offSiteRes.count ?? 0,
+    new_placements_this_month: placementsRes.count ?? 0,
   };
 }
 
@@ -999,10 +1010,10 @@ export async function generateAndSaveWeeklySummary(
   endDate.setUTCDate(endDate.getUTCDate() + 6);
   const weekEnd = endDate.toISOString().split('T')[0];
 
-  // 2. Query recaps for the week
+  // 2. Query recaps for the week (include nature + occasion for event/off-site sections)
   const { data: recaps, error: recapsError } = await sb
     .from('recaps')
-    .select('id, account_id, recap_products(id, outcome, product_id)')
+    .select('id, account_id, nature, occasion, recap_products(id, outcome, product_id, menu_placement, products(wine_name))')
     .eq('team_id', teamId)
     .gte('visit_date', weekStart)
     .lte('visit_date', weekEnd);
@@ -1015,7 +1026,7 @@ export async function generateAndSaveWeeklySummary(
   const accountIds       = new Set(weekRecaps.map((r) => r.account_id as string));
   const accounts_visited = accountIds.size;
 
-  type RecapProduct = { id: string; outcome: string; product_id: string };
+  type RecapProduct = { id: string; outcome: string; product_id: string; menu_placement: boolean; products: { wine_name: string }[] | null };
   const allProducts: RecapProduct[] = weekRecaps.flatMap(
     (r) => (r.recap_products as RecapProduct[]) ?? [],
   );
@@ -1111,7 +1122,52 @@ export async function generateAndSaveWeeklySummary(
     pipeline_summary[row.outcome] = row.count;
   }
 
-  // 9. Upsert into weekly_summaries
+  // 9. Fetch account names for all accounts visited this week (for event/off-site lists)
+  const allAccountIds = Array.from(accountIds);
+  let accountNameMap = new Map<string, string>();
+  if (allAccountIds.length > 0) {
+    const { data: accNameRows } = await sb
+      .from('accounts')
+      .select('id, name')
+      .in('id', allAccountIds);
+    for (const a of accNameRows ?? []) {
+      accountNameMap.set(a.id as string, a.name as string);
+    }
+  }
+
+  // 10. Build event_recaps, off_site_recaps, new_menu_placements
+  type EventRecap = { account_name: string; visit_date: string; occasion: string | null };
+  type OffSiteRecap = { account_name: string; visit_date: string };
+  type MenuPlacement = { account_name: string; wine_name: string; visit_date: string };
+
+  const event_recaps: EventRecap[] = [];
+  const off_site_recaps: OffSiteRecap[] = [];
+  const new_menu_placements: MenuPlacement[] = [];
+
+  for (const r of weekRecaps) {
+    const accountName = accountNameMap.get(r.account_id as string) ?? '';
+    const visitDate   = (r as Record<string, unknown>).visit_date as string ?? '';
+    const nature      = (r as Record<string, unknown>).nature as string ?? '';
+    const occasion    = (r as Record<string, unknown>).occasion as string | null ?? null;
+
+    if (nature === 'Event') {
+      event_recaps.push({ account_name: accountName, visit_date: visitDate, occasion });
+    } else if (nature === 'Off-Premise Tasting') {
+      off_site_recaps.push({ account_name: accountName, visit_date: visitDate });
+    }
+
+    for (const p of (r.recap_products as RecapProduct[]) ?? []) {
+      if (p.menu_placement) {
+        new_menu_placements.push({
+          account_name: accountName,
+          wine_name:    p.products?.[0]?.wine_name ?? '',
+          visit_date:   visitDate,
+        });
+      }
+    }
+  }
+
+  // 11. Upsert into weekly_summaries
   const record = {
     team_id:             teamId,
     week_start:          weekStart,
@@ -1125,6 +1181,9 @@ export async function generateAndSaveWeeklySummary(
     top_products,
     top_accounts,
     pipeline_summary,
+    event_recaps,
+    off_site_recaps,
+    new_menu_placements,
     generated_by:        userId,
   };
 
