@@ -835,11 +835,17 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
               <label className={styles.formLabel}>Supplier</label>
               <input
                 type="text"
+                list="suppliers-list"
                 className={styles.formInput}
                 value={form.supplier_name}
                 onChange={(e) => setField('supplier_name', e.target.value)}
                 placeholder="Supplier name"
               />
+              <datalist id="suppliers-list">
+                {suppliersList.map((s) => (
+                  <option key={s.id} value={s.name} />
+                ))}
+              </datalist>
             </div>
 
             <div className={styles.formField}>
