@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pour Advice — Depletion Report Parser</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --wine: #722F37;
+    --wine-light: #8B3A44;
+    --wine-dark: #4A1E24;
+    --sage: #5C7A5C;
+    --parchment: #F5F0E8;
+    --parchment-dark: #E8E0D0;
+    --ink: #1A1410;
+    --muted: #6B6560;
+    --border: #D4C9B8;
+    --success: #3A6B4A;
+    --success-bg: #EEF5F0;
+    --warning-bg: #FBF4E8;
+    --warning: #7A5C2A;
+    --error: #7A2A2A;
+    --error-bg: #FBE8E8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--parchment);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .header { margin-bottom: 32px; }
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--wine-dark);
+    letter-spacing: -0.3px;
+  }
+  .header p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  /* ── Pipeline ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .step.active { color: var(--wine); }
+  .step.done   { color: var(--success); }
+  .step-dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: white;
+    flex-shrink: 0;
+  }
+  .step.active .step-dot { border-color: var(--wine); color: var(--wine); background: #F9ECED; }
+  .step.done   .step-dot { border-color: var(--success); color: white; background: var(--success); }
+  .step-arrow  { color: var(--border); font-size: 16px; }
+
+  /* ── Card ── */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--wine-dark);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--wine);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--parchment);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--wine);
+    background: #FDF5F6;
+  }
+  .upload-zone input {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-zone .icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-zone h3  { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .upload-zone p   { font-size: 12px; color: var(--muted); }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin: 18px 0 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Sheet tabs ── */
+  .sheet-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: white;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .tab.active { border-color: var(--wine); color: var(--wine); background: #FDF5F6; }
+
+  /* ── Raw Preview ── */
+  .raw-preview {
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: auto;
+    max-height: 240px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+  .raw-preview table { border-collapse: collapse; min-width: 100%; }
+  .raw-preview th, .raw-preview td {
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .raw-preview th {
+    background: var(--parchment-dark);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    position: sticky; top: 0;
+  }
+  .row-num { color: var(--border); font-size: 10px; }
+
+  /* ── Config Grid ── */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px) { .config-grid { grid-template-columns: 1fr; } }
+
+  /* ── Fields ── */
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--wine); }
+  .field-note { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* ── Mapper ── */
+  .mapper-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 560px) { .mapper-grid { grid-template-columns: 1fr; } }
+
+  .mapper-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    background: var(--parchment);
+    border-radius: 7px;
+    border: 1px solid var(--border);
+  }
+  .mapper-row .target {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wine-dark);
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .mapper-row .req { color: var(--wine); }
+  .mapper-row select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    min-width: 0;
+  }
+  .mapper-row select:focus { border-color: var(--wine); }
+
+  /* ── Alerts ── */
+  .alert {
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .alert:last-child { margin-bottom: 0; }
+  .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid #C0D9C5; }
+  .alert-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid #D4BC8A; }
+  .alert-error   { background: var(--error-bg);   color: var(--error);   border: 1px solid #D4AAAA; }
+  .alert-info    { background: #EEF2FB; color: #2A4480; border: 1px solid #B0C4E8; }
+
+  /* ── Results ── */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 560px) { .results-grid { grid-template-columns: 1fr; } }
+
+  .result-card {
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 16px;
+  }
+  .result-card h4 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .result-stat {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--wine);
+    line-height: 1;
+  }
+  .result-stat span {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-left: 5px;
+  }
+  .result-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* ── Preview Table ── */
+  .preview-scroll {
+    overflow: auto;
+    max-height: 220px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    margin-bottom: 4px;
+  }
+  .preview-scroll table { border-collapse: collapse; width: 100%; font-size: 11px; }
+  .preview-scroll th {
+    background: var(--wine);
+    color: white;
+    padding: 7px 12px;
+    text-align: left;
+    font-weight: 600;
+    position: sticky; top: 0;
+    white-space: nowrap;
+  }
+  .preview-scroll td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-scroll tr:nth-child(even) td { background: var(--parchment); }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .btn-primary { background: var(--wine); color: white; }
+  .btn-primary:hover { background: var(--wine-light); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-ghost { background: white; color: var(--wine); border: 1.5px solid var(--wine); }
+  .btn-ghost:hover { background: #FDF5F6; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #2D5438; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .hidden  { display: none !important; }
+
+  /* ── Next Steps Box ── */
+  .next-steps {
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 16px 18px;
+    margin-top: 16px;
+  }
+  .next-steps h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--wine-dark);
+    margin-bottom: 10px;
+  }
+  .next-steps ol {
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.8;
+  }
+  .next-steps ol li strong { color: var(--wine-dark); }
+  .next-steps ol li code {
+    font-family: 'Courier New', monospace;
+    background: var(--parchment-dark);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>Depletion Report Parser</h1>
+  <p>Extract &amp; clean depletion data from Excel → two import-ready CSVs for Pour Advice CRM</p>
+</div>
+
+<!-- Pipeline -->
+<div class="pipeline">
+  <div class="step active" id="pip-1"><div class="step-dot">1</div> Upload</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="pip-2"><div class="step-dot">2</div> Configure</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="pip-3"><div class="step-dot">3</div> Map Columns</div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="pip-4"><div class="step-dot">4</div> Export</div>
+</div>
+
+<!-- ══ STEP 1: Upload ══ -->
+<div id="step-upload" class="card">
+  <div class="card-title">Upload Depletion Report <span class="badge">Step 1</span></div>
+  <div class="upload-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+    <div class="icon">📊</div>
+    <h3>Drop your Excel file here</h3>
+    <p>Accepts .xlsx, .xls, or .csv</p>
+  </div>
+  <div id="file-info" class="alert alert-info hidden" style="margin-top:14px;margin-bottom:0"></div>
+</div>
+
+<!-- ══ STEP 2: Configure ══ -->
+<div id="step-configure" class="card hidden">
+  <div class="card-title">Configure Source Table <span class="badge">Step 2</span></div>
+
+  <div class="section-label">Sheet</div>
+  <div class="sheet-tabs" id="sheetTabs"></div>
+
+  <div class="section-label">Raw Preview — first 20 rows</div>
+  <div class="raw-preview" id="rawPreview"></div>
+
+  <div class="section-label" style="margin-top:18px">Locate Third Table</div>
+  <div class="config-grid">
+    <div class="field">
+      <label>Header Row (1-indexed)</label>
+      <input type="number" id="headerRow" min="1" value="1" />
+      <div class="field-note">Row containing the column headers of the third table</div>
+    </div>
+    <div class="field">
+      <label>First Data Row (1-indexed)</label>
+      <input type="number" id="dataStartRow" min="1" value="2" />
+      <div class="field-note">Row immediately after the header</div>
+    </div>
+  </div>
+
+  <div id="detection-alert" class="alert alert-info" style="margin-top:14px;margin-bottom:0">
+    ℹ Scan the preview above. Enter the row number where the third table's column headers appear, then click Detect.
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="detectTable()">🔍 Detect Table Structure</button>
+  </div>
+</div>
+
+<!-- ══ STEP 3: Map Columns ══ -->
+<div id="step-mapper" class="card hidden">
+  <div class="card-title">Map Columns <span class="badge">Step 3</span></div>
+
+  <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+    Auto-matched where possible. Adjust dropdowns to correct any mismatches. Fields marked <span style="color:var(--wine)">*</span> are required.
+  </p>
+
+  <div id="mapper-alert" class="hidden"></div>
+
+  <div class="section-label">Account Fields → accounts_import.csv</div>
+  <div class="mapper-grid" id="account-mapper"></div>
+
+  <div class="section-label">Recap / Depletion Fields → recaps_import.csv</div>
+  <div class="mapper-grid" id="recap-mapper"></div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="generateOutputs()">⚙️ Generate CSVs</button>
+    <button class="btn btn-ghost" onclick="goBack()">← Back</button>
+  </div>
+</div>
+
+<!-- ══ STEP 4: Export ══ -->
+<div id="step-export" class="card hidden">
+  <div class="card-title">Export Ready <span class="badge">Step 4</span></div>
+
+  <div id="export-alerts"></div>
+
+  <div class="results-grid" id="results-grid"></div>
+
+  <div id="uuid-panel"></div>
+
+  <div class="section-label">accounts_import.csv — Preview (first 10 rows)</div>
+  <div class="preview-scroll" id="accounts-preview"></div>
+
+  <div class="section-label" style="margin-top:16px">recaps_import.csv — Preview (first 10 rows)</div>
+  <div class="preview-scroll" id="recaps-preview"></div>
+
+  <div class="actions" id="export-actions"></div>
+
+  <div class="next-steps">
+    <h4>After Export — Import Sequence</h4>
+    <ol>
+      <li><strong>accounts_import.csv</strong> → Accounts › Import (existing CSVImporter — skips duplicates automatically)</li>
+      <li>Create new <strong>brand</strong> via Products UI; then add both <strong>products</strong> — note their UUIDs</li>
+      <li><strong>recaps_import.csv</strong> → hand off to eng team for SQL-level recap + recap_products insert (Stage 3b/3c)</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let wb = null;
+let activeSheet = null;
+let detectedHeaders = [];
+let detectedRows = [];
+let accountRows = [];
+let recapRows = [];
+
+// ─── Field schemas ────────────────────────────────────────────────────────────
+const ACCOUNT_FIELDS = [
+  { key: 'name',   label: 'Account Name', required: true  },
+  { key: 'type',   label: 'Type',         required: false },
+  { key: 'city',   label: 'City',         required: false },
+  { key: 'state',  label: 'State',        required: false },
+  { key: 'phone',  label: 'Phone',        required: false },
+  { key: 'email',  label: 'Email',        required: false },
+  { key: 'notes',  label: 'Notes',        required: false },
+];
+
+const RECAP_FIELDS = [
+  { key: 'account_name',       label: 'Account Name',      required: true  },
+  { key: 'visit_date',         label: 'Visit Date',        required: true  },
+  { key: 'product_sku_1',      label: 'Product SKU #1',    required: false },
+  { key: 'bottles_1',          label: 'Qty / Bottles #1',  required: false },
+  { key: 'product_sku_2',      label: 'Product SKU #2',    required: false },
+  { key: 'bottles_2',          label: 'Qty / Bottles #2',  required: false },
+  { key: 'depletion_notes',    label: 'Notes',             required: false },
+];
+
+// ─── Pipeline ─────────────────────────────────────────────────────────────────
+function setPipeline(active) {
+  [1,2,3,4].forEach(n => {
+    const el = document.getElementById('pip-' + n);
+    const dot = el.querySelector('.step-dot');
+    el.className = 'step ' + (n < active ? 'done' : n === active ? 'active' : '');
+    dot.textContent = n < active ? '✓' : n;
+  });
+}
+
+// ─── Upload ───────────────────────────────────────────────────────────────────
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop',      e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const info = document.getElementById('file-info');
+  info.className = 'alert alert-info';
+  info.innerHTML = `⏳ Reading <strong>${file.name}</strong>…`;
+  info.classList.remove('hidden');
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      wb = XLSX.read(data, { type: 'array', cellDates: true });
+      info.innerHTML = `✓ Loaded <strong>${file.name}</strong> — ${wb.SheetNames.length} sheet(s) found`;
+      info.className = 'alert alert-success';
+      openStep2();
+    } catch(err) {
+      info.textContent = '✗ Error reading file: ' + err.message;
+      info.className = 'alert alert-error';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── Step 2: Configure ────────────────────────────────────────────────────────
+function openStep2() {
+  document.getElementById('step-configure').classList.remove('hidden');
+  setPipeline(2);
+
+  const tabs = document.getElementById('sheetTabs');
+  tabs.innerHTML = '';
+  wb.SheetNames.forEach((name, i) => {
+    const t = document.createElement('button');
+    t.className = 'tab' + (i === 0 ? ' active' : '');
+    t.textContent = name;
+    t.onclick = () => {
+      document.querySelectorAll('#sheetTabs .tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      activeSheet = name;
+      renderRawPreview();
+    };
+    tabs.appendChild(t);
+  });
+  activeSheet = wb.SheetNames[0];
+  renderRawPreview();
+}
+
+function renderRawPreview() {
+  const ws = wb.Sheets[activeSheet];
+  const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+  const maxRow = Math.min(allRows.length, 20);
+  const maxCol = Math.min(Math.max(...allRows.slice(0, maxRow).map(r => r.length), 1), 16);
+
+  let html = '<table><thead><tr><th style="background:var(--parchment-dark);color:var(--muted)">#</th>';
+  for (let c = 0; c < maxCol; c++) html += `<th>${colLetter(c)}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let r = 0; r < maxRow; r++) {
+    html += `<tr><td class="row-num">${r+1}</td>`;
+    for (let c = 0; c < maxCol; c++) {
+      const v = allRows[r] && allRows[r][c] !== undefined ? String(allRows[r][c]).trim() : '';
+      html += `<td title="${v}">${v || ''}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('rawPreview').innerHTML = html;
+}
+
+function colLetter(n) {
+  return n < 26 ? String.fromCharCode(65+n) : String.fromCharCode(64+Math.floor(n/26)) + String.fromCharCode(65+(n%26));
+}
+
+// ─── Detect Table ─────────────────────────────────────────────────────────────
+function detectTable() {
+  const headerRowIdx = parseInt(document.getElementById('headerRow').value, 10) - 1;
+  const dataStartIdx = parseInt(document.getElementById('dataStartRow').value, 10) - 1;
+  const alert = document.getElementById('detection-alert');
+
+  const ws = wb.Sheets[activeSheet];
+  const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+
+  if (headerRowIdx >= allRows.length) {
+    alert.className = 'alert alert-error';
+    alert.innerHTML = `✗ Row ${headerRowIdx+1} is beyond the sheet range (${allRows.length} rows).`;
+    return;
+  }
+
+  detectedHeaders = allRows[headerRowIdx].map(h => String(h).trim()).filter(h => h);
+  if (detectedHeaders.length === 0) {
+    alert.className = 'alert alert-error';
+    alert.innerHTML = `✗ No headers found on row ${headerRowIdx+1}. Check the preview and try again.`;
+    return;
+  }
+
+  detectedRows = allRows.slice(dataStartIdx).filter(r => r.some(c => String(c).trim() !== ''));
+  alert.className = 'alert alert-success';
+  alert.innerHTML = `✓ Detected <strong>${detectedHeaders.length} columns</strong> and <strong>${detectedRows.length} data rows</strong>. Headers: ${detectedHeaders.join(', ')}`;
+
+  openStep3();
+}
+
+// ─── Step 3: Map Columns ──────────────────────────────────────────────────────
+function openStep3() {
+  document.getElementById('step-mapper').classList.remove('hidden');
+  setPipeline(3);
+  buildMapper('account-mapper', ACCOUNT_FIELDS);
+  buildMapper('recap-mapper',   RECAP_FIELDS);
+  document.getElementById('step-mapper').scrollIntoView({ behavior: 'smooth' });
+}
+
+function buildMapper(containerId, fields) {
+  const container = document.getElementById(containerId);
+  const options = ['(not mapped)', ...detectedHeaders];
+  container.innerHTML = '';
+
+  fields.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'mapper-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'target';
+    lbl.innerHTML = f.label + (f.required ? ' <span class="req">*</span>' : '');
+
+    const sel = document.createElement('select');
+    sel.id = 'map_' + f.key;
+    options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt === '(not mapped)' ? '— not mapped —' : opt;
+      if (opt !== '(not mapped)' && autoMatch(opt, f.key)) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    row.appendChild(lbl);
+    row.appendChild(sel);
+    container.appendChild(row);
+  });
+}
+
+const ALIASES = {
+  name:             ['account','accountname','company','companyname','business','customer','name'],
+  type:             ['type','accounttype','venuetype','segment'],
+  city:             ['city','town','municipality'],
+  state:            ['state','province','region'],
+  phone:            ['phone','tel','telephone','mobile','cell'],
+  email:            ['email','emailaddress','e-mail'],
+  notes:            ['notes','comments','remarks','memo'],
+  account_name:     ['account','accountname','company','companyname','customer','name','acct'],
+  visit_date:       ['date','visitdate','perioddate','reportdate','period','month','reportmonth'],
+  product_sku_1:    ['sku','sku1','sku#1','product','productsku','item','upc','product1'],
+  bottles_1:        ['bottles','btl','cases','qty','quantity','depleted','sold','units','vol','amount'],
+  product_sku_2:    ['sku2','sku#2','product2','item2'],
+  bottles_2:        ['bottles2','btl2','cases2','qty2','units2'],
+  depletion_notes:  ['notes','comments','remarks','memo','note'],
+};
+
+function autoMatch(col, key) {
+  const c = col.toLowerCase().replace(/[\s_\-#]/g, '');
+  return (ALIASES[key] || []).some(alias => c === alias || c.includes(alias) || alias.includes(c.substring(0, 5)));
+}
+
+function getMapped(key) {
+  const sel = document.getElementById('map_' + key);
+  return (sel && sel.value !== '(not mapped)') ? sel.value : null;
+}
+
+function getVal(row, header) {
+  if (!header) return '';
+  const idx = detectedHeaders.indexOf(header);
+  return idx >= 0 && row[idx] !== undefined ? String(row[idx]).trim() : '';
+}
+
+// ─── Generate Outputs ─────────────────────────────────────────────────────────
+function generateOutputs() {
+  const alert = document.getElementById('mapper-alert');
+
+  const missingReq = [...ACCOUNT_FIELDS, ...RECAP_FIELDS]
+    .filter(f => f.required && !getMapped(f.key))
+    .map(f => f.label);
+
+  if (missingReq.length) {
+    alert.className = 'alert alert-error';
+    alert.innerHTML = `✗ Required fields not mapped: <strong>${missingReq.join(', ')}</strong>`;
+    alert.classList.remove('hidden');
+    return;
+  }
+  alert.classList.add('hidden');
+
+  const seenAccounts = new Map(); // name -> row object
+  accountRows = [];
+  recapRows = [];
+
+  detectedRows.forEach(row => {
+    const name = getMapped('name') ? getVal(row, getMapped('name')) : '';
+    if (!name) return;
+
+    // Account dedup
+    if (!seenAccounts.has(name.toLowerCase())) {
+      const acc = {
+        name,
+        type:  getVal(row, getMapped('type')),
+        city:  getVal(row, getMapped('city')),
+        state: getVal(row, getMapped('state')),
+        phone: getVal(row, getMapped('phone')),
+        email: getVal(row, getMapped('email')),
+        notes: getVal(row, getMapped('notes')),
+      };
+      seenAccounts.set(name.toLowerCase(), acc);
+      accountRows.push(acc);
+    }
+
+    // Recap rows (one per product per row)
+    const date  = getVal(row, getMapped('visit_date'));
+    const sku1  = getVal(row, getMapped('product_sku_1'));
+    const sku2  = getVal(row, getMapped('product_sku_2'));
+    const qty1  = getVal(row, getMapped('bottles_1'));
+    const qty2  = getVal(row, getMapped('bottles_2'));
+    const notes = getVal(row, getMapped('depletion_notes'));
+
+    if (sku1) {
+      recapRows.push({ account_name: name, visit_date: date, product_sku: sku1, bottles_depleted: qty1, notes });
+    }
+    if (sku2) {
+      recapRows.push({ account_name: name, visit_date: date, product_sku: sku2, bottles_depleted: qty2, notes: '' });
+    }
+    if (!sku1 && !sku2) {
+      recapRows.push({ account_name: name, visit_date: date, product_sku: '[ASSIGN PRODUCT UUID]', bottles_depleted: qty1, notes });
+    }
+  });
+
+  openStep4();
+}
+
+// ─── UUID lookup table (name → uuid) ─────────────────────────────────────────
+let uuidLookup = new Map(); // normalised name → { uuid, canonical }
+
+function normName(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function loadUuidLookupFromRows(rows) {
+  // rows: array of {name, id} or {company_name, id} objects
+  uuidLookup.clear();
+  rows.forEach(r => {
+    const name = r.name || r.company_name || '';
+    const uuid = r.id || r.uuid || '';
+    if (name && uuid) uuidLookup.set(normName(name), { uuid, canonical: name });
+  });
+  return uuidLookup.size;
+}
+
+function resolveUuid(accountName) {
+  const key = normName(accountName);
+  // Exact normalised match
+  if (uuidLookup.has(key)) return uuidLookup.get(key).uuid;
+  // Prefix match (handle trailing punctuation, "The X" vs "X" etc.)
+  for (const [k, v] of uuidLookup) {
+    if (k.startsWith(key) || key.startsWith(k)) return v.uuid;
+  }
+  return null;
+}
+
+// ─── Step 4: Export ───────────────────────────────────────────────────────────
+function openStep4() {
+  document.getElementById('step-export').classList.remove('hidden');
+  setPipeline(4);
+  document.getElementById('step-export').scrollIntoView({ behavior: 'smooth' });
+  renderStep4();
+}
+
+function renderStep4() {
+  const hasUuids = uuidLookup.size > 0;
+
+  // Annotate accountRows and recapRows with resolved uuid
+  accountRows.forEach(a => { a.account_id = resolveUuid(a.name) || ''; });
+  recapRows.forEach(r => { r.account_id = resolveUuid(r.account_name) || ''; });
+
+  const resolvedAcc = accountRows.filter(r => r.account_id).length;
+  const unresolvedAcc = accountRows.filter(r => !r.account_id).length;
+  const resolvedRec = recapRows.filter(r => r.account_id).length;
+  const unresolvedRec = recapRows.filter(r => !r.account_id).length;
+
+  document.getElementById('results-grid').innerHTML = `
+    <div class="result-card">
+      <h4>Unique Accounts</h4>
+      <div class="result-stat">${accountRows.length}<span>rows</span></div>
+      <div class="result-sub">→ accounts_import.csv</div>
+      ${hasUuids ? `<div class="result-sub" style="color:${unresolvedAcc ? 'var(--warning)' : 'var(--success)'}">
+        ${resolvedAcc} UUIDs resolved · ${unresolvedAcc} unmatched</div>` : ''}
+    </div>
+    <div class="result-card">
+      <h4>Recap Rows</h4>
+      <div class="result-stat">${recapRows.length}<span>rows</span></div>
+      <div class="result-sub">→ recaps_import.csv</div>
+      ${hasUuids ? `<div class="result-sub" style="color:${unresolvedRec ? 'var(--warning)' : 'var(--success)'}">
+        ${resolvedRec} UUIDs resolved · ${unresolvedRec} unmatched</div>` : ''}
+    </div>
+  `;
+
+  // ── UUID loader panel ──
+  const uuidPanel = document.getElementById('uuid-panel');
+  uuidPanel.innerHTML = '';
+
+  const panelCard = document.createElement('div');
+  panelCard.innerHTML = `
+    <div class="section-label">UUID Reconciliation ${hasUuids ? `<span style="color:var(--success)">✓ ${uuidLookup.size} accounts loaded</span>` : '(optional)'}</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+      To add <code>account_id</code> UUIDs to both output files, provide your existing accounts.
+      Choose one method:
+    </p>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" style="font-size:12px" onclick="document.getElementById('uuid-csv-input').click()">
+        📄 Upload accounts CSV from Supabase
+      </button>
+      <button class="btn btn-ghost" style="font-size:12px" onclick="toggleJsonPaste()">
+        { } Paste SQL result JSON
+      </button>
+    </div>
+    <input type="file" id="uuid-csv-input" accept=".csv" style="display:none" onchange="handleUuidCsv(this)" />
+
+    <div id="json-paste-area" style="display:none;margin-bottom:12px;">
+      <div class="field">
+        <label>Paste JSON array from: <code>SELECT id, name FROM accounts WHERE team_id = '…'</code></label>
+        <textarea id="json-paste" rows="5" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:monospace;font-size:11px;resize:vertical;"
+          placeholder='[{"id":"uuid-here","name":"Account Name"},…]'></textarea>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px;margin-top:6px" onclick="handleJsonPaste()">Load JSON</button>
+    </div>
+
+    <div id="uuid-status"></div>
+  `;
+  panelCard.className = 'card';
+  uuidPanel.appendChild(panelCard);
+
+  // Previews
+  const accCols = hasUuids
+    ? ['account_id','name','type','city','state','phone','email','notes']
+    : ['name','type','city','state','phone','email','notes'];
+  const recCols = hasUuids
+    ? ['account_id','account_name','visit_date','product_sku','bottles_depleted','notes']
+    : ['account_name','visit_date','product_sku','bottles_depleted','notes'];
+
+  renderPreview('accounts-preview', accountRows, accCols);
+  renderPreview('recaps-preview',   recapRows,   recCols);
+
+  // Warnings
+  const alertsEl = document.getElementById('export-alerts');
+  alertsEl.innerHTML = '';
+  const noDate = recapRows.filter(r => !r.visit_date).length;
+  const noSku  = recapRows.filter(r => r.product_sku === '[ASSIGN PRODUCT UUID]').length;
+  if (noDate) alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${noDate} recap row(s) have no visit date.</div>`;
+  if (noSku)  alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${noSku} row(s) have no product SKU mapped.</div>`;
+  if (hasUuids && unresolvedAcc) {
+    const names = accountRows.filter(r => !r.account_id).map(r => r.name).join(', ');
+    alertsEl.innerHTML += `<div class="alert alert-warning">⚠ ${unresolvedAcc} account(s) not matched to a UUID — these are new and need importing first: <strong>${names}</strong></div>`;
+  }
+  if (!noDate && !noSku && (!hasUuids || unresolvedAcc === 0)) {
+    alertsEl.innerHTML = '<div class="alert alert-success">✓ Files look clean — no missing required fields detected.</div>';
+  }
+
+  // Download buttons
+  const actions = document.getElementById('export-actions');
+  actions.innerHTML = '';
+  const btnAcc = makeBtn('⬇ accounts_import.csv', 'btn-success',
+    () => downloadCSV(accountRows, accCols, 'accounts_import.csv'));
+  const btnRec = makeBtn('⬇ recaps_import.csv', 'btn-success',
+    () => downloadCSV(recapRows, recCols, 'recaps_import.csv'));
+  const btnReset = makeBtn('↺ Start Over', 'btn-ghost', () => location.reload());
+  actions.appendChild(btnAcc);
+  actions.appendChild(btnRec);
+  actions.appendChild(btnReset);
+}
+
+function toggleJsonPaste() {
+  const el = document.getElementById('json-paste-area');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function handleUuidCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
+    const idIdx   = headers.findIndex(h => h === 'id' || h === 'uuid');
+    const nameIdx = headers.findIndex(h => h === 'name' || h === 'company_name');
+    if (idIdx === -1 || nameIdx === -1) {
+      document.getElementById('uuid-status').innerHTML =
+        '<div class="alert alert-error">✗ CSV must have columns: <code>id</code> (or <code>uuid</code>) and <code>name</code> (or <code>company_name</code>).</div>';
+      return;
+    }
+    const rows = lines.slice(1).map(line => {
+      const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
+      return { id: cols[idIdx], name: cols[nameIdx] };
+    }).filter(r => r.id && r.name);
+    const count = loadUuidLookupFromRows(rows);
+    document.getElementById('uuid-status').innerHTML =
+      `<div class="alert alert-success">✓ Loaded ${count} accounts from CSV.</div>`;
+    renderStep4();
+  };
+  reader.readAsText(file);
+}
+
+function handleJsonPaste() {
+  const raw = document.getElementById('json-paste').value.trim();
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch(e) {
+    document.getElementById('uuid-status').innerHTML =
+      '<div class="alert alert-error">✗ Invalid JSON — check formatting.</div>';
+    return;
+  }
+  if (!Array.isArray(parsed)) {
+    document.getElementById('uuid-status').innerHTML =
+      '<div class="alert alert-error">✗ Expected a JSON array.</div>';
+    return;
+  }
+  const count = loadUuidLookupFromRows(parsed);
+  document.getElementById('uuid-status').innerHTML =
+    `<div class="alert alert-success">✓ Loaded ${count} accounts from JSON.</div>`;
+  renderStep4();
+}
+
+function makeBtn(label, cls, fn) {
+  const b = document.createElement('button');
+  b.className = 'btn ' + cls;
+  b.innerHTML = label;
+  b.onclick = fn;
+  return b;
+}
+
+function renderPreview(id, rows, keys) {
+  const el = document.getElementById(id);
+  if (!rows.length) { el.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--muted)">No data</p>'; return; }
+  const preview = rows.slice(0, 10);
+  let html = '<table><thead><tr>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr></thead><tbody>';
+  preview.forEach(row => {
+    html += '<tr>' + keys.map(k => {
+      const v = (row[k] || '');
+      return `<td title="${v}">${v || '<span style="color:var(--border)">—</span>'}</td>`;
+    }).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function downloadCSV(rows, keys, filename) {
+  if (!rows.length) { alert('No data to export.'); return; }
+  const lines = [
+    keys.join(','),
+    ...rows.map(row =>
+      keys.map(k => {
+        const v = String(row[k] || '').replace(/"/g, '""');
+        return v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v}"` : v;
+      }).join(',')
+    )
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function goBack() {
+  document.getElementById('step-mapper').classList.add('hidden');
+  setPipeline(2);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
