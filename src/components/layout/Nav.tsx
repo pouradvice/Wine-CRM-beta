@@ -42,6 +42,9 @@ export function Nav({ displayName, isOwner }: NavProps) {
       {/* Mobile top bar */}
       <div className={styles.mobileTopBar}>
         <Link href="/app/crm/new-recap" className={styles.mobileWordmark}>
+          {/* Logo: place public/images/pour-advice-logo.png in the public/images/ directory */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/pour-advice-logo.png" alt="" className={styles.wordmarkLogo} aria-hidden="true" />
           Pour Advice
         </Link>
         <button
@@ -71,6 +74,9 @@ export function Nav({ displayName, isOwner }: NavProps) {
       <nav className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <Link href="/app/crm/new-recap" className={styles.wordmark}>
+            {/* Logo: place public/images/pour-advice-logo.png in the public/images/ directory */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/pour-advice-logo.png" alt="" className={styles.wordmarkLogo} aria-hidden="true" />
             Pour Advice
           </Link>
         </div>
