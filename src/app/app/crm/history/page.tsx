@@ -1,7 +1,7 @@
 // src/app/app/crm/history/page.tsx
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getRecaps } from '@/lib/data';
+import { getRecaps, getAccounts } from '@/lib/data';
 import { HistoryClient } from '@/components/history/HistoryClient';
 import { resolveTeamId } from '@/lib/team';
 
@@ -13,7 +13,10 @@ export default async function HistoryPage() {
   if (!user) redirect('/login');
 
   const teamId = await resolveTeamId(sb, user);
-  const { data: recaps, count } = await getRecaps(sb, { page: 0, pageSize: 25, teamId });
+  const [{ data: recaps, count }, { data: accounts }] = await Promise.all([
+    getRecaps(sb, { page: 0, pageSize: 25, teamId }),
+    getAccounts(sb, undefined, { page: 0, pageSize: 1000 }, teamId),
+  ]);
 
-  return <HistoryClient initialRecaps={recaps} totalCount={count} />;
+  return <HistoryClient initialRecaps={recaps} totalCount={count} accounts={accounts} />;
 }
