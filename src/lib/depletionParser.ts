@@ -83,17 +83,19 @@ export async function parseDepletionFile(file: File): Promise<ParseResult> {
   let rawRows: Record<string, unknown>[];
 
   if (isXlsx) {
-    // Dynamic import to avoid SSR issues
-    const XLSX = await import('xlsx');
-    const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const sheetRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
-    if (sheetRows.length === 0) {
+    // Dynamic import to avoid SSR issues — uses read-excel-file (browser entry)
+    const { default: readXlsxFile } = await import('read-excel-file/browser');
+    const allRows = await readXlsxFile(file);
+    if (allRows.length < 2) {
       return { rows: [], headers: [], detectedAccountColumn: null, requiresColumnSelection: false };
     }
-    headers = Object.keys(sheetRows[0]);
-    rawRows = sheetRows;
+    // First row is headers
+    headers = allRows[0].map(cell => (cell != null ? String(cell) : ''));
+    rawRows = allRows.slice(1).map(cells => {
+      const row: Record<string, unknown> = {};
+      headers.forEach((h, idx) => { row[h] = cells[idx] ?? ''; });
+      return row;
+    });
   } else {
     // CSV
     const text = await file.text();
