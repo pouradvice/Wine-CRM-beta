@@ -16,7 +16,10 @@ const NAV_LINKS = [
   { href: '/app/crm/reports',    label: 'Reports' },
 ];
 
-const OWNER_EXTRA = { href: '/app/crm/team', label: 'Team' };
+const OWNER_EXTRAS = [
+  { href: '/app/crm/team',   label: 'Team' },
+  { href: '/app/suppliers',  label: 'Suppliers' },
+];
 
 // Minimal inline SVG icons for bottom nav
 const ICONS: Record<string, React.ReactNode> = {
@@ -54,6 +57,21 @@ const ICONS: Record<string, React.ReactNode> = {
       <rect x="2" y="2" width="16" height="16" rx="1" />
     </svg>
   ),
+  '/app/crm/team': (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="7" cy="7" r="3" />
+      <path d="M1 18c0-3.314 2.686-6 6-6s6 2.686 6 6" />
+      <path d="M13 5a3 3 0 0 1 0 6" />
+      <path d="M17 18c0-2.761-1.79-5.1-4-5.8" />
+    </svg>
+  ),
+  '/app/suppliers': (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 2h12l1 5H3L4 2z" />
+      <rect x="3" y="7" width="14" height="11" rx="1" />
+      <path d="M8 12h4" />
+    </svg>
+  ),
 };
 
 interface NavProps {
@@ -66,7 +84,7 @@ export function Nav({ displayName, isOwner }: NavProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const sidebarLinks = isOwner ? [...NAV_LINKS, OWNER_EXTRA] : NAV_LINKS;
+  const sidebarLinks = isOwner ? [...NAV_LINKS, ...OWNER_EXTRAS] : NAV_LINKS;
   const isActive = (href: string) => pathname.startsWith(href);
   const isNewRecapActive = isActive('/app/crm/new-recap');
 
@@ -177,7 +195,7 @@ export function Nav({ displayName, isOwner }: NavProps) {
 
       {/* ── Mobile bottom tab bar ── */}
       <div className={styles.bottomNav} role="navigation" aria-label="Main navigation">
-        {NAV_LINKS.map(({ href, label }) => {
+        {sidebarLinks.map(({ href, label }) => {
           const active = isActive(href);
           return (
             <Link
