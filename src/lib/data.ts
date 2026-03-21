@@ -34,6 +34,9 @@ import type {
   ExpenseRecap,
   AccountReportRow,
   WeeklySummary,
+  SupplierBillingTerms,
+  SupplierBillingTermsInsert,
+  DepletionMatchResult,
 } from '@/types';
 import { mapDbError } from '@/types';
 
@@ -1210,4 +1213,48 @@ export async function generateAndSaveWeeklySummary(
     .single();
   if (upsertError) throw new Error(mapDbError(upsertError));
   return upserted as WeeklySummary;
+}
+
+// ── Billing ───────────────────────────────────────────────────
+
+export async function getBillingTerms(
+  sb: SupabaseClient,
+  supplierId: string,
+): Promise<SupplierBillingTerms | null> {
+  const { data, error } = await sb
+    .from('supplier_billing_terms')
+    .select('*')
+    .eq('supplier_id', supplierId)
+    .is('effective_to', null)
+    .order('effective_from', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(mapDbError(error));
+  return data as SupplierBillingTerms | null;
+}
+
+export async function upsertBillingTerms(
+  sb: SupabaseClient,
+  terms: SupplierBillingTermsInsert,
+): Promise<SupplierBillingTerms> {
+  const { data, error } = await sb
+    .from('supplier_billing_terms')
+    .insert(terms)
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as SupplierBillingTerms;
+}
+
+export async function matchDepletionToPlacements(
+  sb: SupabaseClient,
+  supplierId: string,
+  periodMonth: string,
+): Promise<DepletionMatchResult> {
+  const { data, error } = await sb.rpc('match_depletion_to_placements', {
+    p_supplier_id:  supplierId,
+    p_period_month: periodMonth,
+  });
+  if (error) throw new Error(mapDbError(error));
+  return data as DepletionMatchResult;
 }
