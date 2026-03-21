@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getBillingTerms } from '@/lib/data';
 import { BillingTermsForm } from '@/components/billing/BillingTermsForm/BillingTermsForm';
 import { DepletionUpload } from '@/components/billing/DepletionUpload/DepletionUpload';
+import { GenerateInvoice } from '@/components/billing/GenerateInvoice/GenerateInvoice';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,11 @@ export default async function SupplierDetailPage({
           supplierId={supplier.id}
           teamId={membership.team_id}
         />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionHeading}>Invoices</h2>
+        <GenerateInvoice supplierId={supplier.id} teamId={membership.team_id} />
       </section>
     </main>
   );
