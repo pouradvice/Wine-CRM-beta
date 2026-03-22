@@ -32,12 +32,31 @@ async function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {
   try { return await promise; } catch { return fallback; }
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
   const teamId = await resolveTeamId(sb, user);
+
+  const [resolvedSearchParams, memberRow] = await Promise.all([
+    searchParams,
+    sb.from('team_members').select('role').eq('user_id', user.id).eq('team_id', teamId).limit(1).single(),
+  ]);
+
+  const isOwner = memberRow.data?.role === 'owner';
+
+  const VALID_TABS = ['dashboard', 'by-accounts', 'performance', 'by-supplier', 'expenses', 'weekly-summaries', 'suppliers'] as const;
+  type TabId = typeof VALID_TABS[number];
+  const rawTab = resolvedSearchParams.tab;
+  const initialTab: TabId | undefined =
+    rawTab && (VALID_TABS as readonly string[]).includes(rawTab) && (rawTab !== 'suppliers' || isOwner)
+      ? (rawTab as TabId)
+      : undefined;
 
   const [
     performanceResult,
@@ -79,6 +98,8 @@ export default async function ReportsPage() {
       accountsReport={accountsReport}
       weeklySummaries={weeklySummaries}
       suppliers={suppliers}
+      isOwner={isOwner}
+      initialTab={initialTab}
     />
   );
 }
