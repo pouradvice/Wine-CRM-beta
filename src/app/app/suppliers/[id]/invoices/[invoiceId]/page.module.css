@@ -1,0 +1,280 @@
+/* page.module.css — Invoice detail */
+
+.page {
+  padding: var(--space-6) var(--space-4);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* ── Back link ── */
+.backLink {
+  display: inline-block;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: var(--space-4);
+  transition: color 0.15s;
+}
+.backLink:hover { color: var(--wine); }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.headerLeft {}
+
+.heading {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--text);
+  font-weight: 600;
+  margin: 0 0 var(--space-1);
+}
+
+.period {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Status badge ── */
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 9999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badgeDraft    { background: var(--mist); color: var(--text-muted); }
+.badgeReviewed { background: #eef6ff; color: #1d6fa4; }
+.badgeSent     { background: #fff8e1; color: #b45309; }
+.badgePaid     { background: #ecfdf5; color: #065f46; }
+.badgeDisputed { background: #fef2f2; color: #991b1b; }
+.badgeVoid     { background: var(--mist); color: var(--text-muted); text-decoration: line-through; }
+
+/* ── KPI strip ── */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.kpiCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kpiCardTotal {
+  background: var(--mist);
+}
+
+.kpiValue {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.kpiValueWine {
+  color: var(--wine);
+}
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Sections ── */
+.section {
+  margin-bottom: var(--space-8);
+}
+
+.sectionHeading {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Square card ── */
+.squareCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.squareInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.squareId {
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-family: monospace;
+}
+
+.squareMeta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.squareBtn {
+  display: inline-block;
+  padding: var(--space-2) var(--space-4);
+  background: var(--wine);
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.squareBtn:hover { opacity: 0.88; }
+
+/* ── Line items table ── */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table thead th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--mist);
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table tbody td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.table tfoot td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 2px solid var(--border);
+}
+
+.numCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.descCell {
+  max-width: 280px;
+}
+
+.amountCell {
+  font-weight: 500;
+}
+
+.lineType {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: 4px;
+  background: var(--mist);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.totalLabel {
+  text-align: right;
+  font-weight: 600;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.totalAmount {
+  font-weight: 700;
+  color: var(--wine);
+  font-size: var(--text-sm);
+}
+
+/* ── Misc ── */
+.emptyNote {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.notes {
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.footerMeta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-4);
+}
+
+/* ── Responsive ── */
+@media (min-width: 640px) {
+  .page {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .squareCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
