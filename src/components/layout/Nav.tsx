@@ -18,7 +18,6 @@ const NAV_LINKS = [
 
 const OWNER_EXTRAS = [
   { href: '/app/crm/team',   label: 'Team' },
-  { href: '/app/suppliers',  label: 'Suppliers' },
 ];
 
 // Minimal inline SVG icons for bottom nav
@@ -63,13 +62,6 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M1 18c0-3.314 2.686-6 6-6s6 2.686 6 6" />
       <path d="M13 5a3 3 0 0 1 0 6" />
       <path d="M17 18c0-2.761-1.79-5.1-4-5.8" />
-    </svg>
-  ),
-  '/app/suppliers': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 2h12l1 5H3L4 2z" />
-      <rect x="3" y="7" width="14" height="11" rx="1" />
-      <path d="M8 12h4" />
     </svg>
   ),
 };

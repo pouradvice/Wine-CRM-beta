@@ -6,6 +6,7 @@ import { DashboardClient } from './DashboardClient';
 import { ExpensesClient } from './ExpensesClient';
 import { ByAccountsClient } from './ByAccountsClient';
 import { WeeklySummariesClient } from './WeeklySummariesClient';
+import { SuppliersClient } from './SuppliersClient';
 import { createClient } from '@/lib/supabase/client';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
@@ -42,15 +43,16 @@ interface ReportProductVisitRow {
   outcome: string;
 }
 
-type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses' | 'weekly-summaries';
+type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses' | 'weekly-summaries' | 'suppliers';
 
-const TABS: Array<{ id: TabId; label: string }> = [
+const TABS: Array<{ id: TabId; label: string; ownerOnly?: boolean }> = [
   { id: 'dashboard',        label: 'Dashboard' },
   { id: 'by-accounts',      label: 'By Accounts' },
   { id: 'performance',      label: 'By Product' },
   { id: 'by-supplier',      label: 'By Supplier' },
   { id: 'expenses',         label: 'Expenses' },
   { id: 'weekly-summaries', label: 'Weekly Summaries' },
+  { id: 'suppliers',        label: 'Suppliers', ownerOnly: true },
 ];
 
 interface ReportsClientProps {
@@ -66,6 +68,8 @@ interface ReportsClientProps {
   accountsReport:   AccountReportRow[];
   weeklySummaries:  WeeklySummary[];
   suppliers:        Supplier[];
+  isOwner?:         boolean;
+  initialTab?:      TabId;
 }
 
 export function ReportsClient({
@@ -80,8 +84,10 @@ export function ReportsClient({
   accountsReport,
   weeklySummaries,
   suppliers,
+  isOwner,
+  initialTab,
 }: ReportsClientProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'dashboard');
   const [expandedSupplier, setExpandedSupplier] = useState<string | null>(null);
 
   // Account slideover
@@ -174,7 +180,7 @@ export function ReportsClient({
       <h1 className={styles.pageTitle}>Reports</h1>
 
       <div className={styles.tabs}>
-        {TABS.map(({ id, label }) => (
+        {TABS.filter(({ ownerOnly }) => !ownerOnly || isOwner).map(({ id, label }) => (
           <button
             key={id}
             type="button"
@@ -395,6 +401,10 @@ export function ReportsClient({
 
         {activeTab === 'weekly-summaries' && (
           <WeeklySummariesClient summaries={weeklySummaries} />
+        )}
+
+        {activeTab === 'suppliers' && isOwner && (
+          <SuppliersClient suppliers={suppliers} />
         )}
       </div>
 
