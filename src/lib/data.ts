@@ -49,7 +49,24 @@ function pageRange(page = 0, pageSize = 50): [number, number] {
 
 // ── Suppliers ─────────────────────────────────────────────────
 
-export async function getSuppliers(sb: SupabaseClient): Promise<Supplier[]> {
+export async function getSuppliers(sb: SupabaseClient, teamId?: string): Promise<Supplier[]> {
+  if (teamId) {
+    const { data: contracts, error: cErr } = await sb
+      .from('supplier_contracts')
+      .select('supplier_id')
+      .eq('team_id', teamId);
+    if (cErr) throw new Error(mapDbError(cErr));
+    const ids = (contracts ?? []).map((c: { supplier_id: string }) => c.supplier_id);
+    if (ids.length === 0) return [];
+    const { data, error } = await sb
+      .from('suppliers')
+      .select('*')
+      .eq('is_active', true)
+      .in('id', ids)
+      .order('name');
+    if (error) throw new Error(mapDbError(error));
+    return data ?? [];
+  }
   const { data, error } = await sb
     .from('suppliers')
     .select('*')
@@ -622,8 +639,12 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
   const placementsQuery = sb.from('recap_products').select('id', { count: 'exact', head: true })
     .eq('menu_placement', true).gte('created_at', startOfMonth + 'T00:00:00Z');
 
-  const [monthRes, convRes, eventsRes, offSiteRes, placementsRes] = await Promise.all([
-    monthQuery, convQuery, eventsQuery, offSiteQuery, placementsQuery,
+  // Retail 3cs order commits this month
+  const retail3csQuery = sb.from('recap_products').select('id', { count: 'exact', head: true })
+    .eq('retail_3cs_order', true).gte('created_at', startOfMonth + 'T00:00:00Z');
+
+  const [monthRes, convRes, eventsRes, offSiteRes, placementsRes, retail3csRes] = await Promise.all([
+    monthQuery, convQuery, eventsQuery, offSiteQuery, placementsQuery, retail3csQuery,
   ]);
 
   const rates = (convRes.data ?? [])
@@ -635,11 +656,12 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
       : null;
 
   return {
-    visits_this_month:         monthRes.count ?? 0,
-    conversion_rate_pct:       conversion_rate_pct,
-    events_this_month:         eventsRes.count ?? 0,
-    off_site_this_month:       offSiteRes.count ?? 0,
-    new_placements_this_month: placementsRes.count ?? 0,
+    visits_this_month:             monthRes.count ?? 0,
+    conversion_rate_pct:           conversion_rate_pct,
+    events_this_month:             eventsRes.count ?? 0,
+    off_site_this_month:           offSiteRes.count ?? 0,
+    new_placements_this_month:     placementsRes.count ?? 0,
+    retail_3cs_commits_this_month: retail3csRes.count ?? 0,
   };
 }
 

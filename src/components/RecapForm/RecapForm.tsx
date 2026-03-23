@@ -81,6 +81,7 @@ function buildDefaultProduct(product: Product): RecapFormProduct {
     bill_date:         '',
     menu_placement:    false,
     menu_photo_url:    null,
+    retail_3cs_order:  false,
   };
 }
 
@@ -129,6 +130,8 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
   const [receiptUploading, setReceiptUploading] = useState(false);
 
   const isChecklistMode = CHECKLIST_NATURES.includes(form.nature);
+  const selectedAccount = localClients.find((c) => c.id === form.account_id);
+  const isOffPremise = selectedAccount?.premise_type === 'Off-Premise';
 
   // ── Product management ────────────────────────────────────────
   const addProduct = useCallback((product: Product) => {
@@ -252,6 +255,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         account_lead:         null,
         primary_contact_id:   null,
         primary_contact_name: null,
+        premise_type:         null,
         status:               'Active',
         notes:                null,
         is_active:            true,
@@ -312,6 +316,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
           bill_date:         isChecklist ? '' : (p.bill_date || ''),
           menu_placement:    p.menu_placement ? 'true' : 'false',
           menu_photo_url:    p.menu_photo_url || '',
+          retail_3cs_order:  p.retail_3cs_order ? 'true' : 'false',
         };
       });
 
@@ -741,22 +746,43 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
                 </div>
               )}
 
-              {/* Menu Placement toggle (independent of outcome) */}
+              {/* Menu Placement / 3cs Order toggle — depends on account premise type */}
               <div className={styles.menuPlacementRow}>
-                <input
-                  type="checkbox"
-                  id={`menu-placement-${product.id}`}
-                  checked={fp.menu_placement}
-                  onChange={(e) =>
-                    updateProductField(product.id, 'menu_placement', e.target.checked)
-                  }
-                />
-                <label
-                  htmlFor={`menu-placement-${product.id}`}
-                  className={styles.menuPlacementLabel}
-                >
-                  Menu Placement
-                </label>
+                {isOffPremise ? (
+                  <>
+                    <input
+                      type="checkbox"
+                      id={`retail-3cs-${product.id}`}
+                      checked={fp.retail_3cs_order}
+                      onChange={(e) =>
+                        updateProductField(product.id, 'retail_3cs_order', e.target.checked)
+                      }
+                    />
+                    <label
+                      htmlFor={`retail-3cs-${product.id}`}
+                      className={styles.menuPlacementLabel}
+                    >
+                      3cs Order
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="checkbox"
+                      id={`menu-placement-${product.id}`}
+                      checked={fp.menu_placement}
+                      onChange={(e) =>
+                        updateProductField(product.id, 'menu_placement', e.target.checked)
+                      }
+                    />
+                    <label
+                      htmlFor={`menu-placement-${product.id}`}
+                      className={styles.menuPlacementLabel}
+                    >
+                      Menu Placement
+                    </label>
+                  </>
+                )}
               </div>
             </div>
           );

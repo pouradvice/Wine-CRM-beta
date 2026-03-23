@@ -107,6 +107,7 @@ export default async function NewRecapPage({
             bill_date:         null,
             menu_placement:    false,
             menu_photo_url:    null,
+            retail_3cs_order:  false,
           })),
         };
       }

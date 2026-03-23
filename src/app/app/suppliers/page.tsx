@@ -2,5 +2,5 @@
 import { redirect } from 'next/navigation';
 
 export default function SuppliersIndexPage() {
-  redirect('/app/crm/reports?tab=suppliers');
+  redirect('/app/crm/suppliers');
 }

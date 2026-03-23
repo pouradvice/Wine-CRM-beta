@@ -1,5 +1,6 @@
 // src/app/app/suppliers/[id]/page.tsx
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getBillingTerms } from '@/lib/data';
 import { BillingTermsForm } from '@/components/billing/BillingTermsForm/BillingTermsForm';
@@ -24,7 +25,7 @@ export default async function SupplierDetailPage({
     getBillingTerms(sb, id),
   ]);
 
-  if (supplierResult.error || !supplierResult.data) redirect('/app/suppliers');
+  if (supplierResult.error || !supplierResult.data) redirect('/app/crm/suppliers');
 
   const supplier = supplierResult.data as { id: string; name: string };
 
@@ -40,6 +41,12 @@ export default async function SupplierDetailPage({
 
   return (
     <main className={styles.page}>
+      <Link
+        href="/app/crm/suppliers"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '1rem' }}
+      >
+        ← Suppliers
+      </Link>
       <h1 className={styles.heading}>{supplier.name}</h1>
 
       <section className={styles.section}>

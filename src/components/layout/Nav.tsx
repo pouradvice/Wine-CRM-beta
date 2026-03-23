@@ -17,54 +17,9 @@ const NAV_LINKS = [
 ];
 
 const OWNER_EXTRAS = [
-  { href: '/app/crm/team',   label: 'Team' },
+  { href: '/app/crm/team',      label: 'Team' },
+  { href: '/app/crm/suppliers', label: 'Suppliers' },
 ];
-
-// Minimal inline SVG icons for bottom nav
-const ICONS: Record<string, React.ReactNode> = {
-  '/app/crm/clients': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="8" cy="6" r="3" />
-      <path d="M2 18c0-3.314 2.686-6 6-6s6 2.686 6 6" />
-      <path d="M14 3a3 3 0 0 1 0 6" />
-      <path d="M18 18c0-2.761-1.79-5.1-4-5.8" />
-    </svg>
-  ),
-  '/app/crm/products': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="7" width="16" height="11" rx="1" />
-      <path d="M6 7V5a4 4 0 0 1 8 0v2" />
-    </svg>
-  ),
-  '/app/crm/history': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="10" cy="10" r="8" />
-      <path d="M10 6v4l3 3" />
-    </svg>
-  ),
-  '/app/crm/follow-ups': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="14" height="14" rx="1" />
-      <path d="M3 8h14" />
-      <path d="M8 2v4M12 2v4" />
-      <path d="M7 12h2m2 0h2" />
-    </svg>
-  ),
-  '/app/crm/reports': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 14l4-4 3 3 5-6" />
-      <rect x="2" y="2" width="16" height="16" rx="1" />
-    </svg>
-  ),
-  '/app/crm/team': (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="7" cy="7" r="3" />
-      <path d="M1 18c0-3.314 2.686-6 6-6s6 2.686 6 6" />
-      <path d="M13 5a3 3 0 0 1 0 6" />
-      <path d="M17 18c0-2.761-1.79-5.1-4-5.8" />
-    </svg>
-  ),
-};
 
 interface NavProps {
   displayName?: string;
@@ -185,38 +140,6 @@ export function Nav({ displayName, isOwner }: NavProps) {
         </div>
       </nav>
 
-      {/* ── Mobile bottom tab bar ── */}
-      <div className={styles.bottomNav} role="navigation" aria-label="Main navigation">
-        {sidebarLinks.map(({ href, label }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`${styles.bottomTab} ${active ? styles.bottomTabActive : ''}`}
-              aria-current={active ? 'page' : undefined}
-            >
-              <span className={styles.bottomTabIcon}>{ICONS[href]}</span>
-              <span className={styles.bottomTabLabel}>{label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Center FAB — New Recap */}
-        <Link
-          href="/app/crm/new-recap"
-          className={`${styles.bottomFab} ${isNewRecapActive ? styles.bottomFabActive : ''}`}
-          aria-label="New Recap"
-          onClick={(e) => {
-            if (isNewRecapActive) {
-              e.preventDefault();
-              window.location.href = '/app/crm/new-recap';
-            }
-          }}
-        >
-          <span className={styles.bottomFabIcon} aria-hidden="true">+</span>
-        </Link>
-      </div>
     </>
   );
 }
