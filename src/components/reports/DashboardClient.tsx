@@ -67,6 +67,12 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
           </span>
           <span className={styles.kpiLabel}>New Menu Placements</span>
         </div>
+        <div className={styles.kpiCard}>
+          <span className={`${styles.kpiValue} ${styles.kpiWine}`}>
+            {stats.retail_3cs_commits_this_month}
+          </span>
+          <span className={styles.kpiLabel}>Retail 3cs Commits</span>
+        </div>
       </div>
 
       {/* ── Top 5 tables ──────────────────────────────────── */}
@@ -209,6 +215,23 @@ export function DashboardClient({ stats, topSkus, topAccounts, inactiveAccounts,
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      {/* ── Retail 3cs Commits ────────────────────────────── */}
+      <section className={styles.fullSection}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>Retail 3cs Commits</h3>
+          {stats.retail_3cs_commits_this_month > 0 && (
+            <span className={styles.sectionMeta}>{stats.retail_3cs_commits_this_month} this month</span>
+          )}
+        </div>
+        {stats.retail_3cs_commits_this_month === 0 ? (
+          <p className={styles.empty}>No retail 3cs orders recorded yet.</p>
+        ) : (
+          <p style={{ padding: '0.75rem 1.25rem', fontSize: 'var(--text-sm)', color: 'var(--text)' }}>
+            {stats.retail_3cs_commits_this_month} retail 3cs order{stats.retail_3cs_commits_this_month !== 1 ? 's' : ''} committed this month.
+          </p>
         )}
       </section>
 

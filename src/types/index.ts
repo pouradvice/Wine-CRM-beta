@@ -177,6 +177,7 @@ export interface Account {
   account_lead:         string | null;
   primary_contact_id:   string | null;
   primary_contact_name: string | null;
+  premise_type:         PremiseType | null;
   status:               AccountStatus;
   notes:                string | null;
   is_active:            boolean;
@@ -248,6 +249,7 @@ export interface RecapProduct {
   bill_date:          string | null;
   menu_placement:     boolean;
   menu_photo_url:     string | null;
+  retail_3cs_order?:  boolean;
   created_at:         string;
   // Relations
   product?: Product | null;
@@ -362,11 +364,12 @@ export interface VisitsBySupplierRow {
 // ── Dashboard / analytics ────────────────────────────────────
 
 export interface DashboardStats {
-  visits_this_month:        number;
-  conversion_rate_pct:      number | null;
-  events_this_month:        number;
-  off_site_this_month:      number;
-  new_placements_this_month: number;
+  visits_this_month:             number;
+  conversion_rate_pct:           number | null;
+  events_this_month:             number;
+  off_site_this_month:           number;
+  new_placements_this_month:     number;
+  retail_3cs_commits_this_month: number;
 }
 
 export interface TopAccount {
@@ -479,6 +482,7 @@ export interface RecapFormProduct {
   bill_date:         string | null;
   menu_placement:    boolean;
   menu_photo_url:    string | null;
+  retail_3cs_order:  boolean;
 }
 
 export interface RecapFormState {
@@ -558,6 +562,8 @@ export interface SupplierBillingTerms {
   effective_from:         string;
   effective_to:           string | null;
   notes:                  string | null;
+  menu_placement_rate:    number | null;
+  retail_3cs_rate:        number | null;
   created_at:             string;
   updated_at:             string;
 }

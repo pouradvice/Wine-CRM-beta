@@ -13,6 +13,8 @@ interface Props {
 interface FormValues {
   placement_rate:         string;
   placement_lockout_days: string;
+  menu_placement_rate:    string;
+  retail_3cs_rate:        string;
   demo_rate:              string;
   demo_complimentary:     string;
   demo_hourly_rate:       string;
@@ -29,6 +31,8 @@ function termsToFormValues(t: SupplierBillingTerms | null): FormValues {
     return {
       placement_rate:         '',
       placement_lockout_days: '90',
+      menu_placement_rate:    '',
+      retail_3cs_rate:        '',
       demo_rate:              '',
       demo_complimentary:     '1',
       demo_hourly_rate:       '',
@@ -42,6 +46,8 @@ function termsToFormValues(t: SupplierBillingTerms | null): FormValues {
   return {
     placement_rate:         String(t.placement_rate),
     placement_lockout_days: String(t.placement_lockout_days),
+    menu_placement_rate:    t.menu_placement_rate != null ? String(t.menu_placement_rate) : '',
+    retail_3cs_rate:        t.retail_3cs_rate != null ? String(t.retail_3cs_rate) : '',
     demo_rate:              String(t.demo_rate),
     demo_complimentary:     String(t.demo_complimentary),
     demo_hourly_rate:       t.demo_hourly_rate != null ? String(t.demo_hourly_rate) : '',
@@ -97,6 +103,8 @@ export function BillingTermsForm({ supplierId, teamId, initialTerms }: Props) {
       billing_period:         billingPeriod(),
       placement_rate:         parseFloat(values.placement_rate) || 0,
       placement_lockout_days: parseInt(values.placement_lockout_days, 10) || 90,
+      menu_placement_rate:    values.menu_placement_rate !== '' ? parseFloat(values.menu_placement_rate) : null,
+      retail_3cs_rate:        values.retail_3cs_rate !== '' ? parseFloat(values.retail_3cs_rate) : null,
       demo_rate:              parseFloat(values.demo_rate) || 0,
       demo_complimentary:     parseInt(values.demo_complimentary, 10) || 1,
       demo_hourly_rate:       values.demo_hourly_rate !== '' ? parseFloat(values.demo_hourly_rate) : null,
@@ -145,6 +153,18 @@ export function BillingTermsForm({ supplierId, teamId, initialTerms }: Props) {
             <span className={styles.summaryLabel}>Lockout period</span>
             <span className={styles.summaryValue}>{terms.placement_lockout_days} days</span>
           </div>
+          {terms.menu_placement_rate != null && (
+            <div className={styles.summaryItem}>
+              <span className={styles.summaryLabel}>Menu placement rate</span>
+              <span className={styles.summaryValue}>${terms.menu_placement_rate}</span>
+            </div>
+          )}
+          {terms.retail_3cs_rate != null && (
+            <div className={styles.summaryItem}>
+              <span className={styles.summaryLabel}>3cs retail placement rate</span>
+              <span className={styles.summaryValue}>${terms.retail_3cs_rate}</span>
+            </div>
+          )}
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Demo rate</span>
             <span className={styles.summaryValue}>${terms.demo_rate}</span>
@@ -208,6 +228,38 @@ export function BillingTermsForm({ supplierId, teamId, initialTerms }: Props) {
                 value={values.placement_rate}
                 onChange={handleChange}
                 required
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="menu_placement_rate">
+                New menu placement rate ($/placement, optional)
+              </label>
+              <input
+                id="menu_placement_rate"
+                name="menu_placement_rate"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                value={values.menu_placement_rate}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="retail_3cs_rate">
+                3cs retail placement rate ($/order, optional)
+              </label>
+              <input
+                id="retail_3cs_rate"
+                name="retail_3cs_rate"
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                value={values.retail_3cs_rate}
+                onChange={handleChange}
               />
             </div>
 

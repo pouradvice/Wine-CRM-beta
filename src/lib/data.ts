@@ -639,8 +639,12 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
   const placementsQuery = sb.from('recap_products').select('id', { count: 'exact', head: true })
     .eq('menu_placement', true).gte('created_at', startOfMonth + 'T00:00:00Z');
 
-  const [monthRes, convRes, eventsRes, offSiteRes, placementsRes] = await Promise.all([
-    monthQuery, convQuery, eventsQuery, offSiteQuery, placementsQuery,
+  // Retail 3cs order commits this month
+  const retail3csQuery = sb.from('recap_products').select('id', { count: 'exact', head: true })
+    .eq('retail_3cs_order', true).gte('created_at', startOfMonth + 'T00:00:00Z');
+
+  const [monthRes, convRes, eventsRes, offSiteRes, placementsRes, retail3csRes] = await Promise.all([
+    monthQuery, convQuery, eventsQuery, offSiteQuery, placementsQuery, retail3csQuery,
   ]);
 
   const rates = (convRes.data ?? [])
@@ -652,11 +656,12 @@ export async function getDashboardStats(sb: SupabaseClient, teamId?: string): Pr
       : null;
 
   return {
-    visits_this_month:         monthRes.count ?? 0,
-    conversion_rate_pct:       conversion_rate_pct,
-    events_this_month:         eventsRes.count ?? 0,
-    off_site_this_month:       offSiteRes.count ?? 0,
-    new_placements_this_month: placementsRes.count ?? 0,
+    visits_this_month:             monthRes.count ?? 0,
+    conversion_rate_pct:           conversion_rate_pct,
+    events_this_month:             eventsRes.count ?? 0,
+    off_site_this_month:           offSiteRes.count ?? 0,
+    new_placements_this_month:     placementsRes.count ?? 0,
+    retail_3cs_commits_this_month: retail3csRes.count ?? 0,
   };
 }
 
