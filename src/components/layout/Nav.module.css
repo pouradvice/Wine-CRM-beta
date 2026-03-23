@@ -160,7 +160,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 48px;
+  height: 4rem;
   background: var(--surface);
   border-bottom: 1px solid var(--mist);
   z-index: 110;
@@ -217,106 +217,6 @@
   z-index: 99;
 }
 
-/* ── Bottom tab bar ─────────────────────────────────── */
-.bottomNav {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  z-index: 110;
-  align-items: stretch;
-  /* account for iOS safe area */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.bottomTab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  text-decoration: none;
-  color: var(--text-muted);
-  font-size: 0.6rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  border-top: 2px solid transparent;
-  transition: color 0.1s, border-color 0.1s;
-  padding: 0 4px;
-  min-width: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.bottomTab:hover {
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.bottomTabActive {
-  color: var(--ink);
-  border-top-color: var(--ink);
-  font-weight: 600;
-}
-
-.bottomTabIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.bottomTabLabel {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* FAB — New Recap */
-.bottomFab {
-  /* sits between items 2 and 3; uses order or a standalone centered item */
-  flex: 0 0 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: auto 4px;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  background: var(--ink);
-  color: #fff;
-  text-decoration: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  transition: opacity 0.15s, transform 0.1s;
-  align-self: center;
-  flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.bottomFab:hover {
-  opacity: 0.85;
-  text-decoration: none;
-  color: #fff;
-}
-
-.bottomFabActive {
-  opacity: 0.7;
-}
-
-.bottomFabIcon {
-  font-size: 1.5rem;
-  font-weight: 300;
-  line-height: 1;
-  margin-top: -1px;
-}
-
 /* ── Mobile breakpoint ───────────────────────────── */
 @media (max-width: 720px) {
   .mobileTopBar {
@@ -335,9 +235,5 @@
 
   .sidebarOpen {
     transform: translateX(0);
-  }
-
-  .bottomNav {
-    display: flex;
   }
 }

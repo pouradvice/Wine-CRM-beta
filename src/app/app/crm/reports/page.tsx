@@ -12,7 +12,6 @@ import {
   getExpenseRecaps,
   getAccountsReport,
   getWeeklySummaries,
-  getSuppliers,
 } from '@/lib/data';
 import { ReportsClient } from '@/components/reports/ReportsClient';
 import { resolveTeamId } from '@/lib/team';
@@ -50,11 +49,11 @@ export default async function ReportsPage({
 
   const isOwner = memberRow.data?.role === 'owner';
 
-  const VALID_TABS = ['dashboard', 'by-accounts', 'performance', 'by-supplier', 'expenses', 'weekly-summaries', 'suppliers'] as const;
+  const VALID_TABS = ['dashboard', 'by-accounts', 'performance', 'by-supplier', 'expenses', 'weekly-summaries'] as const;
   type TabId = typeof VALID_TABS[number];
   const rawTab = resolvedSearchParams.tab;
   const initialTab: TabId | undefined =
-    rawTab && (VALID_TABS as readonly string[]).includes(rawTab) && (rawTab !== 'suppliers' || isOwner)
+    rawTab && (VALID_TABS as readonly string[]).includes(rawTab)
       ? (rawTab as TabId)
       : undefined;
 
@@ -69,7 +68,6 @@ export default async function ReportsPage({
     expenses,
     accountsReport,
     weeklySummaries,
-    suppliers,
   ] = await Promise.all([
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
@@ -81,7 +79,6 @@ export default async function ReportsPage({
     safe(getExpenseRecaps(sb, { teamId }), []),
     safe(getAccountsReport(sb, teamId), []),
     safe(getWeeklySummaries(sb, teamId), []),
-    safe(getSuppliers(sb), []),
   ]);
 
   return (
@@ -97,7 +94,6 @@ export default async function ReportsPage({
       expenses={expenses}
       accountsReport={accountsReport}
       weeklySummaries={weeklySummaries}
-      suppliers={suppliers}
       isOwner={isOwner}
       initialTab={initialTab}
     />

@@ -6,13 +6,11 @@ import { DashboardClient } from './DashboardClient';
 import { ExpensesClient } from './ExpensesClient';
 import { ByAccountsClient } from './ByAccountsClient';
 import { WeeklySummariesClient } from './WeeklySummariesClient';
-import { SuppliersClient } from './SuppliersClient';
 import { createClient } from '@/lib/supabase/client';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type {
   ProductPerformance,
-  Supplier,
   VisitsBySupplierRow,
   DashboardStats,
   TopAccount,
@@ -43,7 +41,7 @@ interface ReportProductVisitRow {
   outcome: string;
 }
 
-type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses' | 'weekly-summaries' | 'suppliers';
+type TabId = 'dashboard' | 'by-accounts' | 'performance' | 'by-supplier' | 'expenses' | 'weekly-summaries';
 
 const TABS: Array<{ id: TabId; label: string; ownerOnly?: boolean }> = [
   { id: 'dashboard',        label: 'Dashboard' },
@@ -52,7 +50,6 @@ const TABS: Array<{ id: TabId; label: string; ownerOnly?: boolean }> = [
   { id: 'by-supplier',      label: 'By Supplier' },
   { id: 'expenses',         label: 'Expenses' },
   { id: 'weekly-summaries', label: 'Weekly Summaries' },
-  { id: 'suppliers',        label: 'Suppliers', ownerOnly: true },
 ];
 
 interface ReportsClientProps {
@@ -67,7 +64,6 @@ interface ReportsClientProps {
   expenses:         ExpenseRecap[];
   accountsReport:   AccountReportRow[];
   weeklySummaries:  WeeklySummary[];
-  suppliers:        Supplier[];
   isOwner?:         boolean;
   initialTab?:      TabId;
 }
@@ -83,7 +79,6 @@ export function ReportsClient({
   expenses,
   accountsReport,
   weeklySummaries,
-  suppliers,
   isOwner,
   initialTab,
 }: ReportsClientProps) {
@@ -269,9 +264,6 @@ export function ReportsClient({
           for (const r of visitsBySupplier) {
             if (r.supplier_id && r.supplier_name) supplierNameMap.set(r.supplier_id, r.supplier_name);
           }
-          for (const s of suppliers) {
-            supplierNameMap.set(s.id, s.name);
-          }
 
           // Group performance SKUs by supplier_id
           const grouped = new Map<string | null, typeof performance>();
@@ -403,9 +395,6 @@ export function ReportsClient({
           <WeeklySummariesClient summaries={weeklySummaries} />
         )}
 
-        {activeTab === 'suppliers' && isOwner && (
-          <SuppliersClient suppliers={suppliers} />
-        )}
       </div>
 
       {/* Account Slideover */}
