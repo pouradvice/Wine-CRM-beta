@@ -110,7 +110,6 @@ function OutcomePill({ outcome }: { outcome: string }) {
 }
 
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
-type DetailTab = 'history' | 'former_placements' | 'seen' | 'not_seen';
 
 const PAGE_SIZE = 25;
 
@@ -131,7 +130,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [errors, setErrors] = useState<Partial<ClientForm>>({});
 
   // Detail view state
-  const [detailTab, setDetailTab] = useState<DetailTab>('history');
   const [detailLoading, setDetailLoading] = useState(false);
   const [visitGroups, setVisitGroups] = useState<VisitGroup[]>([]);
   const [productsSeen, setProductsSeen] = useState<ProductSeenRow[]>([]);
@@ -152,6 +150,8 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const [skuResults, setSkuResults] = useState<Product[]>([]);
   const [skuSearching, setSkuSearching] = useState(false);
   const skuDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   // Primary contact
   const [accountContacts, setAccountContacts] = useState<Contact[]>([]);
@@ -175,15 +175,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     return () => { if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skuSearch]);
-
-  const filtered = useMemo(() => {
-    return clients.filter((c) => {
-      const q = search.toLowerCase();
-      const matchSearch = !q || c.name.toLowerCase().includes(q);
-      const matchStatus = statusTab === 'All' || c.status === statusTab;
-      return matchSearch && matchStatus;
-    });
-  }, [clients, search, statusTab]);
 
   const loadVisitHistory = async (c: Account) => {
     setVisitGroups([]);
@@ -309,7 +300,6 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
   const openView = async (c: Account) => {
     setActiveClient(c);
     setMode('view');
-    setDetailTab('history');
     await Promise.all([loadVisitHistory(c), loadAccountSkus_(c), loadAccountContacts(c)]);
   };
 
@@ -345,11 +335,11 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     setMode('closed');
   };
 
-  const fetchPage = useCallback(async (page: number, tab: AccountStatus | 'All') => {
+  const fetchPage = useCallback(async (page: number, tab: AccountStatus | 'All', search?: string) => {
     try {
       const sb = createClient();
       const status = tab === 'All' ? undefined : tab;
-      const result = await getAccounts(sb, status, { page, pageSize: PAGE_SIZE }, teamId);
+      const result = await getAccounts(sb, status, { page, pageSize: PAGE_SIZE }, teamId, search || undefined);
       setClients(result.data);
       setTotalCount(result.count);
       setCurrentPage(page);
@@ -358,10 +348,20 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     }
   }, [teamId]);
 
-  const handleTabChange = async (tab: AccountStatus | 'All') => {
+  // Debounced server-side search (skips on initial render to avoid re-fetching SSR data)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      fetchPage(0, statusTab, search);
+    }, 200);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusTab]);
+
+  const handleTabChange = (tab: AccountStatus | 'All') => {
     setStatusTab(tab);
     setSearch('');
-    await fetchPage(0, tab);
   };
 
   const validate = (): boolean => {
@@ -497,7 +497,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {clients.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
             {search
@@ -536,7 +536,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
+                {clients.map((c) => (
                   <tr key={c.id} className={styles.tableRow} onClick={() => openView(c)}>
                     <td className={styles.companyCell}>{c.name}</td>
                     <td>{c.type ?? '—'}</td>
@@ -564,7 +564,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => fetchPage(currentPage - 1, statusTab)}
+                  onClick={() => fetchPage(currentPage - 1, statusTab, search)}
                   disabled={currentPage === 0}
                 >
                   ← Previous
@@ -575,7 +575,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => fetchPage(currentPage + 1, statusTab)}
+                  onClick={() => fetchPage(currentPage + 1, statusTab, search)}
                   disabled={currentPage >= totalPages - 1}
                 >
                   Next →
@@ -681,125 +681,123 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
               </div>
             </div>
 
-            {/* ── Slideover tab bar ─────────────────────────────────── */}
-            <div className={styles.slideTabs}>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'history' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('history')}
-              >
-                Visit History
-              </button>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'former_placements' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('former_placements')}
-              >
-                Former Placements
-                {!detailLoading && formerPlacements.length > 0 && (
-                  <span className={styles.tabCount}>{formerPlacements.length}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'seen' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('seen')}
-              >
-                Products Seen
-                {!detailLoading && productsSeen.length > 0 && (
-                  <span className={styles.tabCount}>{productsSeen.length}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'not_seen' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('not_seen')}
-              >
-                Not Yet Seen
-                {!detailLoading && productsNotSeen.length > 0 && (
-                  <span className={styles.tabCount}>{productsNotSeen.length}</span>
-                )}
-              </button>
-            </div>
-
-            {/* ── Tab content ───────────────────────────────────────── */}
+            {/* ── Accordion detail sections ──────────────────────── */}
             {detailLoading ? (
               <p className={styles.detailEmpty}>Loading…</p>
-            ) : detailTab === 'history' ? (
-              visitGroups.length === 0 ? (
-                <p className={styles.detailEmpty}>No visits recorded yet.</p>
-              ) : (
-                <div className={styles.visitList}>
-                  {visitGroups.map((g) => (
-                    <div key={g.recap_id} className={styles.visitGroup}>
-                      <div className={styles.visitGroupHeader}>
-                        <span className={styles.visitDate}>{g.visit_date}</span>
-                        <span className={styles.visitSalesperson}>{g.salesperson}</span>
-                      </div>
-                      {g.products.length === 0 ? (
-                        <p className={styles.visitNoProducts}>No products recorded</p>
-                      ) : (
-                        <ul className={styles.visitProductList}>
-                          {g.products.map((vp, i) => (
-                            <li key={i} className={styles.visitProductRow}>
-                              <div className={styles.visitProductInfo}>
-                                <span className={styles.visitProductName}>{vp.wine_name}</span>
-                                <span className={styles.visitProductSku}>{vp.sku_number}</span>
-                              </div>
-                              <OutcomePill outcome={vp.outcome} />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : detailTab === 'former_placements' ? (
-              formerPlacements.length === 0 ? (
-                <p className={styles.detailEmpty}>No former placements recorded for this account.</p>
-              ) : (
-                <ul className={styles.placementList}>
-                  {formerPlacements.map((p) => (
-                    <li key={p.product_id} className={styles.placementRow}>
-                      <div className={styles.placementInfo}>
-                        <span className={styles.placementName}>{p.wine_name}</span>
-                        <span className={styles.placementSku}>{p.sku_number}</span>
-                      </div>
-                      <span className={styles.placementDate}>{p.placement_date}</span>
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : detailTab === 'seen' ? (
-              productsSeen.length === 0 ? (
-                <p className={styles.detailEmpty}>No products shown yet.</p>
-              ) : (
-                <ul className={styles.productSeenList}>
-                  {productsSeen.map((p, i) => (
-                    <li key={i} className={styles.productSeenRow}>
-                      <div className={styles.productSeenInfo}>
-                        <span className={styles.productSeenName}>{p.wine_name}</span>
-                        <span className={styles.productSeenSku}>{p.sku_number}</span>
-                      </div>
-                      <OutcomePill outcome={p.latest_outcome} />
-                    </li>
-                  ))}
-                </ul>
-              )
             ) : (
-              productsNotSeen.length === 0 ? (
-                <p className={styles.detailEmpty}>All active products have been shown to this account.</p>
-              ) : (
-                <ul className={styles.productNotSeenList}>
-                  {productsNotSeen.map((p) => (
-                    <li key={p.id} className={styles.productNotSeenRow}>
-                      <span className={styles.productSeenName}>{p.wine_name}</span>
-                      <span className={styles.productSeenSku}>{p.sku_number}</span>
-                    </li>
-                  ))}
-                </ul>
-              )
+              <>
+                <details className={styles.accordionSection} open>
+                  <summary className={styles.accordionHeader}>
+                    Visit History
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {visitGroups.length === 0 ? (
+                      <p className={styles.detailEmpty}>No visits recorded yet.</p>
+                    ) : (
+                      <div className={styles.visitList}>
+                        {visitGroups.map((g) => (
+                          <div key={g.recap_id} className={styles.visitGroup}>
+                            <div className={styles.visitGroupHeader}>
+                              <span className={styles.visitDate}>{g.visit_date}</span>
+                              <span className={styles.visitSalesperson}>{g.salesperson}</span>
+                            </div>
+                            {g.products.length === 0 ? (
+                              <p className={styles.visitNoProducts}>No products recorded</p>
+                            ) : (
+                              <ul className={styles.visitProductList}>
+                                {g.products.map((vp, i) => (
+                                  <li key={i} className={styles.visitProductRow}>
+                                    <div className={styles.visitProductInfo}>
+                                      <span className={styles.visitProductName}>{vp.wine_name}</span>
+                                      <span className={styles.visitProductSku}>{vp.sku_number}</span>
+                                    </div>
+                                    <OutcomePill outcome={vp.outcome} />
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </details>
+
+                <details className={styles.accordionSection}>
+                  <summary className={styles.accordionHeader}>
+                    Former Placements
+                    {formerPlacements.length > 0 && (
+                      <span className={styles.tabCount}>{formerPlacements.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {formerPlacements.length === 0 ? (
+                      <p className={styles.detailEmpty}>No former placements recorded for this account.</p>
+                    ) : (
+                      <ul className={styles.placementList}>
+                        {formerPlacements.map((p) => (
+                          <li key={p.product_id} className={styles.placementRow}>
+                            <div className={styles.placementInfo}>
+                              <span className={styles.placementName}>{p.wine_name}</span>
+                              <span className={styles.placementSku}>{p.sku_number}</span>
+                            </div>
+                            <span className={styles.placementDate}>{p.placement_date}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+
+                <details className={styles.accordionSection}>
+                  <summary className={styles.accordionHeader}>
+                    Products Seen
+                    {productsSeen.length > 0 && (
+                      <span className={styles.tabCount}>{productsSeen.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {productsSeen.length === 0 ? (
+                      <p className={styles.detailEmpty}>No products shown yet.</p>
+                    ) : (
+                      <ul className={styles.productSeenList}>
+                        {productsSeen.map((p, i) => (
+                          <li key={i} className={styles.productSeenRow}>
+                            <div className={styles.productSeenInfo}>
+                              <span className={styles.productSeenName}>{p.wine_name}</span>
+                              <span className={styles.productSeenSku}>{p.sku_number}</span>
+                            </div>
+                            <OutcomePill outcome={p.latest_outcome} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+
+                <details className={styles.accordionSection}>
+                  <summary className={styles.accordionHeader}>
+                    Not Yet Seen
+                    {productsNotSeen.length > 0 && (
+                      <span className={styles.tabCount}>{productsNotSeen.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {productsNotSeen.length === 0 ? (
+                      <p className={styles.detailEmpty}>All active products have been shown to this account.</p>
+                    ) : (
+                      <ul className={styles.productNotSeenList}>
+                        {productsNotSeen.map((p) => (
+                          <li key={p.id} className={styles.productNotSeenRow}>
+                            <span className={styles.productSeenName}>{p.wine_name}</span>
+                            <span className={styles.productSeenSku}>{p.sku_number}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+              </>
             )}
           </>
         ) : (mode === 'edit' || mode === 'add') ? (

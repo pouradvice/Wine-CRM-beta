@@ -162,6 +162,7 @@ export async function getProducts(
     brandId?:         string;
     supplierId?:      string;
     search?:          string;
+    type?:            string;
     limit?:           number;
     teamId?:          string;
   } & PaginationOptions,
@@ -180,9 +181,10 @@ export async function getProducts(
   if (options?.supplierId)       query = query.eq('supplier_id', options.supplierId);
   if (options?.search) {
     query = query.or(
-      `wine_name.ilike.%${options.search}%,sku_number.ilike.%${options.search}%`,
+      `wine_name.ilike.%${options.search}%,sku_number.ilike.%${options.search}%,distributor.ilike.%${options.search}%`,
     );
   }
+  if (options?.type) query = query.eq('type', options.type);
 
   const { data, error, count } = await query;
   if (error) throw new Error(mapDbError(error));
@@ -239,6 +241,7 @@ export async function getAccounts(
   status?: 'Active' | 'Prospective' | 'Former',
   pagination?: PaginationOptions,
   teamId?: string,
+  search?: string,
 ): Promise<PaginatedResult<Account>> {
   const [from, to] = pageRange(pagination?.page, pagination?.pageSize);
 
@@ -251,6 +254,7 @@ export async function getAccounts(
 
   if (teamId) query = query.eq('team_id', teamId);
   if (status) query = query.eq('status', status);
+  if (search) query = query.ilike('name', `%${search}%`);
 
   const { data, error, count } = await query;
   if (error) throw new Error(mapDbError(error));

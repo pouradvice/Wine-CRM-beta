@@ -1,7 +1,7 @@
 'use client';
 // src/components/products/ProductsClient.tsx
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -114,7 +114,6 @@ function OutcomePill({ outcome }: { outcome: string }) {
 }
 
 type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
-type ProductDetailTab = 'active' | 'shown' | 'not_shown';
 
 const PAGE_SIZE = 25;
 
@@ -129,6 +128,8 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   // Suppliers list for the form dropdown
   const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
   const brandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   // Fetch suppliers on mount — no is_active filter so name lookup always resolves
   useEffect(() => {
@@ -155,7 +156,6 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [errors, setErrors] = useState<Partial<ProductForm>>({});
 
   // Detail view state
-  const [detailTab, setDetailTab] = useState<ProductDetailTab>('shown');
   const [accountsShown, setAccountsShown] = useState<AccountShownRow[]>([]);
   const [accountsNotShown, setAccountsNotShown] = useState<AccountNotShownRow[]>([]);
   const [activeAccounts, setActiveAccounts] = useState<ActiveAccountRow[]>([]);
@@ -163,10 +163,16 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const fetchPage = useCallback(async (page: number) => {
+  const fetchPage = useCallback(async (page: number, search?: string, type?: string) => {
     try {
       const sb = createClient();
-      const result = await getProducts(sb, { page, pageSize: PAGE_SIZE, teamId });
+      const result = await getProducts(sb, {
+        page,
+        pageSize: PAGE_SIZE,
+        teamId,
+        search: search || undefined,
+        type:   type   || undefined,
+      });
       setProducts(result.data);
       setTotalCount(result.count);
       setCurrentPage(page);
@@ -175,18 +181,16 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     }
   }, [teamId]);
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      const q = search.toLowerCase();
-      const matchSearch =
-        !q ||
-        p.wine_name.toLowerCase().includes(q) ||
-        p.sku_number.toLowerCase().includes(q) ||
-        (p.distributor ?? '').toLowerCase().includes(q);
-      const matchType = !typeFilter || p.type === typeFilter;
-      return matchSearch && matchType;
-    });
-  }, [products, search, typeFilter]);
+  // Debounced server-side search + type filter (skips on initial render to avoid re-fetching SSR data)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      fetchPage(0, search, typeFilter);
+    }, 200);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, typeFilter]);
 
   const loadProductDetail = async (p: Product) => {
     setAccountsShown([]);
@@ -309,7 +313,6 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const openView = (p: Product) => {
     setActiveProduct(p);
     setMode('view');
-    setDetailTab('shown');
     loadProductDetail(p);
   };
 
@@ -506,7 +509,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {products.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
             {search || typeFilter ? 'No products match your filters' : 'No products yet'}
@@ -540,7 +543,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
+                {products.map((p) => (
                   <tr
                     key={p.id}
                     className={styles.tableRow}
@@ -567,7 +570,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => fetchPage(currentPage - 1)}
+                  onClick={() => fetchPage(currentPage - 1, search, typeFilter)}
                   disabled={currentPage === 0}
                 >
                   ← Previous
@@ -578,7 +581,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => fetchPage(currentPage + 1)}
+                  onClick={() => fetchPage(currentPage + 1, search, typeFilter)}
                   disabled={currentPage >= totalPages - 1}
                 >
                   Next →
@@ -702,94 +705,92 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
               </div>
             </div>
 
-            {/* ── Tab bar ──────────────────────────────────────────── */}
-            <div className={styles.slideTabs}>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'active' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('active')}
-              >
-                Active Accounts
-                {!productDetailLoading && activeAccounts.length > 0 && (
-                  <span className={styles.tabCount}>{activeAccounts.length}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'shown' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('shown')}
-              >
-                Accounts Shown
-                {!productDetailLoading && accountsShown.length > 0 && (
-                  <span className={styles.tabCount}>{accountsShown.length}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.slideTab} ${detailTab === 'not_shown' ? styles.slideTabActive : ''}`}
-                onClick={() => setDetailTab('not_shown')}
-              >
-                Not Yet Shown
-                {!productDetailLoading && accountsNotShown.length > 0 && (
-                  <span className={styles.tabCount}>{accountsNotShown.length}</span>
-                )}
-              </button>
-            </div>
-
-            {/* ── Tab content ──────────────────────────────────────── */}
+            {/* ── Accordion detail sections ──────────────────────── */}
             {productDetailLoading ? (
               <p className={styles.detailEmpty}>Loading…</p>
-            ) : detailTab === 'active' ? (
-              activeAccounts.length === 0 ? (
-                <p className={styles.detailEmpty}>No active placements recorded for this product.</p>
-              ) : (
-                <ul className={styles.activeAccountList}>
-                  {activeAccounts.map((a) => (
-                    <li key={a.account_id} className={styles.activeAccountRow}>
-                      <div className={styles.activeAccountInfo}>
-                        <span className={styles.activeAccountName}>{a.account_name}</span>
-                        <span className={styles.activeAccountMeta}>Placed {a.placement_date}</span>
-                      </div>
-                      {a.value_tier && (
-                        <span className={`${styles.tierBadge} ${
-                          a.value_tier === 'A' ? styles.tierA :
-                          a.value_tier === 'B' ? styles.tierB :
-                          styles.tierC
-                        }`}>{a.value_tier}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : detailTab === 'shown' ? (
-              accountsShown.length === 0 ? (
-                <p className={styles.detailEmpty}>This product hasn't been shown to any accounts yet.</p>
-              ) : (
-                <ul className={styles.accountShownList}>
-                  {accountsShown.map((a, i) => (
-                    <li key={i} className={styles.accountShownRow}>
-                      <div className={styles.accountShownInfo}>
-                        <span className={styles.accountShownName}>{a.account_name}</span>
-                        <span className={styles.accountShownMeta}>{a.visit_date} · {a.salesperson}</span>
-                      </div>
-                      <OutcomePill outcome={a.outcome} />
-                    </li>
-                  ))}
-                </ul>
-              )
             ) : (
-              accountsNotShown.length === 0 ? (
-                <p className={styles.detailEmpty}>This product has been shown to all active accounts.</p>
-              ) : (
-                <ul className={styles.accountNotShownList}>
-                  {accountsNotShown.map((a) => (
-                    <li key={a.id} className={styles.accountNotShownRow}>
-                      <span className={styles.accountNotShownName}>{a.name}</span>
-                      <span className={styles.accountNotShownStatus}>{a.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              )
+              <>
+                <details className={styles.accordionSection} open>
+                  <summary className={styles.accordionHeader}>
+                    Active Accounts
+                    {activeAccounts.length > 0 && (
+                      <span className={styles.tabCount}>{activeAccounts.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {activeAccounts.length === 0 ? (
+                      <p className={styles.detailEmpty}>No active placements recorded for this product.</p>
+                    ) : (
+                      <ul className={styles.activeAccountList}>
+                        {activeAccounts.map((a) => (
+                          <li key={a.account_id} className={styles.activeAccountRow}>
+                            <div className={styles.activeAccountInfo}>
+                              <span className={styles.activeAccountName}>{a.account_name}</span>
+                              <span className={styles.activeAccountMeta}>Placed {a.placement_date}</span>
+                            </div>
+                            {a.value_tier && (
+                              <span className={`${styles.tierBadge} ${
+                                a.value_tier === 'A' ? styles.tierA :
+                                a.value_tier === 'B' ? styles.tierB :
+                                styles.tierC
+                              }`}>{a.value_tier}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+
+                <details className={styles.accordionSection}>
+                  <summary className={styles.accordionHeader}>
+                    Accounts Shown
+                    {accountsShown.length > 0 && (
+                      <span className={styles.tabCount}>{accountsShown.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {accountsShown.length === 0 ? (
+                      <p className={styles.detailEmpty}>This product hasn't been shown to any accounts yet.</p>
+                    ) : (
+                      <ul className={styles.accountShownList}>
+                        {accountsShown.map((a, i) => (
+                          <li key={i} className={styles.accountShownRow}>
+                            <div className={styles.accountShownInfo}>
+                              <span className={styles.accountShownName}>{a.account_name}</span>
+                              <span className={styles.accountShownMeta}>{a.visit_date} · {a.salesperson}</span>
+                            </div>
+                            <OutcomePill outcome={a.outcome} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+
+                <details className={styles.accordionSection}>
+                  <summary className={styles.accordionHeader}>
+                    Not Yet Shown
+                    {accountsNotShown.length > 0 && (
+                      <span className={styles.tabCount}>{accountsNotShown.length}</span>
+                    )}
+                  </summary>
+                  <div className={styles.accordionBody}>
+                    {accountsNotShown.length === 0 ? (
+                      <p className={styles.detailEmpty}>This product has been shown to all active accounts.</p>
+                    ) : (
+                      <ul className={styles.accountNotShownList}>
+                        {accountsNotShown.map((a) => (
+                          <li key={a.id} className={styles.accountNotShownRow}>
+                            <span className={styles.accountNotShownName}>{a.name}</span>
+                            <span className={styles.accountNotShownStatus}>{a.status}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+              </>
             )}
           </>
         ) : (mode === 'edit' || mode === 'add') ? (
