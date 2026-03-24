@@ -395,6 +395,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         team_id:              teamId,
         status:               form.status,
         notes:                form.notes || null,
+        premise_type:         null,
         is_active:            true,
         ...(activeClient ? { id: activeClient.id } : {}),
       };
