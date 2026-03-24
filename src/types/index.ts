@@ -7,6 +7,7 @@
 
 // ── Shared primitives ────────────────────────────────────────
 
+export type PriceTier        = '$' | '$$' | '$$$' | '$$$$';
 export type RecapOutcome     = 'Yes Today' | 'Yes Later' | 'Maybe Later' | 'No' | 'Discussed' | 'Menu Placement';
 export type AccountStatus    = 'Active' | 'Prospective' | 'Former';
 export type FollowUpStatus   = 'Open' | 'Snoozed' | 'Completed';
@@ -178,6 +179,7 @@ export interface Account {
   primary_contact_id:   string | null;
   primary_contact_name: string | null;
   premise_type:         PremiseType | null;
+  price_range:          PriceTier | null;
   status:               AccountStatus;
   notes:                string | null;
   is_active:            boolean;
