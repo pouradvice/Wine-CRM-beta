@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
+  getSuppliers,
   getProductPerformance,
   getVisitsBySupplier,
   getDashboardStats,
@@ -59,6 +60,7 @@ export default async function ReportsPage({
       : undefined;
 
   const [
+    suppliers,
     performanceResult,
     visitsBySupplier,
     dashboardStats,
@@ -70,6 +72,7 @@ export default async function ReportsPage({
     accountsReport,
     weeklySummaries,
   ] = await Promise.all([
+    safe(getSuppliers(sb, teamId), []),
     safe(getProductPerformance(sb, { page: 0, pageSize: 50 }, teamId), { data: [], count: 0 }),
     safe(getVisitsBySupplier(sb, teamId), []),
     safe(getDashboardStats(sb, teamId), DEFAULT_STATS),
@@ -85,6 +88,7 @@ export default async function ReportsPage({
   return (
     <ReportsClient
       teamId={teamId}
+      suppliers={suppliers}
       performance={performanceResult.data}
       visitsBySupplier={visitsBySupplier}
       dashboardStats={dashboardStats}
