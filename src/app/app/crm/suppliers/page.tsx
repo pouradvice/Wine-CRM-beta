@@ -32,7 +32,7 @@ export default async function CrmSuppliersPage() {
         Suppliers
       </h1>
       <div style={{ background: '#fff', border: '1px solid var(--mist)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-        <SuppliersClient suppliers={suppliers} />
+        <SuppliersClient suppliers={suppliers} teamId={teamId} />
       </div>
     </main>
   );
