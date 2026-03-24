@@ -256,6 +256,7 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
         primary_contact_id:   null,
         primary_contact_name: null,
         premise_type:         null,
+        price_range:          null,
         status:               'Active',
         notes:                null,
         is_active:            true,
