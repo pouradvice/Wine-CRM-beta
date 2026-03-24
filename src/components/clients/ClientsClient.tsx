@@ -5,11 +5,11 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertAccount, getAccounts, archiveAccount, getAccountSkus, setAccountSkus } from '@/lib/data';
+import { upsertAccount, getAccounts, archiveAccount, getAccountSkus, setAccountSkus, getPriceTier } from '@/lib/data';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier, Product, Contact } from '@/types';
+import type { Account, AccountInsert, AccountStatus, AccountType, ValueTier, PriceTier, Product, Contact } from '@/types';
 import { contactFullName } from '@/types';
 import styles from './ClientsClient.module.css';
 
@@ -35,6 +35,7 @@ interface ClientForm {
   address:              string;
   account_lead:         string;
   primary_contact_name: string;
+  price_range:          string;
   status:               AccountStatus;
   notes:                string;
 }
@@ -59,9 +60,10 @@ interface ProductSeenRow {
 }
 
 interface ProductNotSeenRow {
-  id: string;
-  wine_name: string;
-  sku_number: string;
+  id:             string;
+  wine_name:      string;
+  sku_number:     string;
+  frontline_cost: number | null;
 }
 
 interface PlacementRow {
@@ -80,6 +82,7 @@ const emptyForm = (): ClientForm => ({
   address:              '',
   account_lead:         '',
   primary_contact_name: '',
+  price_range:          '',
   status:               'Active',
   notes:                '',
 });
@@ -94,6 +97,7 @@ function clientToForm(c: Account): ClientForm {
     address:              c.address ?? '',
     account_lead:         c.account_lead ?? '',
     primary_contact_name: c.primary_contact_name ?? '',
+    price_range:          c.price_range ?? '',
     status:               c.status,
     notes:                c.notes ?? '',
   };
@@ -144,6 +148,14 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
     const activeSkuProductIds = new Set(accountSkus.map((p) => p.id));
     return placements.filter((p) => !activeSkuProductIds.has(p.product_id));
   }, [placements, accountSkus]);
+
+  // Target Products: unseen products whose price tier matches the account's price_range
+  const targetProducts = useMemo(() => {
+    if (!activeClient?.price_range) return null; // null = prompt user to set price range
+    return productsNotSeen.filter(
+      (p) => getPriceTier(p.frontline_cost) === activeClient.price_range,
+    );
+  }, [productsNotSeen, activeClient?.price_range]);
 
   const [editSkus, setEditSkus] = useState<Product[]>([]);
   const [skuSearch, setSkuSearch] = useState('');
@@ -204,7 +216,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
 
       const { data: allProducts } = await sb
         .from('products')
-        .select('id, wine_name, sku_number')
+        .select('id, wine_name, sku_number, frontline_cost')
         .eq('team_id', teamId)
         .eq('is_active', true)
         .order('wine_name');
@@ -396,6 +408,7 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
         status:               form.status,
         notes:                form.notes || null,
         premise_type:         null,
+        price_range:          (form.price_range as PriceTier) || null,
         is_active:            true,
         ...(activeClient ? { id: activeClient.id } : {}),
       };
@@ -777,20 +790,31 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
 
                 <details className={styles.accordionSection}>
                   <summary className={styles.accordionHeader}>
-                    Not Yet Seen
-                    {productsNotSeen.length > 0 && (
-                      <span className={styles.tabCount}>{productsNotSeen.length}</span>
+                    Target Products
+                    {targetProducts && targetProducts.length > 0 && (
+                      <span className={styles.tabCount}>{targetProducts.length}</span>
                     )}
                   </summary>
                   <div className={styles.accordionBody}>
-                    {productsNotSeen.length === 0 ? (
-                      <p className={styles.detailEmpty}>All active products have been shown to this account.</p>
+                    {!activeClient?.price_range ? (
+                      <p className={styles.detailEmpty}>
+                        No price range set for this account. Edit the account and set a Price Range to see matching products.
+                      </p>
+                    ) : targetProducts!.length === 0 ? (
+                      <p className={styles.detailEmpty}>
+                        No unseen products in the {activeClient.price_range} tier.
+                      </p>
                     ) : (
                       <ul className={styles.productNotSeenList}>
-                        {productsNotSeen.map((p) => (
+                        {targetProducts!.map((p) => (
                           <li key={p.id} className={styles.productNotSeenRow}>
                             <span className={styles.productSeenName}>{p.wine_name}</span>
                             <span className={styles.productSeenSku}>{p.sku_number}</span>
+                            {p.frontline_cost != null && (
+                              <span className={styles.priceTierBadge}>
+                                {getPriceTier(p.frontline_cost)}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -866,6 +890,17 @@ export function ClientsClient({ initialClients, totalCount: initialTotal, teamId
                 {(['Active', 'Prospective', 'Former'] as AccountStatus[]).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
+              </select>
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Price Range</label>
+              <select className={styles.formSelect} value={form.price_range} onChange={(e) => setField('price_range', e.target.value)}>
+                <option value="">Not set</option>
+                <option value="$">$ ($0–$12.99)</option>
+                <option value="$$">$$ ($13–$25.99)</option>
+                <option value="$$$">$$$ ($26–$70.99)</option>
+                <option value="$$$$">$$$$ ($71+)</option>
               </select>
             </div>
 

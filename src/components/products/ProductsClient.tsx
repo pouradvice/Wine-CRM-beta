@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertProduct, upsertBrand, archiveProduct, getProducts } from '@/lib/data';
+import { upsertProduct, upsertBrand, archiveProduct, getProducts, getPriceTier } from '@/lib/data';
 import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
@@ -49,9 +49,10 @@ interface AccountShownRow {
 }
 
 interface AccountNotShownRow {
-  id: string;
-  name: string;
-  status: string;
+  id:          string;
+  name:        string;
+  status:      string;
+  price_range: string | null;
 }
 
 interface ActiveAccountRow {
@@ -217,7 +218,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
       const { data: allAccounts } = await sb
         .from('accounts')
-        .select('id, name, status')
+        .select('id, name, status, price_range')
         .eq('team_id', teamId)
         .eq('is_active', true)
         .in('status', ['Active', 'Prospective'])
@@ -468,6 +469,8 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const originParts = activeProduct
     ? [activeProduct.country, activeProduct.region, activeProduct.appellation].filter(Boolean)
     : [];
+
+  const productTier = getPriceTier(activeProduct?.frontline_cost ?? null);
 
   const slideoverOpen = mode !== 'closed';
   const slideoverTitle =
@@ -770,24 +773,37 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
                 <details className={styles.accordionSection}>
                   <summary className={styles.accordionHeader}>
-                    Not Yet Shown
-                    {accountsNotShown.length > 0 && (
-                      <span className={styles.tabCount}>{accountsNotShown.length}</span>
-                    )}
+                    Target Accounts
+                    {(() => {
+                      const count = productTier
+                        ? accountsNotShown.filter((a) => a.price_range === productTier).length
+                        : 0;
+                      return count > 0 ? <span className={styles.tabCount}>{count}</span> : null;
+                    })()}
                   </summary>
                   <div className={styles.accordionBody}>
-                    {accountsNotShown.length === 0 ? (
-                      <p className={styles.detailEmpty}>This product has been shown to all active accounts.</p>
-                    ) : (
-                      <ul className={styles.accountNotShownList}>
-                        {accountsNotShown.map((a) => (
-                          <li key={a.id} className={styles.accountNotShownRow}>
-                            <span className={styles.accountNotShownName}>{a.name}</span>
-                            <span className={styles.accountNotShownStatus}>{a.status}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    {!productTier ? (
+                      <p className={styles.detailEmpty}>
+                        No frontline cost set for this product. Set a Frontline Cost to see target accounts.
+                      </p>
+                    ) : (() => {
+                      const targets = accountsNotShown.filter((a) => a.price_range === productTier);
+                      return targets.length === 0 ? (
+                        <p className={styles.detailEmpty}>
+                          No unvisited accounts with price range {productTier}.
+                        </p>
+                      ) : (
+                        <ul className={styles.accountNotShownList}>
+                          {targets.map((a) => (
+                            <li key={a.id} className={styles.accountNotShownRow}>
+                              <span className={styles.accountNotShownName}>{a.name}</span>
+                              <span className={styles.accountNotShownStatus}>{a.status}</span>
+                              <span className={styles.priceTierBadge}>{a.price_range}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
                   </div>
                 </details>
               </>

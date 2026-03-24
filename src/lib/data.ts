@@ -39,6 +39,18 @@ import type {
   DepletionMatchResult,
 } from '@/types';
 import { mapDbError } from '@/types';
+import type { PriceTier } from '@/types';
+
+// ── Price tier helper ─────────────────────────────────────────
+
+/** Derives a PriceTier from a wholesale/frontline price. Returns null if price is null. */
+export function getPriceTier(price: number | null): PriceTier | null {
+  if (price == null) return null;
+  if (price < 13)   return '$';
+  if (price < 26)   return '$$';
+  if (price < 71)   return '$$$';
+  return '$$$$';
+}
 
 // ── Pagination helper ─────────────────────────────────────────
 
