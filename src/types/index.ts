@@ -449,6 +449,57 @@ export interface WeeklySummary {
 }
 
 
+// ── Lead Automation ──────────────────────────────────────────
+
+export type LeadSource = 'tasting_request' | 'email_campaign' | 'manual_entry';
+export type LeadStatus = 'new' | 'contacted' | 'scheduled' | 'completed' | 'declined';
+
+export interface TeamSettings {
+  team_id:       string;
+  team_name:     string | null;
+  calendly_url:  string | null;
+  contact_email: string | null;
+  logo_url:      string | null;
+  tagline:       string | null;
+  created_at:    string;
+  updated_at:    string;
+}
+
+export type TeamSettingsUpsert = Omit<TeamSettings, 'created_at' | 'updated_at'>;
+
+export interface EmailSubscriber {
+  id:          string;
+  team_id:     string;
+  name:        string;
+  email:       string;
+  company:     string | null;
+  role:        string | null;
+  opt_in_date: string;
+  active:      boolean;
+  created_at:  string;
+}
+
+export type EmailSubscriberInsert = Omit<EmailSubscriber, 'id' | 'opt_in_date' | 'created_at'>;
+
+export interface Lead {
+  id:                 string;
+  team_id:            string;
+  name:               string;
+  email:              string;
+  company:            string | null;
+  brand_interest:     string | null;
+  source:             LeadSource;
+  meeting_date:       string | null;
+  status:             LeadStatus;
+  calendly_event_uri: string | null;
+  notes:              string | null;
+  created_at:         string;
+  updated_at:         string;
+}
+
+export type LeadInsert = Omit<Lead, 'id' | 'created_at' | 'updated_at'>;
+
+
 // ── Onboarding ───────────────────────────────────────────────
 
 /**

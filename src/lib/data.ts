@@ -18,6 +18,9 @@ import type {
   Recap,
   FollowUp,
   ProductPerformance,
+  EmailSubscriber, EmailSubscriberInsert,
+  Lead, LeadInsert,
+  TeamSettings, TeamSettingsUpsert,
   FollowUpQueueRow,
   VisitsBySupplierRow,
   ProductsByContactRow,
@@ -1295,4 +1298,165 @@ export async function matchDepletionToPlacements(
   });
   if (error) throw new Error(mapDbError(error));
   return data as DepletionMatchResult;
+}
+
+
+// ── Lead Automation ───────────────────────────────────────────
+
+// Brand card shape returned by the public tasting-page API.
+export interface PublicBrandCard {
+  id:          string;
+  name:        string;
+  country:     string | null;
+  region:      string | null;
+  description: string | null;
+  website:     string | null;
+  supplier:    { name: string; website: string | null } | null;
+  products:    Array<{
+    id:             string;
+    wine_name:      string;
+    type:           string | null;
+    varietal:       string | null;
+    vintage:        string | null;
+    tasting_notes:  string | null;
+    description:    string | null;
+    tech_sheet_url: string | null;
+    frontline_cost: number | null;
+    distributor:    string | null;
+  }>;
+}
+
+/** Fetches all active brands + their active SKUs for the public tasting page. */
+export async function getActiveBrandsWithProducts(
+  teamId: string,
+  sb: SupabaseClient,
+): Promise<PublicBrandCard[]> {
+  const { data, error } = await sb
+    .from('brands')
+    .select(`
+      id, name, country, region, description, website,
+      supplier:suppliers ( name, website ),
+      products (
+        id, wine_name, type, varietal, vintage,
+        tasting_notes, description, tech_sheet_url,
+        frontline_cost, distributor, is_active
+      )
+    `)
+    .eq('team_id', teamId)
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) throw new Error(mapDbError(error));
+
+  return (data ?? []).map((b) => ({
+    ...b,
+    supplier: Array.isArray(b.supplier) ? b.supplier[0] ?? null : b.supplier,
+    products: ((b.products as Product[]) ?? [])
+      .filter((p) => p.is_active)
+      .map(({ id, wine_name, type, varietal, vintage, tasting_notes, description, tech_sheet_url, frontline_cost, distributor }) => ({
+        id, wine_name, type, varietal, vintage, tasting_notes, description, tech_sheet_url, frontline_cost, distributor,
+      })),
+  }));
+}
+
+// ── Team Settings ─────────────────────────────────────────────
+
+export async function getTeamSettings(
+  teamId: string,
+  sb: SupabaseClient,
+): Promise<TeamSettings | null> {
+  const { data, error } = await sb
+    .from('team_settings')
+    .select('*')
+    .eq('team_id', teamId)
+    .maybeSingle();
+  if (error) throw new Error(mapDbError(error));
+  return data as TeamSettings | null;
+}
+
+export async function upsertTeamSettings(
+  settings: TeamSettingsUpsert,
+  sb: SupabaseClient,
+): Promise<TeamSettings> {
+  const { data, error } = await sb
+    .from('team_settings')
+    .upsert(settings, { onConflict: 'team_id' })
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as TeamSettings;
+}
+
+// ── Email Subscribers ─────────────────────────────────────────
+
+export async function getEmailSubscribers(
+  teamId: string,
+  sb: SupabaseClient,
+  activeOnly = true,
+): Promise<EmailSubscriber[]> {
+  let q = sb
+    .from('email_subscribers')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('opt_in_date', { ascending: false });
+  if (activeOnly) q = q.eq('active', true);
+  const { data, error } = await q;
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? []) as EmailSubscriber[];
+}
+
+export async function createEmailSubscriber(
+  subscriber: EmailSubscriberInsert,
+  sb: SupabaseClient,
+): Promise<EmailSubscriber> {
+  const { data, error } = await sb
+    .from('email_subscribers')
+    .upsert(
+      { ...subscriber, opt_in_date: new Date().toISOString() },
+      { onConflict: 'email,team_id', ignoreDuplicates: false },
+    )
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as EmailSubscriber;
+}
+
+// ── Leads ─────────────────────────────────────────────────────
+
+export async function getLeads(
+  teamId: string,
+  sb: SupabaseClient,
+): Promise<Lead[]> {
+  const { data, error } = await sb
+    .from('leads')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? []) as Lead[];
+}
+
+export async function createLead(
+  lead: LeadInsert,
+  sb: SupabaseClient,
+): Promise<Lead> {
+  const { data, error } = await sb
+    .from('leads')
+    .insert(lead)
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as Lead;
+}
+
+export async function updateLeadStatus(
+  leadId: string,
+  status: Lead['status'],
+  sb: SupabaseClient,
+): Promise<void> {
+  const { error } = await sb
+    .from('leads')
+    .update({ status })
+    .eq('id', leadId);
+  if (error) throw new Error(mapDbError(error));
 }
