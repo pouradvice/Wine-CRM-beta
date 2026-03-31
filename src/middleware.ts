@@ -37,6 +37,35 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // ── Portal routes (/supplier/* and /distributor/*) ────────────
+  // Auth-only gate: just confirm the user is logged in.
+  // Authorization (is this user mapped to this supplier/distributor?)
+  // is enforced by the route's Server Component via the RLS-aware
+  // Supabase client — see page.tsx for each portal route.
+  //
+  // Portal routes are intentionally excluded from:
+  //   • the onboarding gate (portal users have no onboarding state)
+  //   • the /login → /app/crm/clients broker redirect
+  //   • the /app/* protection block below
+
+  const isPortalRoute =
+    pathname.startsWith('/supplier') || pathname.startsWith('/distributor');
+
+  if (isPortalRoute && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    // Preserve the intended destination so the login page can redirect back
+    url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // If portal user is authenticated, let them through — no further gates.
+  if (isPortalRoute && user) {
+    return supabaseResponse;
+  }
+
+  // ── Broker CRM routes (/app/*) ────────────────────────────────
+
   // Protect all /app/* routes
   if (pathname.startsWith('/app') && !user) {
     const url = request.nextUrl.clone();
@@ -44,7 +73,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login
+  // Redirect authenticated broker users away from login.
+  // Portal users visiting /login while authenticated are NOT redirected
+  // here — they are handled by the login page's post-auth flow instead.
   if (pathname === '/login' && user) {
     const url = request.nextUrl.clone();
     url.pathname = '/app/crm/clients';
