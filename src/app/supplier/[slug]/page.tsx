@@ -156,9 +156,9 @@ export default async function SupplierPortalPage({
   ]);
 
   const products    = (productsRes.data    ?? []) as SupplierPortalProduct[];
-  const placements  = (placementsRes.data  ?? []) as PlacementRow[];
+  const placements  = (placementsRes.data  ?? []) as unknown as PlacementRow[];
   const allOutcomes = outcomeSummaryRes.data ?? [];
-  const followUps   = (followUpsRes.data   ?? []) as FollowUpRow[];
+  const followUps   = (followUpsRes.data   ?? []) as unknown as FollowUpRow[];
 
   // Tally outcomes for the summary strip.
   const outcomeCounts = allOutcomes.reduce<Record<string, number>>((acc, row) => {
