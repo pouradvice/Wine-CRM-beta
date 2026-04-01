@@ -3,12 +3,13 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,18 +21,72 @@ export default function LoginPage() {
     setError(null);
 
     const sb = createClient();
-    const { error: authError } = await sb.auth.signInWithPassword({
+    const { data: authData, error: authError } = await sb.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) {
-      setError(authError.message ?? 'Invalid email or password.');
+    if (authError || !authData.user) {
+      setError(authError?.message ?? 'Invalid email or password.');
       setLoading(false);
       return;
     }
 
-    router.push('/app/crm/clients');
+    // If the middleware set a ?redirect param (e.g. an unauthenticated portal
+    // user was redirected to /login), honour it first.
+    const redirectParam = searchParams.get('redirect');
+    if (redirectParam && (redirectParam.startsWith('/supplier/') || redirectParam.startsWith('/distributor/'))) {
+      router.push(redirectParam);
+      return;
+    }
+
+    // Determine user type and redirect to the appropriate landing page.
+    // Check in order: broker team → supplier portal → distributor portal.
+
+    const userId = authData.user.id;
+
+    // 1. Broker CRM user
+    const { data: teamRow } = await sb
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (teamRow) {
+      router.push('/app/crm/clients');
+      return;
+    }
+
+    // 2. Supplier portal user
+    const { data: supplierRow } = await sb
+      .from('supplier_users')
+      .select('supplier_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (supplierRow) {
+      router.push(`/supplier/${supplierRow.supplier_id}`);
+      return;
+    }
+
+    // 3. Distributor portal user
+    const { data: distributorRow } = await sb
+      .from('distributor_users')
+      .select('distributor_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (distributorRow) {
+      router.push(`/distributor/${distributorRow.distributor_id}`);
+      return;
+    }
+
+    // No mapping found — account exists in auth but is not linked to anything.
+    setError('Your account is not linked to any team or portal. Contact support.');
+    setLoading(false);
   };
 
   return (

@@ -14,7 +14,8 @@ export type FollowUpStatus   = 'Open' | 'Snoozed' | 'Completed';
 export type FollowUpType     = 'Call' | 'Visit' | 'Email' | 'Sample';
 export type RecapNature      = 'Sales Call' | 'Depletion Meeting' | 'Event' | 'Off-Premise Tasting';
 export type UserRole         = 'owner' | 'admin' | 'member';
-export type SupplierUserRole = 'admin' | 'viewer';
+export type SupplierUserRole     = 'admin' | 'viewer';
+export type DistributorUserRole  = 'admin' | 'viewer';
 export type ContractStatus   = 'pending' | 'active' | 'expired' | 'terminated';
 export type WineType         = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Dessert' | 'Fortified' | 'Spirit' | 'Other';
 export type AccountType      = 'Restaurant' | 'Retail' | 'Hotel' | 'Bar' | 'Club' | 'Corporate' | 'Other';
@@ -73,6 +74,35 @@ export interface SupplierUser {
   created_at:  string;
   // Relations
   supplier?: Supplier | null;
+}
+
+
+// ── Distributor platform layer ───────────────────────────────
+
+export interface Distributor {
+  id:         string;
+  name:       string;
+  region:     string | null;
+  state:      string | null;
+  country:    string | null;
+  website:    string | null;
+  notes:      string | null;
+  is_active:  boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DistributorInsert = Omit<Distributor, 'id' | 'created_at' | 'updated_at'>;
+export type DistributorUpdate = Partial<DistributorInsert>;
+
+export interface DistributorUser {
+  id:             string;
+  user_id:        string;
+  distributor_id: string;
+  role:           DistributorUserRole;
+  created_at:     string;
+  // Relations
+  distributor?: Distributor | null;
 }
 
 
