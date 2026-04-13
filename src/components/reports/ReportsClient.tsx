@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import type {
-  Supplier,
   ProductPerformance,
   VisitsBySupplierRow,
   DashboardStats,
@@ -55,7 +54,6 @@ const TABS: Array<{ id: TabId; label: string; ownerOnly?: boolean }> = [
 
 interface ReportsClientProps {
   teamId:           string;
-  suppliers:        Supplier[];
   performance:      ProductPerformance[];
   visitsBySupplier: VisitsBySupplierRow[];
   dashboardStats:   DashboardStats;
@@ -71,7 +69,6 @@ interface ReportsClientProps {
 }
 
 export function ReportsClient({
-  suppliers,
   performance,
   visitsBySupplier,
   dashboardStats,
@@ -262,13 +259,10 @@ export function ReportsClient({
         )}
 
         {activeTab === 'by-supplier' && (() => {
-          // Build supplier name lookup: suppliers list is authoritative, visitsBySupplier fills any gaps
+          // Build supplier name lookup: full suppliers list takes priority, supplemented by visitsBySupplier
           const supplierNameMap = new Map<string, string>();
           for (const r of visitsBySupplier) {
             if (r.supplier_id && r.supplier_name) supplierNameMap.set(r.supplier_id, r.supplier_name);
-          }
-          for (const s of suppliers) {
-            supplierNameMap.set(s.id, s.name);
           }
 
           // Group performance SKUs by supplier_id
