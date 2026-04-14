@@ -108,19 +108,31 @@ CREATE POLICY "distributor_users_own_rows"
 -- recaps: supplier users may read recap headers (visit_date,
 -- account_id) for recaps that contain their products.
 -- Intentionally excludes recap.notes and other broker fields.
+--
+-- SECURITY DEFINER helper breaks the RLS cycle:
+--   recaps_supplier_read → recap_products (triggers recap_products_team_scoped)
+--   → recaps (triggers recaps_supplier_read) → infinite loop
+-- Running inside a SECURITY DEFINER function bypasses the caller's RLS
+-- context when reading recap_products, so the cycle never forms.
+
+CREATE OR REPLACE FUNCTION get_supplier_recap_ids(p_user_id uuid)
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT recap_id
+  FROM   recap_products
+  WHERE  supplier_id IN (
+    SELECT supplier_id FROM supplier_users WHERE user_id = p_user_id
+  );
+$$;
 
 CREATE POLICY "recaps_supplier_read"
   ON recaps FOR SELECT
   TO authenticated
-  USING (
-    id IN (
-      SELECT recap_id
-      FROM   recap_products
-      WHERE  supplier_id IN (
-        SELECT supplier_id FROM supplier_users WHERE user_id = auth.uid()
-      )
-    )
-  );
+  USING (id IN (SELECT get_supplier_recap_ids(auth.uid())));
 
 -- follow_ups: supplier users may read open follow-ups for their
 -- products so they can monitor pipeline health across teams.
