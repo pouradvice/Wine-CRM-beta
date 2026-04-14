@@ -105,34 +105,41 @@ CREATE POLICY "distributor_users_own_rows"
 -- team-private broker data.
 -- ══════════════════════════════════════════════════════════════
 
+-- recap_products_team_scoped originally reached into recaps to
+-- get team_id, creating a cycle once recaps_supplier_read was
+-- added (recaps → recap_products → recaps → …).
+-- Fix: scope via products.team_id instead — products are already
+-- team-owned and their policy only queries team_members, so there
+-- is no cross-reference back to recaps or recap_products.
+
+DROP POLICY IF EXISTS "recap_products_team_scoped" ON recap_products;
+
+CREATE POLICY "recap_products_team_scoped"
+  ON recap_products FOR ALL
+  TO authenticated
+  USING (product_id IN (
+    SELECT id FROM products
+    WHERE team_id IN (
+      SELECT team_id FROM team_members WHERE user_id = auth.uid()
+    )
+  ));
+
 -- recaps: supplier users may read recap headers (visit_date,
 -- account_id) for recaps that contain their products.
 -- Intentionally excludes recap.notes and other broker fields.
---
--- SECURITY DEFINER helper breaks the RLS cycle:
---   recaps_supplier_read → recap_products (triggers recap_products_team_scoped)
---   → recaps (triggers recaps_supplier_read) → infinite loop
--- Running inside a SECURITY DEFINER function bypasses the caller's RLS
--- context when reading recap_products, so the cycle never forms.
-
-CREATE OR REPLACE FUNCTION get_supplier_recap_ids(p_user_id uuid)
-RETURNS SETOF uuid
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
-  SELECT recap_id
-  FROM   recap_products
-  WHERE  supplier_id IN (
-    SELECT supplier_id FROM supplier_users WHERE user_id = p_user_id
-  );
-$$;
 
 CREATE POLICY "recaps_supplier_read"
   ON recaps FOR SELECT
   TO authenticated
-  USING (id IN (SELECT get_supplier_recap_ids(auth.uid())));
+  USING (
+    id IN (
+      SELECT recap_id
+      FROM   recap_products
+      WHERE  supplier_id IN (
+        SELECT supplier_id FROM supplier_users WHERE user_id = auth.uid()
+      )
+    )
+  );
 
 -- follow_ups: supplier users may read open follow-ups for their
 -- products so they can monitor pipeline health across teams.
