@@ -1,0 +1,243 @@
+.page {
+  min-height: 100vh;
+  padding-bottom: 110px;
+  background: var(--cream);
+}
+
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--parchment);
+}
+
+.logo {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--wine);
+  text-align: center;
+}
+
+.hamburger {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+}
+
+.filtersPanel {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.content {
+  padding: var(--space-4);
+}
+
+.loadingWrap {
+  display: grid;
+  place-items: center;
+  padding: var(--space-10);
+}
+
+.error {
+  color: #8b0000;
+  font-size: var(--text-sm);
+}
+
+.empty {
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 740px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1080px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--wine);
+}
+
+.metaRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.typeBadge {
+  display: inline-block;
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  background: var(--sage-light);
+  color: #fff;
+  font-size: var(--text-xs);
+}
+
+.metaText {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.price {
+  color: var(--wine);
+  font-weight: 700;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.detailCard {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.longText {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.reviewItem {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.reviewHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.reviewHeader h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.removeBtn {
+  border: none;
+  background: transparent;
+  color: #8b0000;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.notesBlock {
+  margin-top: var(--space-2);
+}
+
+.trayBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.trayCount {
+  font-weight: 700;
+  color: var(--wine);
+}
+
+.trayHint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.gateBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+}
+
+.gateModal {
+  width: min(460px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.gateModal h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--wine);
+}
+
+.successBanner {
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--parchment);
+  color: var(--wine);
+}
