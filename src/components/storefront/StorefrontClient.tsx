@@ -368,14 +368,14 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
               const fullAndUnavailable = !inTray && trayIsFull;
               const origin = originFor(product);
               const price = formatPrice(product.frontline_cost);
-              const normalizedType = product.type?.toLowerCase();
+              const lowercaseType = product.type?.toLowerCase();
 
               return (
                 <article key={product.id} className={styles.card}>
                   <h2 className={styles.cardTitle}>{product.wine_name}</h2>
                   <div className={styles.metaRow}>
                     {product.type && (
-                      <span className={styles.typeBadge} data-wine-type={normalizedType}>{product.type}</span>
+                      <span className={styles.typeBadge} data-wine-type={lowercaseType}>{product.type}</span>
                     )}
                     {product.varietal && <span className={styles.metaText}>{product.varietal}</span>}
                   </div>

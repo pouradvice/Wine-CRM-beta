@@ -76,23 +76,23 @@
   color: #6b7280;
 }
 
-.filterInput,
-.filterSelect,
-.notesInput {
-  border: 1px solid #d1d5db !important;
-  border-radius: 0 !important;
-  background: #ffffff !important;
-  color: #111827 !important;
-  box-shadow: none !important;
+.filterInput.filterInput,
+.filterSelect.filterSelect,
+.notesInput.notesInput {
+  border: 1px solid #d1d5db;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: none;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
 }
 
-.filterInput:focus,
-.filterSelect:focus,
-.notesInput:focus {
-  border-color: #374151 !important;
-  box-shadow: none !important;
+.filterInput.filterInput:focus,
+.filterSelect.filterSelect:focus,
+.notesInput.notesInput:focus {
+  border-color: #374151;
+  box-shadow: none;
 }
 
 .content {
@@ -224,7 +224,7 @@
 .primaryButton,
 .secondaryButton,
 .addedButton {
-  border-radius: 0 !important;
+  border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -233,32 +233,32 @@
   min-height: 38px;
 }
 
-.primaryButton {
-  background: #111827 !important;
-  color: #ffffff !important;
-  border: 2px solid #111827 !important;
+.primaryButton.primaryButton {
+  background: #111827;
+  color: #ffffff;
+  border: 2px solid #111827;
 }
 
-.primaryButton:hover:not(:disabled) {
-  background: #ffffff !important;
-  color: #111827 !important;
+.primaryButton.primaryButton:hover:not(:disabled) {
+  background: #ffffff;
+  color: #111827;
 }
 
-.secondaryButton {
-  background: transparent !important;
-  border: 1px solid #d1d5db !important;
-  color: #6b7280 !important;
+.secondaryButton.secondaryButton {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
 }
 
-.secondaryButton:hover:not(:disabled) {
-  border-color: #111827 !important;
-  color: #111827 !important;
+.secondaryButton.secondaryButton:hover:not(:disabled) {
+  border-color: #111827;
+  color: #111827;
 }
 
-.addedButton {
-  background: #ffffff !important;
-  color: #16a34a !important;
-  border: 2px solid #16a34a !important;
+.addedButton.addedButton {
+  background: #ffffff;
+  color: #16a34a;
+  border: 2px solid #16a34a;
 }
 
 .detailCard {
