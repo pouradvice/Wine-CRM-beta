@@ -10,6 +10,8 @@ import { WINE_TYPES } from '@/types';
 import styles from './StorefrontClient.module.css';
 
 const MAX_TRAY_ITEMS = 6;
+const CALENDLY_WIDGET_CSS_URL = 'https://assets.calendly.com/assets/external/widget.css';
+const CALENDLY_WIDGET_JS_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
 let calendlyScriptPromise: Promise<void> | null = null;
 
@@ -49,12 +51,30 @@ function originFor(product: StorefrontProduct): string {
 }
 
 function getAddButtonLabel(inTray: boolean, fullAndUnavailable: boolean): string {
-  if (inTray) return 'Added';
+  if (inTray) return 'Added ✓';
   if (fullAndUnavailable) return 'Tasting is full (6 wines max)';
   return 'Add to Tasting';
 }
 
+function getAddButtonAriaLabel(inTray: boolean, fullAndUnavailable: boolean): string {
+  if (inTray) return 'Added to tasting';
+  if (fullAndUnavailable) return 'Tasting is full (6 wines max)';
+  return 'Add to tasting';
+}
+
 function loadCalendlyScript(): Promise<void> {
+  const existingStyle = document.querySelector<HTMLLinkElement>(
+    `link[data-calendly-widget-css="true"], link[href="${CALENDLY_WIDGET_CSS_URL}"]`,
+  );
+
+  if (!existingStyle) {
+    const styleLink = document.createElement('link');
+    styleLink.rel = 'stylesheet';
+    styleLink.href = CALENDLY_WIDGET_CSS_URL;
+    styleLink.dataset.calendlyWidgetCss = 'true';
+    document.head.appendChild(styleLink);
+  }
+
   if (window.Calendly) return Promise.resolve();
   if (calendlyScriptPromise) return calendlyScriptPromise;
 
@@ -67,7 +87,7 @@ function loadCalendlyScript(): Promise<void> {
     }
 
     const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.src = CALENDLY_WIDGET_JS_URL;
     script.async = true;
     script.dataset.calendlyWidget = 'true';
     script.onload = () => resolve();
@@ -289,7 +309,10 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
     <div className={styles.page} data-team-id={teamId}>
       <header className={styles.banner}>
         <img src="/logo.jpeg" alt="Pour Advice logo" className={styles.logo} />
-        <h1 className={styles.title}>Pour Advice Portfolio</h1>
+        <div className={styles.titleWrap}>
+          <p className={styles.eyebrow}>POUR ADVICE · PORTFOLIO</p>
+          <h1 className={styles.title}>Pour Advice Portfolio</h1>
+        </div>
         <button
           type="button"
           className={styles.hamburger}
@@ -303,19 +326,19 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
 
       {filtersOpen && (
         <section id="storefront-filters" className={styles.filtersPanel}>
-          <label className="form-label" htmlFor="storefront-search">Search</label>
+          <label className={`form-label ${styles.filterLabel}`} htmlFor="storefront-search">Search</label>
           <input
             id="storefront-search"
-            className="form-control"
+            className={`form-control ${styles.filterInput}`}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by wine, SKU, region, or distributor"
           />
 
-          <label className="form-label" htmlFor="storefront-type">Wine type</label>
+          <label className={`form-label ${styles.filterLabel}`} htmlFor="storefront-type">Wine type</label>
           <select
             id="storefront-type"
-            className="form-control"
+            className={`form-control ${styles.filterSelect}`}
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value)}
           >
@@ -325,7 +348,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
             ))}
           </select>
 
-          <Button variant="secondary" onClick={clearFilters}>Clear Filters</Button>
+          <Button variant="secondary" className={styles.secondaryButton} onClick={clearFilters}>Clear Filters</Button>
         </section>
       )}
 
@@ -351,12 +374,15 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
               const fullAndUnavailable = !inTray && trayIsFull;
               const origin = originFor(product);
               const price = formatPrice(product.frontline_cost);
+              const lowercaseType = product.type?.toLowerCase();
 
               return (
                 <article key={product.id} className={styles.card}>
                   <h2 className={styles.cardTitle}>{product.wine_name}</h2>
                   <div className={styles.metaRow}>
-                    {product.type && <span className={styles.typeBadge}>{product.type}</span>}
+                    {product.type && (
+                      <span className={styles.typeBadge} data-wine-type={lowercaseType}>{product.type}</span>
+                    )}
                     {product.varietal && <span className={styles.metaText}>{product.varietal}</span>}
                   </div>
                   <p className={styles.metaText}>{[product.brand_name, product.supplier_name].filter(Boolean).join(' / ') || '—'}</p>
@@ -365,8 +391,10 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
                   {price && <p className={styles.price}>{price}</p>}
 
                   <div className={styles.cardActions}>
-                    <Button variant="secondary" onClick={() => setSelectedProduct(product)}>View Details</Button>
+                    <Button variant="secondary" className={styles.secondaryButton} onClick={() => setSelectedProduct(product)}>View Details</Button>
                     <Button
+                      className={inTray ? styles.addedButton : styles.primaryButton}
+                      aria-label={getAddButtonAriaLabel(inTray, fullAndUnavailable)}
                       title={fullAndUnavailable ? 'Tasting is full (6 wines max)' : undefined}
                       onClick={() => addToTray(product)}
                       disabled={inTray || fullAndUnavailable}
@@ -387,6 +415,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
         title={selectedProduct?.wine_name ?? 'Wine Details'}
         footer={selectedProduct ? (
           <Button
+            className={trayProductIds.has(selectedProduct.id) ? styles.addedButton : styles.primaryButton}
             onClick={() => addToTray(selectedProduct)}
             disabled={trayProductIds.has(selectedProduct.id) || trayIsFull}
             title={trayIsFull && !trayProductIds.has(selectedProduct.id) ? 'Tasting is full (6 wines max)' : undefined}
@@ -401,19 +430,19 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       >
         {selectedProduct && (
           <div className={styles.detailCard}>
-            <div className={styles.detailRow}><span>SKU</span><strong>{selectedProduct.sku_number}</strong></div>
-            {selectedProduct.type && <div className={styles.detailRow}><span>Type</span><strong>{selectedProduct.type}</strong></div>}
-            {selectedProduct.varietal && <div className={styles.detailRow}><span>Varietal</span><strong>{selectedProduct.varietal}</strong></div>}
-            {selectedProduct.brand_name && <div className={styles.detailRow}><span>Brand</span><strong>{selectedProduct.brand_name}</strong></div>}
-            {selectedProduct.supplier_name && <div className={styles.detailRow}><span>Supplier</span><strong>{selectedProduct.supplier_name}</strong></div>}
-            {originFor(selectedProduct) && <div className={styles.detailRow}><span>Origin</span><strong>{originFor(selectedProduct)}</strong></div>}
-            {selectedProduct.vintage && <div className={styles.detailRow}><span>Vintage</span><strong>{selectedProduct.vintage}</strong></div>}
-            {selectedProduct.distributor && <div className={styles.detailRow}><span>Distributor</span><strong>{selectedProduct.distributor}</strong></div>}
-            {formatPrice(selectedProduct.frontline_cost) && <div className={styles.detailRow}><span>Frontline cost</span><strong>{formatPrice(selectedProduct.frontline_cost)}</strong></div>}
+            <div className={styles.detailRow}><span className={styles.detailLabel}>SKU</span><span className={styles.detailValue}>{selectedProduct.sku_number}</span></div>
+            {selectedProduct.type && <div className={styles.detailRow}><span className={styles.detailLabel}>Type</span><span className={styles.detailValue}>{selectedProduct.type}</span></div>}
+            {selectedProduct.varietal && <div className={styles.detailRow}><span className={styles.detailLabel}>Varietal</span><span className={styles.detailValue}>{selectedProduct.varietal}</span></div>}
+            {selectedProduct.brand_name && <div className={styles.detailRow}><span className={styles.detailLabel}>Brand</span><span className={styles.detailValue}>{selectedProduct.brand_name}</span></div>}
+            {selectedProduct.supplier_name && <div className={styles.detailRow}><span className={styles.detailLabel}>Supplier</span><span className={styles.detailValue}>{selectedProduct.supplier_name}</span></div>}
+            {originFor(selectedProduct) && <div className={styles.detailRow}><span className={styles.detailLabel}>Origin</span><span className={styles.detailValue}>{originFor(selectedProduct)}</span></div>}
+            {selectedProduct.vintage && <div className={styles.detailRow}><span className={styles.detailLabel}>Vintage</span><span className={styles.detailValue}>{selectedProduct.vintage}</span></div>}
+            {selectedProduct.distributor && <div className={styles.detailRow}><span className={styles.detailLabel}>Distributor</span><span className={styles.detailValue}>{selectedProduct.distributor}</span></div>}
+            {formatPrice(selectedProduct.frontline_cost) && <div className={styles.detailRow}><span className={styles.detailLabel}>Frontline cost</span><span className={styles.detailValue}>{formatPrice(selectedProduct.frontline_cost)}</span></div>}
             {selectedProduct.tech_sheet_url && (
               <div className={styles.detailRow}>
-                <span>Tech sheet</span>
-                <a href={selectedProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer">View</a>
+                <span className={styles.detailLabel}>Tech sheet</span>
+                <a className={styles.detailLink} href={selectedProduct.tech_sheet_url} target="_blank" rel="noopener noreferrer">View</a>
               </div>
             )}
             {selectedProduct.tasting_notes && <p className={styles.longText}><strong>Tasting notes:</strong> {selectedProduct.tasting_notes}</p>}
@@ -428,8 +457,8 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
         onClose={() => setReviewOpen(false)}
         title="Review Tasting"
         footer={(
-          <Button onClick={handleBookTasting} loading={booking} disabled={trayItems.length === 0}>
-            Book This Tasting
+          <Button className={styles.primaryButton} aria-label="Book this tasting" onClick={handleBookTasting} loading={booking} disabled={trayItems.length === 0}>
+            Book This Tasting →
           </Button>
         )}
       >
@@ -447,7 +476,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
             </div>
             <p className={styles.metaText}>{[item.product.type, item.product.varietal].filter(Boolean).join(' · ') || 'Wine'}</p>
             <input
-              className="form-control"
+              className={`form-control ${styles.notesInput}`}
               value={item.buyer_notes}
               onChange={(event) => updateItemNote(item.product.id, event.target.value)}
               placeholder="Any notes for this wine? e.g. 'interested in BTG placement'"
@@ -456,10 +485,10 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
         ))}
 
         <div className={styles.notesBlock}>
-          <label className="form-label" htmlFor="overall-notes">Overall notes (optional)</label>
+          <label className={`form-label ${styles.filterLabel}`} htmlFor="overall-notes">Overall notes (optional)</label>
           <textarea
             id="overall-notes"
-            className="form-control"
+            className={`form-control ${styles.notesInput}`}
             value={overallNotes}
             onChange={(event) => setOverallNotes(event.target.value)}
             placeholder="Anything else we should know before the tasting?"
@@ -472,10 +501,10 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       {trayItems.length > 0 && (
         <div className={styles.trayBar}>
           <div>
-            <p className={styles.trayCount}>{trayItems.length} of {MAX_TRAY_ITEMS} wines selected</p>
+            <p className={styles.trayCount}><span className={styles.trayCountNumber}>{trayItems.length}</span> of {MAX_TRAY_ITEMS} wines selected</p>
             <p className={styles.trayHint}>We recommend 6 wines for an ideal tasting experience.</p>
           </div>
-          <Button onClick={() => setReviewOpen(true)}>Review Tasting</Button>
+          <Button className={styles.primaryButton} aria-label="Review tasting" onClick={() => setReviewOpen(true)}>Review Tasting →</Button>
         </div>
       )}
 
@@ -485,14 +514,14 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
             <h2>Enter the email you&apos;d like us to use for communications</h2>
             <input
               type="email"
-              className="form-control"
+              className={`form-control ${styles.notesInput}`}
               value={gateEmail}
               onChange={(event) => setGateEmail(event.target.value)}
               placeholder="you@example.com"
               required
             />
             {gateError && <p className={styles.error}>{gateError}</p>}
-            <Button type="submit" loading={gateSaving}>Continue</Button>
+            <Button className={styles.primaryButton} type="submit" loading={gateSaving}>Continue</Button>
           </form>
         </div>
       )}
