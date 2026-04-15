@@ -56,6 +56,12 @@ function getAddButtonLabel(inTray: boolean, fullAndUnavailable: boolean): string
   return 'Add to Tasting';
 }
 
+function getAddButtonAriaLabel(inTray: boolean, fullAndUnavailable: boolean): string {
+  if (inTray) return 'Added to tasting';
+  if (fullAndUnavailable) return 'Tasting is full (6 wines max)';
+  return 'Add to tasting';
+}
+
 function loadCalendlyScript(): Promise<void> {
   const existingStyle = document.querySelector<HTMLLinkElement>(
     `link[data-calendly-widget-css="true"], link[href="${CALENDLY_WIDGET_CSS_URL}"]`,
@@ -388,6 +394,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
                     <Button variant="secondary" className={styles.secondaryButton} onClick={() => setSelectedProduct(product)}>View Details</Button>
                     <Button
                       className={inTray ? styles.addedButton : styles.primaryButton}
+                      aria-label={getAddButtonAriaLabel(inTray, fullAndUnavailable)}
                       title={fullAndUnavailable ? 'Tasting is full (6 wines max)' : undefined}
                       onClick={() => addToTray(product)}
                       disabled={inTray || fullAndUnavailable}
@@ -450,7 +457,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
         onClose={() => setReviewOpen(false)}
         title="Review Tasting"
         footer={(
-          <Button className={styles.primaryButton} onClick={handleBookTasting} loading={booking} disabled={trayItems.length === 0}>
+          <Button className={styles.primaryButton} aria-label="Book this tasting" onClick={handleBookTasting} loading={booking} disabled={trayItems.length === 0}>
             Book This Tasting →
           </Button>
         )}
@@ -497,7 +504,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
             <p className={styles.trayCount}><span className={styles.trayCountNumber}>{trayItems.length}</span> of {MAX_TRAY_ITEMS} wines selected</p>
             <p className={styles.trayHint}>We recommend 6 wines for an ideal tasting experience.</p>
           </div>
-          <Button className={styles.primaryButton} onClick={() => setReviewOpen(true)}>Review Tasting →</Button>
+          <Button className={styles.primaryButton} aria-label="Review tasting" onClick={() => setReviewOpen(true)}>Review Tasting →</Button>
         </div>
       )}
 
