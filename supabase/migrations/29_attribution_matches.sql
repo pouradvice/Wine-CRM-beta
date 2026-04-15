@@ -12,6 +12,12 @@ CREATE TABLE IF NOT EXISTS attribution_matches (
   matched_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   resolved_at          TIMESTAMPTZ,
   resolved_by          UUID REFERENCES auth.users(id),
+  CONSTRAINT attribution_matches_resolution_pair_chk
+    CHECK (
+      (resolved_at IS NULL AND resolved_by IS NULL)
+      OR
+      (resolved_at IS NOT NULL AND resolved_by IS NOT NULL)
+    ),
   notes                TEXT,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()

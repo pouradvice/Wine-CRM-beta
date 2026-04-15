@@ -19,11 +19,14 @@ export async function GET(request: NextRequest) {
     const limit = limitParam ? Number(limitParam) : undefined;
     const offset = offsetParam ? Number(offsetParam) : undefined;
 
+    const parsedLimit = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : undefined;
+    const parsedOffset = typeof offset === 'number' && Number.isInteger(offset) && offset >= 0 ? offset : undefined;
+
     const matches = await getAttributionMatches(sb, teamId, {
       supplierId,
       status: status as 'matched' | 'disputed' | 'resolved' | 'voided' | undefined,
-      limit: Number.isFinite(limit) ? limit : undefined,
-      offset: Number.isFinite(offset) ? offset : undefined,
+      limit: parsedLimit,
+      offset: parsedOffset,
     });
 
     return NextResponse.json(matches);

@@ -1329,11 +1329,10 @@ export async function getAttributionMatches(
 
   if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
   if (options?.status) query = query.eq('status', options.status);
-  if (options?.offset != null) {
-    const limit = options.limit ?? 50;
-    query = query.range(options.offset, options.offset + limit - 1);
-  } else if (options?.limit != null) {
-    query = query.limit(options.limit);
+  if (options?.offset != null || options?.limit != null) {
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit ?? 50;
+    query = query.range(offset, offset + limit - 1);
   }
 
   const { data, error } = await query;
