@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { STOREFRONT_EMAIL_RE } from '@/lib/storefront';
 
 interface VisitorBody {
   slug?: string;
@@ -24,7 +23,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'slug is required' }, { status: 400 });
   }
 
-  if (!EMAIL_RE.test(email)) {
+  if (!STOREFRONT_EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 });
   }
 

@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { STOREFRONT_EMAIL_RE } from '@/lib/storefront';
 import type { StorefrontProduct, TastingTrayItem, WineType } from '@/types';
 import { WINE_TYPES } from '@/types';
 import styles from './StorefrontClient.module.css';
 
 const MAX_TRAY_ITEMS = 6;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 let calendlyScriptPromise: Promise<void> | null = null;
 
@@ -46,6 +46,12 @@ function formatPrice(value: number | null): string | null {
 
 function originFor(product: StorefrontProduct): string {
   return [product.country, product.region, product.appellation].filter(Boolean).join(' · ');
+}
+
+function getAddButtonLabel(inTray: boolean, fullAndUnavailable: boolean): string {
+  if (inTray) return 'Added';
+  if (fullAndUnavailable) return 'Tasting is full (6 wines max)';
+  return 'Add to Tasting';
 }
 
 function loadCalendlyScript(): Promise<void> {
@@ -202,7 +208,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
     event.preventDefault();
 
     const email = gateEmail.trim().toLowerCase();
-    if (!EMAIL_RE.test(email)) {
+    if (!STOREFRONT_EMAIL_RE.test(email)) {
       setGateError('Please enter a valid email address.');
       return;
     }
@@ -365,7 +371,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
                       onClick={() => addToTray(product)}
                       disabled={inTray || fullAndUnavailable}
                     >
-                      {inTray ? 'Added' : fullAndUnavailable ? 'Tasting is full (6 wines max)' : 'Add to Tasting'}
+                      {getAddButtonLabel(inTray, fullAndUnavailable)}
                     </Button>
                   </div>
                 </article>
