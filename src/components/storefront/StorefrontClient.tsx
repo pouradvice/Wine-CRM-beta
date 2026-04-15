@@ -113,7 +113,9 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
   const [overallNotes, setOverallNotes] = useState('');
 
   const [visitorEmail, setVisitorEmail] = useState('');
+  const [visitorCompany, setVisitorCompany] = useState('');
   const [gateEmail, setGateEmail] = useState('');
+  const [gateCompany, setGateCompany] = useState('');
   const [gateOpen, setGateOpen] = useState(false);
   const [gateSaving, setGateSaving] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
@@ -227,7 +229,13 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
   const handleGateSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const company = gateCompany.trim();
     const email = gateEmail.trim().toLowerCase();
+    if (!company) {
+      setGateError('Please enter your company or restaurant name.');
+      return;
+    }
+
     if (!STOREFRONT_EMAIL_RE.test(email)) {
       setGateError('Please enter a valid email address.');
       return;
@@ -240,7 +248,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       const response = await fetch('/api/storefront/visitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, email }),
+        body: JSON.stringify({ slug, email, company_name: company }),
       });
 
       const payload = await response.json();
@@ -249,6 +257,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       }
 
       setVisitorEmail(email);
+      setVisitorCompany(company);
       setCookie(cookieKey, email, 365);
       setGateOpen(false);
     } catch (err) {
@@ -259,7 +268,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
   };
 
   const handleBookTasting = async () => {
-    if (!visitorEmail) {
+    if (!visitorEmail || !visitorCompany) {
       setGateOpen(true);
       return;
     }
@@ -277,6 +286,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
         body: JSON.stringify({
           slug,
           email: visitorEmail,
+          company_name: visitorCompany,
           notes: overallNotes,
           items: trayItems.map((item) => ({
             product_id: item.product.id,
@@ -511,8 +521,24 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       {gateOpen && (
         <div className={styles.gateBackdrop} role="dialog" aria-modal="true" aria-label="Email capture">
           <form className={styles.gateModal} onSubmit={handleGateSubmit}>
-            <h2>Enter the email you&apos;d like us to use for communications</h2>
+            <h2>Tell us about yourself</h2>
+            <label className={`form-label ${styles.filterLabel}`} htmlFor="gate-company-name">
+              Company / Restaurant name
+            </label>
             <input
+              id="gate-company-name"
+              type="text"
+              className={`form-control ${styles.notesInput}`}
+              value={gateCompany}
+              onChange={(event) => setGateCompany(event.target.value)}
+              placeholder="Company / Restaurant name"
+              required
+            />
+            <label className={`form-label ${styles.filterLabel}`} htmlFor="gate-email">
+              Email
+            </label>
+            <input
+              id="gate-email"
               type="email"
               className={`form-control ${styles.notesInput}`}
               value={gateEmail}
@@ -521,7 +547,14 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
               required
             />
             {gateError && <p className={styles.error}>{gateError}</p>}
-            <Button className={styles.primaryButton} type="submit" loading={gateSaving}>Continue</Button>
+            <Button
+              className={styles.primaryButton}
+              type="submit"
+              loading={gateSaving}
+              disabled={!gateCompany.trim() || !gateEmail.trim()}
+            >
+              Continue
+            </Button>
           </form>
         </div>
       )}

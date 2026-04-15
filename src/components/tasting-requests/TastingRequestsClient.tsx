@@ -54,14 +54,16 @@ function formatDate(iso: string) {
 
 function exportToCSV(requests: TastingRequest[]) {
   const rows: string[] = [
-    ['Email', 'Status', '# Wines', 'Calendly Linked', 'Notes', 'Created At'].join(','),
+    ['Company', 'Email', 'Status', '# Wines', 'Calendly Linked', 'Notes', 'Created At'].join(','),
   ];
   for (const r of requests) {
     const wines = r.tasting_request_items?.length ?? 0;
     const hasCalendly = r.calendly_event_uri ? 'Yes' : 'No';
+    const company = (r.company_name ?? '').replace(/"/g, '""');
     const notes = (r.notes ?? '').replace(/"/g, '""');
     rows.push(
       [
+        `"${company}"`,
         `"${r.visitor_email}"`,
         r.status,
         wines,
@@ -96,6 +98,7 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
       const q = search.toLowerCase();
       list = list.filter((r) => {
         if (r.visitor_email.toLowerCase().includes(q)) return true;
+        if ((r.company_name ?? '').toLowerCase().includes(q)) return true;
         return r.tasting_request_items?.some(
           (item) => item.product?.wine_name?.toLowerCase().includes(q),
         );
@@ -156,7 +159,7 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
         <input
           className={styles.searchInput}
           type="search"
-          placeholder="Search by email or wine…"
+          placeholder="Search by company, email, or wine…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search tasting requests"
@@ -203,6 +206,7 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>Company</th>
                   <th>Visitor Email</th>
                   <th># Wines</th>
                   <th>Status</th>
@@ -217,6 +221,7 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
                     className={styles.tableRow}
                     onClick={() => { setSelected(req); setUpdateError(''); }}
                   >
+                    <td>{req.company_name ?? '—'}</td>
                     <td>{req.visitor_email}</td>
                     <td>{req.tasting_request_items?.length ?? 0}</td>
                     <td><StatusBadge status={req.status} /></td>
@@ -240,10 +245,11 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
                   onClick={() => { setSelected(req); setUpdateError(''); }}
                 >
                   <div className={styles.mobileCardTop}>
-                    <span className={styles.mobileEmail}>{req.visitor_email}</span>
+                    <span className={styles.mobileEmail}>{req.company_name || req.visitor_email}</span>
                     <StatusBadge status={req.status} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {req.company_name && <span className={styles.mobileMeta}>{req.visitor_email}</span>}
                     <span className={styles.mobileMeta}>
                       {req.tasting_request_items?.length ?? 0} wine{(req.tasting_request_items?.length ?? 0) !== 1 ? 's' : ''}
                     </span>
@@ -292,6 +298,11 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
         {selected && (
           <div>
             {updateError && <p className={styles.saveError}>{updateError}</p>}
+
+            <div className={styles.detailSection}>
+              <p className={styles.detailLabel}>Company</p>
+              <p className={styles.detailValue}>{selected.company_name ?? '—'}</p>
+            </div>
 
             <div className={styles.detailSection}>
               <p className={styles.detailLabel}>Visitor Email</p>

@@ -10,6 +10,7 @@ interface TastingRequestItemBody {
 interface CreateTastingRequestBody {
   slug?: string;
   email?: string;
+  company_name?: string;
   items?: TastingRequestItemBody[];
   notes?: string;
   calendly_event_uri?: string;
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
 
   const slug = String(body.slug ?? '').trim();
   const email = String(body.email ?? '').trim().toLowerCase();
+  const companyName = String(body.company_name ?? '').trim();
   const notes = body.notes?.trim() || null;
   const calendlyEventUri = body.calendly_event_uri?.trim() || null;
   const items = Array.isArray(body.items) ? body.items : [];
@@ -41,6 +43,10 @@ export async function POST(request: NextRequest) {
 
   if (!STOREFRONT_EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 });
+  }
+
+  if (!companyName) {
+    return NextResponse.json({ error: 'company_name is required' }, { status: 400 });
   }
 
   if (items.length < 1 || items.length > 6) {
@@ -89,6 +95,7 @@ export async function POST(request: NextRequest) {
     .insert({
       team_id: page.team_id,
       visitor_email: email,
+      company_name: companyName,
       notes,
       calendly_event_uri: calendlyEventUri,
     })
