@@ -137,7 +137,11 @@ export function AttributionClient({ initialMatches, suppliers }: AttributionClie
         const payload = await res.json();
         throw new Error(payload.error ?? 'Failed to update attribution match');
       }
-      const updated = await res.json() as AttributionMatch;
+      const payload = await res.json();
+      if (!payload || typeof payload.id !== 'string') {
+        throw new Error('Invalid attribution match response');
+      }
+      const updated = payload as AttributionMatch;
       setMatches((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
       setSelected((prev) => (prev ? { ...prev, ...updated } : prev));
     } catch (err) {

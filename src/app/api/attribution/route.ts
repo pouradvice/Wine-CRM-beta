@@ -4,6 +4,8 @@ import { getAttributionMatches } from '@/lib/data';
 import { resolveTeamId } from '@/lib/team';
 import { mapDbError } from '@/types';
 
+const VALID_STATUSES = new Set(['matched', 'disputed', 'resolved', 'voided']);
+
 export async function GET(request: NextRequest) {
   try {
     const sb = await createClient();
@@ -12,7 +14,8 @@ export async function GET(request: NextRequest) {
 
     const teamId = await resolveTeamId(sb, user);
     const supplierId = request.nextUrl.searchParams.get('supplier_id') ?? undefined;
-    const status = request.nextUrl.searchParams.get('status') ?? undefined;
+    const statusParam = request.nextUrl.searchParams.get('status');
+    const status = statusParam && VALID_STATUSES.has(statusParam) ? statusParam : undefined;
 
     const limitParam = request.nextUrl.searchParams.get('limit');
     const offsetParam = request.nextUrl.searchParams.get('offset');
