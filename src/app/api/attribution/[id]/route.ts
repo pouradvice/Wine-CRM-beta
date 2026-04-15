@@ -36,9 +36,6 @@ export async function PATCH(
       if (body.status === 'resolved') {
         updates.resolved_by = user.id;
         updates.resolved_at = new Date().toISOString();
-      } else {
-        updates.resolved_by = null;
-        updates.resolved_at = null;
       }
     }
 

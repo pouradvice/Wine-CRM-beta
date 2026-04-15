@@ -253,7 +253,7 @@ export function AttributionClient({ initialMatches, suppliers }: AttributionClie
           selected ? (
             <div className={styles.footer}>
               <Button variant="secondary" size="sm" onClick={() => setSelected(null)} disabled={saving}>Close</Button>
-              <Button variant="primary" size="sm" onClick={handleResolve} loading={saving}>Resolve</Button>
+              <Button variant="primary" size="sm" onClick={handleResolve} loading={saving}>Save</Button>
             </div>
           ) : undefined
         }
