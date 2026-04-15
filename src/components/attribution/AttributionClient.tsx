@@ -9,7 +9,6 @@ import styles from './AttributionClient.module.css';
 interface AttributionClientProps {
   initialMatches: AttributionMatch[];
   suppliers: Supplier[];
-  teamId: string;
 }
 
 type StatusFilter = 'all' | AttributionMatchStatus;
@@ -74,7 +73,7 @@ function StatusBadge({ status }: { status: AttributionMatchStatus }) {
   return <span className={`${styles.statusBadge} ${cls}`}>{status}</span>;
 }
 
-export function AttributionClient({ initialMatches, suppliers, teamId: _teamId }: AttributionClientProps) {
+export function AttributionClient({ initialMatches, suppliers }: AttributionClientProps) {
   const [matches, setMatches] = useState(initialMatches);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [supplierFilter, setSupplierFilter] = useState('');

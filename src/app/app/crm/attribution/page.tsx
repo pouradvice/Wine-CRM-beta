@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveTeamId } from '@/lib/team';
 import { getAttributionMatches, getSuppliers } from '@/lib/data';
 import { AttributionClient } from '@/components/attribution/AttributionClient';
-import type { AttributionMatch, Supplier } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +30,8 @@ export default async function AttributionPage() {
 
   return (
     <AttributionClient
-      initialMatches={matches as AttributionMatch[]}
-      suppliers={suppliers as Supplier[]}
-      teamId={teamId}
+      initialMatches={matches}
+      suppliers={suppliers}
     />
   );
 }
