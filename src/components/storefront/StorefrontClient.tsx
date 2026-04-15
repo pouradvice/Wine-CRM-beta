@@ -304,7 +304,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       <header className={styles.banner}>
         <img src="/logo.jpeg" alt="Pour Advice logo" className={styles.logo} />
         <div className={styles.titleWrap}>
-          <p className={styles.eyebrow} aria-hidden="true">POUR ADVICE · PORTFOLIO</p>
+          <p className={styles.eyebrow}>POUR ADVICE · PORTFOLIO</p>
           <h1 className={styles.title}>Pour Advice Portfolio</h1>
         </div>
         <button
