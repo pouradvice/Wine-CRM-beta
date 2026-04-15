@@ -226,6 +226,36 @@ export interface TastingTrayItem {
   buyer_notes: string;
 }
 
+export type TastingRequestStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+export interface TastingRequestItem {
+  id:          string;
+  request_id:  string;
+  product_id:  string;
+  buyer_notes: string | null;
+  created_at:  string;
+  // Relations
+  product?: {
+    id:         string;
+    wine_name:  string;
+    type:       WineType | null;
+    varietal:   string | null;
+    sku_number: string;
+  } | null;
+}
+
+export interface TastingRequest {
+  id:                string;
+  team_id:           string;
+  visitor_email:     string;
+  calendly_event_uri: string | null;
+  status:            TastingRequestStatus;
+  notes:             string | null;
+  created_at:        string;
+  // Relations
+  tasting_request_items?: TastingRequestItem[] | null;
+}
+
 
 // ── CRM ──────────────────────────────────────────────────────
 
