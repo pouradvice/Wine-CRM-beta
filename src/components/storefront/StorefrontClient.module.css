@@ -188,7 +188,8 @@
   color: #374151;
 }
 
-.typeBadge[data-wine-type*='ros'] {
+.typeBadge[data-wine-type='rosé'],
+.typeBadge[data-wine-type='rose'] {
   border-color: #d97706;
   color: #d97706;
 }

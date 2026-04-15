@@ -304,7 +304,7 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
       <header className={styles.banner}>
         <img src="/logo.jpeg" alt="Pour Advice logo" className={styles.logo} />
         <div className={styles.titleWrap}>
-          <p className={styles.eyebrow}>POUR ADVICE · PORTFOLIO</p>
+          <p className={styles.eyebrow} aria-hidden="true">POUR ADVICE · PORTFOLIO</p>
           <h1 className={styles.title}>Pour Advice Portfolio</h1>
         </div>
         <button
@@ -368,13 +368,14 @@ export function StorefrontClient({ slug, teamId, calendlyUrl }: StorefrontClient
               const fullAndUnavailable = !inTray && trayIsFull;
               const origin = originFor(product);
               const price = formatPrice(product.frontline_cost);
+              const normalizedType = product.type?.toLowerCase();
 
               return (
                 <article key={product.id} className={styles.card}>
                   <h2 className={styles.cardTitle}>{product.wine_name}</h2>
                   <div className={styles.metaRow}>
                     {product.type && (
-                      <span className={styles.typeBadge} data-wine-type={product.type.toLowerCase()}>{product.type}</span>
+                      <span className={styles.typeBadge} data-wine-type={normalizedType}>{product.type}</span>
                     )}
                     {product.varietal && <span className={styles.metaText}>{product.varietal}</span>}
                   </div>
