@@ -19,10 +19,83 @@ import type { Product, RecapFormState } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
+type SearchParams = {
+  account_id?: string;
+  unplanned?: string;
+  tasting_request_id?: string;
+  company_name?: string;
+  product_id?: string | string[];
+  buyer_note?: string | string[];
+};
+
+type TastingRequestContext = {
+  id: string;
+  company_name: string | null;
+  visitor_email: string;
+};
+
+type MatchCandidate = { id: string; name: string };
+
+function toArray(value: string | string[] | undefined): string[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * Normalizes organization names for fuzzy matching:
+ * - NFKD Unicode normalize + strip diacritics
+ * - lowercase
+ * - remove punctuation/symbols
+ * - collapse whitespace
+ */
+function normalizeName(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Removes PostgreSQL ILIKE wildcard/control characters from user-entered terms. */
+function escapeForIlike(value: string) {
+  return value.replace(/[\\%_]/g, ' ').trim();
+}
+
+/**
+ * Picks the strongest company/account match.
+ * Score order:
+ * 0 = exact normalized match
+ * 1 = prefix relationship
+ * 2 = substring relationship
+ * 3 = weak fallback
+ * Ties are broken by closest original-length match.
+ */
+function pickBestAccountMatch(companyName: string, candidates: MatchCandidate[]): MatchCandidate | null {
+  if (!companyName || candidates.length === 0) return null;
+  const normalizedCompany = normalizeName(companyName);
+  const ranked = [...candidates].sort((a, b) => {
+    const an = normalizeName(a.name);
+    const bn = normalizeName(b.name);
+    const score = (candidate: string) => {
+      if (candidate === normalizedCompany) return 0;
+      if (candidate.startsWith(normalizedCompany) || normalizedCompany.startsWith(candidate)) return 1;
+      if (candidate.includes(normalizedCompany) || normalizedCompany.includes(candidate)) return 2;
+      return 3;
+    };
+    const sa = score(an);
+    const sb = score(bn);
+    if (sa !== sb) return sa - sb;
+    return Math.abs(a.name.length - companyName.length) - Math.abs(b.name.length - companyName.length);
+  });
+  return ranked[0] ?? null;
+}
+
 export default async function NewRecapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ account_id?: string; unplanned?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
   const sb = await createClient();
@@ -46,11 +119,140 @@ export default async function NewRecapPage({
   // session exists.
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('plan_session_id')?.value;
+  const tastingRequestId = params.tasting_request_id?.trim();
 
   let initialValues: Partial<RecapFormState> | undefined;
   let initialProducts: Product[] = [];
+  let tastingRequestContext: TastingRequestContext | null = null;
 
-  if (sessionId) {
+  if (tastingRequestId) {
+    const { data: tastingRequest } = await sb
+      .from('tasting_requests')
+      .select(`
+        id,
+        team_id,
+        visitor_email,
+        company_name,
+        notes,
+        tasting_request_items (
+          id,
+          request_id,
+          product_id,
+          buyer_notes,
+          created_at
+        )
+      `)
+      .eq('id', tastingRequestId)
+      .eq('team_id', teamId)
+      .maybeSingle();
+
+    const requestProductItems = (tastingRequest?.tasting_request_items ?? []) as Array<{
+      product_id: string;
+      buyer_notes: string | null;
+    }>;
+    const requestProductIds = requestProductItems.map((item) => item.product_id);
+    let requestProducts: Product[] = [];
+    if (requestProductIds.length > 0) {
+      const { data: reqProducts } = await sb
+        .from('products')
+        .select('*')
+        .in('id', requestProductIds)
+        .eq('is_active', true);
+      requestProducts = (reqProducts ?? []) as Product[];
+    }
+
+    const fallbackProductIds = toArray(params.product_id);
+    const fallbackBuyerNotes = toArray(params.buyer_note);
+
+    let productsForForm: Product[] = requestProducts;
+    let productRows = requestProductItems
+      .map((item) => ({
+        product_id:        item.product_id,
+        outcome:           'Discussed' as const,
+        order_probability: 0,
+        buyer_feedback:    item.buyer_notes ?? '',
+        follow_up_date:    '',
+        bill_date:         '',
+        menu_placement:    false,
+        menu_photo_url:    null,
+        retail_3cs_order:  false,
+      }));
+
+    if (!tastingRequest && fallbackProductIds.length > 0) {
+      const { data: fallbackProducts } = await sb
+        .from('products')
+        .select('*')
+        .in('id', fallbackProductIds)
+        .eq('is_active', true);
+      productsForForm = (fallbackProducts ?? []) as Product[];
+      productRows = productsForForm.map((p, i) => ({
+        product_id:        p.id,
+        outcome:           'Discussed' as const,
+        order_probability: 0,
+        buyer_feedback:    fallbackBuyerNotes[i] ?? '',
+        follow_up_date:    '',
+        bill_date:         '',
+        menu_placement:    false,
+        menu_photo_url:    null,
+        retail_3cs_order:  false,
+      }));
+    }
+
+    const availableProductIds = new Set(productsForForm.map((p) => p.id));
+    productRows = productRows.filter((row) => availableProductIds.has(row.product_id));
+
+    initialProducts = productsForForm;
+
+    const companyName = tastingRequest?.company_name?.trim() || params.company_name?.trim() || '';
+    let matchedAccountId = '';
+    if (companyName) {
+      const { data: exactMatch } = await sb
+        .from('accounts')
+        .select('id, name')
+        .eq('team_id', teamId)
+        .eq('is_active', true)
+        .ilike('name', companyName)
+        .limit(1)
+        .maybeSingle();
+
+      if (exactMatch) {
+        matchedAccountId = exactMatch.id;
+      } else {
+        const searchTerm = escapeForIlike(companyName);
+        const { data: accountCandidates } = await sb
+          .from('accounts')
+          .select('id, name')
+          .eq('team_id', teamId)
+          .eq('is_active', true)
+          .ilike('name', `%${searchTerm}%`)
+          .limit(10);
+        const bestMatch = pickBestAccountMatch(companyName, (accountCandidates ?? []) as MatchCandidate[]);
+        matchedAccountId = bestMatch?.id ?? '';
+      }
+    }
+
+    const trimmedRequestNotes = tastingRequest?.notes?.trim() ?? '';
+    const notesParts = [
+      trimmedRequestNotes || null,
+      tastingRequest?.visitor_email ? `Visitor email: ${tastingRequest.visitor_email}` : null,
+    ].filter(Boolean);
+
+    initialValues = {
+      ...initialValues,
+      visit_date: todayLocal(),
+      account_id: matchedAccountId,
+      notes: notesParts.join('\n\n') || null,
+      products: productRows,
+    };
+
+    if (tastingRequest) {
+      tastingRequestContext = {
+        id: tastingRequest.id,
+        company_name: tastingRequest.company_name,
+        visitor_email: tastingRequest.visitor_email,
+      };
+    }
+  } else if (sessionId) {
     // Safe: RLS enforces user_id = auth.uid() on daily_plan_sessions.
     const { data: session } = await sb
       .from('daily_plan_sessions')
@@ -132,6 +334,7 @@ export default async function NewRecapPage({
         currentUser={displayName}
         initialValues={initialValues}
         initialProducts={initialProducts}
+        tastingRequestContext={tastingRequestContext}
       />
     </div>
   );

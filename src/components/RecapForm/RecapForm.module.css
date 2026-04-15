@@ -29,6 +29,47 @@
   border-bottom: 1px solid var(--mist, #e5e0d8);
 }
 
+.requestContextBanner {
+  background: rgba(133, 30, 51, 0.06);
+  border: 1px solid rgba(133, 30, 51, 0.2);
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+}
+
+.requestContextLabel {
+  margin: 0;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #666);
+}
+
+.requestContextCompany {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: var(--ink, #1a1a1a);
+}
+
+.requestContextMeta {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text, #333);
+}
+
+.requestContextAction {
+  margin-top: 0.625rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--wine, #8b1a1a);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--wine, #8b1a1a);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

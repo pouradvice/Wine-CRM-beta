@@ -134,8 +134,15 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
     }
   }
 
-  async function handleMarkFulfilled(req: TastingRequest) {
-    await handleStatusChange(req, 'completed');
+  function handleMarkFulfilled(req: TastingRequest) {
+    const qs = new URLSearchParams();
+    qs.set('tasting_request_id', req.id);
+    if (req.company_name) qs.set('company_name', req.company_name);
+    for (const item of req.tasting_request_items ?? []) {
+      qs.append('product_id', item.product_id);
+      if (item.buyer_notes) qs.append('buyer_note', item.buyer_notes);
+    }
+    router.push(`/app/crm/recaps/new?${qs.toString()}`);
   }
 
   return (
@@ -285,10 +292,9 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
                 <Button
                   variant="primary"
                   size="sm"
-                  loading={updating}
                   onClick={() => handleMarkFulfilled(selected)}
                 >
-                  ✓ Mark as Fulfilled
+                  Fulfill → Create Recap
                 </Button>
               )}
             </div>
@@ -298,6 +304,12 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
         {selected && (
           <div>
             {updateError && <p className={styles.saveError}>{updateError}</p>}
+
+            <div className={styles.companyHero}>
+              <p className={styles.companyHeroLabel}>Company</p>
+              <p className={styles.companyHeroName}>{selected.company_name ?? '—'}</p>
+              <p className={styles.companyHeroEmail}>{selected.visitor_email}</p>
+            </div>
 
             <div className={styles.detailSection}>
               <p className={styles.detailLabel}>Company</p>

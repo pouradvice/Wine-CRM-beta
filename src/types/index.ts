@@ -251,6 +251,7 @@ export interface TastingRequest {
   company_name:      string | null;
   calendly_event_uri: string | null;
   status:            TastingRequestStatus;
+  recap_id?:         string | null;
   notes:             string | null;
   created_at:        string;
   // Relations
