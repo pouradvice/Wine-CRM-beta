@@ -248,6 +248,7 @@ export interface TastingRequest {
   id:                string;
   team_id:           string;
   visitor_email:     string;
+  company_name:      string | null;
   calendly_event_uri: string | null;
   status:            TastingRequestStatus;
   notes:             string | null;

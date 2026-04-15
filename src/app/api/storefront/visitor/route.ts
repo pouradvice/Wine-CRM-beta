@@ -5,6 +5,7 @@ import { STOREFRONT_EMAIL_RE } from '@/lib/storefront';
 interface VisitorBody {
   slug?: string;
   email?: string;
+  company_name?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
 
   const slug = String(body.slug ?? '').trim();
   const email = String(body.email ?? '').trim().toLowerCase();
+  const companyName = String(body.company_name ?? '').trim();
 
   if (!slug) {
     return NextResponse.json({ error: 'slug is required' }, { status: 400 });
@@ -25,6 +27,10 @@ export async function POST(request: NextRequest) {
 
   if (!STOREFRONT_EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 });
+  }
+
+  if (!companyName) {
+    return NextResponse.json({ error: 'company_name is required' }, { status: 400 });
   }
 
   const sb = createServiceClient();
@@ -46,8 +52,8 @@ export async function POST(request: NextRequest) {
   const { error } = await sb
     .from('portfolio_visitors')
     .upsert(
-      { team_id: page.team_id, email },
-      { onConflict: 'team_id,email', ignoreDuplicates: true },
+      { team_id: page.team_id, email, company_name: companyName },
+      { onConflict: 'team_id,email' },
     );
 
   if (error) {

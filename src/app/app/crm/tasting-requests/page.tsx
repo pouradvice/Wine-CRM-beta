@@ -20,6 +20,7 @@ export default async function TastingRequestsPage() {
       id,
       team_id,
       visitor_email,
+      company_name,
       calendly_event_uri,
       status,
       notes,
