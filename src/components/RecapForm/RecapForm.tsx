@@ -351,6 +351,10 @@ export function RecapForm({
         return;
       }
 
+      if (result.tasting_request_link_error) {
+        window.alert(`Recap saved, but tasting request could not be linked: ${result.tasting_request_link_error}`);
+      }
+
       // Store contact_name (free-text account lead) — separate update since it's
       // not part of the save_recap RPC signature.
       if (form.contact_name) {
@@ -397,7 +401,11 @@ export function RecapForm({
               <button
                 type="button"
                 className={styles.requestContextAction}
-                onClick={() => openAddAccount(tastingRequestContext.company_name ?? '')}
+                onClick={() => {
+                  if (tastingRequestContext.company_name) {
+                    openAddAccount(tastingRequestContext.company_name);
+                  }
+                }}
               >
                 Create New Account from Company Name
               </button>

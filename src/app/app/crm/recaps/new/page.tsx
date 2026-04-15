@@ -1,1 +1,4 @@
-export { default, dynamic } from '../../new-recap/page';
+import NewRecapPage from '../../new-recap/page';
+
+export const dynamic = 'force-dynamic';
+export default NewRecapPage;

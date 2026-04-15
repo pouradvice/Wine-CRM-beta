@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
   }
 
   let tastingRequestLinked = false;
+  let tastingRequestLinkError: string | null = null;
   if (body.tasting_request_id) {
     const teamId = await resolveTeamId(sb, user);
     const { error: linkError } = await sb
@@ -93,7 +94,16 @@ export async function POST(request: NextRequest) {
       .eq('id', body.tasting_request_id)
       .eq('team_id', teamId);
 
-    if (!linkError) tastingRequestLinked = true;
+    if (!linkError) {
+      tastingRequestLinked = true;
+    } else {
+      tastingRequestLinkError = mapDbError(linkError);
+      console.error('Failed to link tasting request to recap:', {
+        tastingRequestId: body.tasting_request_id,
+        recapId,
+        error: tastingRequestLinkError,
+      });
+    }
   }
 
   // 7. Build and return response
@@ -103,5 +113,6 @@ export async function POST(request: NextRequest) {
     recap_id:         recapId as string,
     redirect_to_plan: redirectToPlan,
     tasting_request_linked: tastingRequestLinked,
+    tasting_request_link_error: tastingRequestLinkError,
   });
 }

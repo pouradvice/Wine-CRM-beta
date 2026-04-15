@@ -41,10 +41,37 @@ function toArray(value: string | string[] | undefined): string[] {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * Normalizes organization names for fuzzy matching:
+ * - NFKD Unicode normalize + strip diacritics
+ * - lowercase
+ * - remove punctuation/symbols
+ * - collapse whitespace
+ */
 function normalizeName(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
+/** Removes PostgreSQL ILIKE wildcard/control characters from user-entered terms. */
+function escapeForIlike(value: string) {
+  return value.replace(/[\\%_]/g, ' ').trim();
+}
+
+/**
+ * Picks the strongest company/account match.
+ * Score order:
+ * 0 = exact normalized match
+ * 1 = prefix relationship
+ * 2 = substring relationship
+ * 3 = weak fallback
+ * Ties are broken by closest original-length match.
+ */
 function pickBestAccountMatch(companyName: string, candidates: MatchCandidate[]): MatchCandidate | null {
   if (!companyName || candidates.length === 0) return null;
   const normalizedCompany = normalizeName(companyName);
@@ -179,20 +206,34 @@ export default async function NewRecapPage({
     const companyName = tastingRequest?.company_name?.trim() || params.company_name?.trim() || '';
     let matchedAccountId = '';
     if (companyName) {
-      const searchTerm = companyName.replace(/[%_]/g, '');
-      const { data: accountCandidates } = await sb
+      const { data: exactMatch } = await sb
         .from('accounts')
         .select('id, name')
         .eq('team_id', teamId)
         .eq('is_active', true)
-        .ilike('name', `%${searchTerm}%`)
-        .limit(10);
-      const bestMatch = pickBestAccountMatch(companyName, (accountCandidates ?? []) as MatchCandidate[]);
-      matchedAccountId = bestMatch?.id ?? '';
+        .ilike('name', companyName)
+        .limit(1)
+        .maybeSingle();
+
+      if (exactMatch) {
+        matchedAccountId = exactMatch.id;
+      } else {
+        const searchTerm = escapeForIlike(companyName);
+        const { data: accountCandidates } = await sb
+          .from('accounts')
+          .select('id, name')
+          .eq('team_id', teamId)
+          .eq('is_active', true)
+          .ilike('name', `%${searchTerm}%`)
+          .limit(10);
+        const bestMatch = pickBestAccountMatch(companyName, (accountCandidates ?? []) as MatchCandidate[]);
+        matchedAccountId = bestMatch?.id ?? '';
+      }
     }
 
+    const trimmedRequestNotes = tastingRequest?.notes?.trim() ?? '';
     const notesParts = [
-      tastingRequest?.notes?.trim() || null,
+      trimmedRequestNotes || null,
       tastingRequest?.visitor_email ? `Visitor email: ${tastingRequest.visitor_email}` : null,
     ].filter(Boolean);
 
@@ -200,7 +241,7 @@ export default async function NewRecapPage({
       ...initialValues,
       visit_date: todayLocal(),
       account_id: matchedAccountId,
-      notes: notesParts.length > 0 ? notesParts.join('\n\n') : null,
+      notes: notesParts.join('\n\n') || null,
       products: productRows,
     };
 
@@ -209,12 +250,6 @@ export default async function NewRecapPage({
         id: tastingRequest.id,
         company_name: tastingRequest.company_name,
         visitor_email: tastingRequest.visitor_email,
-      };
-    } else {
-      tastingRequestContext = {
-        id: tastingRequestId,
-        company_name: params.company_name ?? null,
-        visitor_email: '',
       };
     }
   } else if (sessionId) {

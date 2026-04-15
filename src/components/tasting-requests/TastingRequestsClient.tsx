@@ -292,7 +292,6 @@ export function TastingRequestsClient({ initialRequests, teamId: _teamId }: Tast
                 <Button
                   variant="primary"
                   size="sm"
-                  loading={false}
                   onClick={() => handleMarkFulfilled(selected)}
                 >
                   Fulfill → Create Recap
