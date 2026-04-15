@@ -644,6 +644,8 @@ export interface SuggestedAccount {
 export type InvoiceStatus = 'Draft' | 'Reviewed' | 'Sent' | 'Paid' | 'Disputed' | 'Void';
 export type ActivityType  = 'Demo' | 'Event';
 export type LineItemType  = 'Placement' | 'Demo' | 'Event' | 'Demo Hours' | 'Event Hours';
+export type AttributionMatchType = 'auto' | 'manual' | 'disputed' | 'overridden';
+export type AttributionMatchStatus = 'matched' | 'disputed' | 'resolved' | 'voided';
 
 export interface SupplierBillingTerms {
   id:                     string;
@@ -756,6 +758,42 @@ export interface SupplierInvoiceLineItem {
   salesperson: string | null;
   source_ids:  string[] | null;
   created_at:  string;
+}
+
+export interface AttributionMatch {
+  id:                   string;
+  team_id:              string;
+  supplier_id:          string;
+  recap_product_id:     string | null;
+  depletion_report_id:  string | null;
+  placement_id:         string | null;
+  invoice_line_item_id: string | null;
+  confidence_score:     number | null;
+  match_type:           AttributionMatchType;
+  status:               AttributionMatchStatus;
+  matched_at:           string;
+  resolved_at:          string | null;
+  resolved_by:          string | null;
+  notes:                string | null;
+  created_at:           string;
+  updated_at:           string;
+  // Joined relations
+  recap_product?: {
+    id: string;
+    product_id: string;
+    outcome: string;
+    products?: { wine_name: string; sku_number: string } | null;
+    recap?: {
+      id: string;
+      visit_date: string;
+      account_id: string;
+      accounts?: { name: string } | null;
+    } | null;
+  } | null;
+  depletion_report?: { id: string; period_month: string; row_count: number | null } | null;
+  placement?: SupplierVerifiedPlacement | null;
+  invoice_line_item?: SupplierInvoiceLineItem | null;
+  supplier?: { name: string } | null;
 }
 
 // Return shape from generate_invoice_draft RPC

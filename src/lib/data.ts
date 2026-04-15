@@ -37,6 +37,8 @@ import type {
   SupplierBillingTerms,
   SupplierBillingTermsInsert,
   DepletionMatchResult,
+  AttributionMatch,
+  AttributionMatchStatus,
 } from '@/types';
 import { mapDbError } from '@/types';
 import type { PriceTier } from '@/types';
@@ -1295,4 +1297,93 @@ export async function matchDepletionToPlacements(
   });
   if (error) throw new Error(mapDbError(error));
   return data as DepletionMatchResult;
+}
+
+export async function getAttributionMatches(
+  sb: SupabaseClient,
+  teamId: string,
+  options?: { supplierId?: string; status?: AttributionMatchStatus; limit?: number; offset?: number },
+): Promise<AttributionMatch[]> {
+  let query = sb
+    .from('attribution_matches')
+    .select(`
+      *,
+      supplier:suppliers(name),
+      recap_product:recap_products(
+        id, product_id, outcome,
+        products(wine_name, sku_number),
+        recap:recaps(id, visit_date, account_id, accounts:accounts(name))
+      ),
+      depletion_report:depletion_reports(id, period_month, row_count),
+      placement:supplier_verified_placements(
+        id, account_id, product_id, depletion_period, billing_eligible,
+        account:accounts(name),
+        product:products(wine_name, sku_number)
+      ),
+      invoice_line_item:supplier_invoice_line_items(
+        id, invoice_id, line_type, description, quantity, unit_rate, amount
+      )
+    `)
+    .eq('team_id', teamId)
+    .order('matched_at', { ascending: false });
+
+  if (options?.supplierId) query = query.eq('supplier_id', options.supplierId);
+  if (options?.status) query = query.eq('status', options.status);
+  if (options?.offset !== undefined || options?.limit !== undefined) {
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit ?? 50;
+    query = query.range(offset, offset + limit - 1);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? []) as unknown as AttributionMatch[];
+}
+
+export async function updateAttributionMatch(
+  sb: SupabaseClient,
+  matchId: string,
+  teamId: string,
+  updates: {
+    status?: AttributionMatchStatus;
+    notes?: string;
+    resolved_by?: string | null;
+    resolved_at?: string | null;
+  },
+): Promise<AttributionMatch> {
+  const { data, error } = await sb
+    .from('attribution_matches')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', matchId)
+    .eq('team_id', teamId)
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as unknown as AttributionMatch;
+}
+
+export async function createAttributionMatch(
+  sb: SupabaseClient,
+  match: Omit<
+    AttributionMatch,
+    | 'id'
+    | 'created_at'
+    | 'updated_at'
+    | 'matched_at'
+    | 'resolved_at'
+    | 'resolved_by'
+    | 'supplier'
+    | 'recap_product'
+    | 'depletion_report'
+    | 'placement'
+    | 'invoice_line_item'
+  >,
+): Promise<AttributionMatch> {
+  const { data, error } = await sb
+    .from('attribution_matches')
+    .insert(match)
+    .select()
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as unknown as AttributionMatch;
 }
