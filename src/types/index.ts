@@ -190,6 +190,42 @@ export interface Product {
 export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'brand' | 'supplier'>;
 export type ProductUpdate = Partial<ProductInsert>;
 
+export const WINE_TYPES: WineType[] = [
+  'Red',
+  'White',
+  'Rosé',
+  'Sparkling',
+  'Dessert',
+  'Fortified',
+  'Spirit',
+  'Other',
+];
+
+export interface StorefrontProduct {
+  id: string;
+  wine_name: string;
+  sku_number: string;
+  type: WineType | null;
+  varietal: string | null;
+  country: string | null;
+  region: string | null;
+  appellation: string | null;
+  vintage: string | null;
+  frontline_cost: number | null;
+  distributor: string | null;
+  tech_sheet_url: string | null;
+  tasting_notes: string | null;
+  description: string | null;
+  notes: string | null;
+  brand_name: string | null;
+  supplier_name: string | null;
+}
+
+export interface TastingTrayItem {
+  product: StorefrontProduct;
+  buyer_notes: string;
+}
+
 
 // ── CRM ──────────────────────────────────────────────────────
 
