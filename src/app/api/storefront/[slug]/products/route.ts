@@ -18,9 +18,14 @@ interface ProductRow {
   tasting_notes: string | null;
   description: string | null;
   notes: string | null;
-  brand: { name: string | null; supplier: { name: string | null } | { name: string | null }[] | null } | { name: string | null; supplier: { name: string | null } | { name: string | null }[] | null }[] | null;
-  supplier: { name: string | null } | { name: string | null }[] | null;
+  brand: BrandValue;
+  supplier: SupplierValue;
 }
+
+type SupplierData = { name: string | null };
+type SupplierValue = SupplierData | SupplierData[] | null;
+type BrandData = { name: string | null; supplier: SupplierValue };
+type BrandValue = BrandData | BrandData[] | null;
 
 export async function GET(
   request: NextRequest,
