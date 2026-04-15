@@ -138,10 +138,10 @@ export function AttributionClient({ initialMatches, suppliers }: AttributionClie
         throw new Error(payload.error ?? 'Failed to update attribution match');
       }
       const payload = await res.json();
-      if (!payload || typeof payload.id !== 'string') {
+      if (!payload || typeof payload.id !== 'string' || typeof payload.status !== 'string') {
         throw new Error('Invalid attribution match response');
       }
-      const updated = payload as AttributionMatch;
+      const updated: Partial<AttributionMatch> & { id: string } = payload;
       setMatches((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
       setSelected((prev) => (prev ? { ...prev, ...updated } : prev));
     } catch (err) {
@@ -223,7 +223,7 @@ export function AttributionClient({ initialMatches, suppliers }: AttributionClie
                     </td>
                     <td>{formatDate(m.recap_product?.recap?.visit_date)}</td>
                     <td>{m.depletion_report?.period_month ?? m.placement?.depletion_period ?? '—'}</td>
-                    <td>{m.confidence_score == null ? '—' : `${Math.round(m.confidence_score * 100)}%`}</td>
+                    <td>{m.confidence_score === null || m.confidence_score === undefined ? '—' : `${Math.round(m.confidence_score * 100)}%`}</td>
                     <td><StatusBadge status={m.status} /></td>
                     <td>{m.invoice_line_item ? `$${Number(m.invoice_line_item.amount).toFixed(2)}` : '—'}</td>
                   </tr>

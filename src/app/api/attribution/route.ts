@@ -6,6 +6,14 @@ import { mapDbError } from '@/types';
 
 const VALID_STATUSES = new Set(['matched', 'disputed', 'resolved', 'voided']);
 
+function parseIntegerParam(value: string | null, allowZero = false): number | undefined {
+  if (value == null) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return undefined;
+  if (allowZero ? parsed < 0 : parsed <= 0) return undefined;
+  return parsed;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const sb = await createClient();
@@ -19,11 +27,8 @@ export async function GET(request: NextRequest) {
 
     const limitParam = request.nextUrl.searchParams.get('limit');
     const offsetParam = request.nextUrl.searchParams.get('offset');
-    const limit = limitParam ? Number(limitParam) : undefined;
-    const offset = offsetParam ? Number(offsetParam) : undefined;
-
-    const parsedLimit = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : undefined;
-    const parsedOffset = typeof offset === 'number' && Number.isInteger(offset) && offset >= 0 ? offset : undefined;
+    const parsedLimit = parseIntegerParam(limitParam, false);
+    const parsedOffset = parseIntegerParam(offsetParam, true);
 
     const matches = await getAttributionMatches(sb, teamId, {
       supplierId,
