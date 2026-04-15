@@ -60,6 +60,11 @@ interface Props {
   currentUser:      string;
   initialValues?:   Partial<RecapFormState>;
   initialProducts?: Product[];
+  tastingRequestContext?: {
+    id: string;
+    company_name: string | null;
+    visitor_email: string;
+  } | null;
 }
 
 /** Returns a YYYY-MM-DD date string offset from today by the given days. */
@@ -71,12 +76,15 @@ function defaultFollowUpDate(outcome: RecapOutcome): string {
   return d.toISOString().split('T')[0];
 }
 
-function buildDefaultProduct(product: Product): RecapFormProduct {
+function buildDefaultProduct(
+  product: Product,
+  overrides?: Partial<Pick<RecapFormProduct, 'buyer_feedback'>>,
+): RecapFormProduct {
   return {
     product_id:        product.id,
     outcome:           'Discussed',
     order_probability: 0,
-    buyer_feedback:    '',
+    buyer_feedback:    overrides?.buyer_feedback ?? '',
     follow_up_date:    '',
     bill_date:         '',
     menu_placement:    false,
@@ -85,7 +93,13 @@ function buildDefaultProduct(product: Product): RecapFormProduct {
   };
 }
 
-export function RecapForm({ clients, currentUser, initialValues, initialProducts }: Props) {
+export function RecapForm({
+  clients,
+  currentUser,
+  initialValues,
+  initialProducts,
+  tastingRequestContext,
+}: Props) {
   const router = useRouter();
   const sb = createClient();
   const today = todayLocal();
@@ -324,7 +338,11 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
       const res = await fetch('/api/recap/save', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ recap: p_recap, products: p_products }),
+        body:    JSON.stringify({
+          recap: p_recap,
+          products: p_products,
+          tasting_request_id: tastingRequestContext?.id,
+        }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -366,6 +384,26 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
 
       {/* ── Visit Details ──────────────────────────────── */}
       <section className={styles.section}>
+        {tastingRequestContext && (
+          <div className={styles.requestContextBanner}>
+            <p className={styles.requestContextLabel}>Fulfilling tasting request</p>
+            <p className={styles.requestContextCompany}>
+              {tastingRequestContext.company_name || 'Unknown Company'}
+            </p>
+            {tastingRequestContext.visitor_email && (
+              <p className={styles.requestContextMeta}>{tastingRequestContext.visitor_email}</p>
+            )}
+            {!form.account_id && tastingRequestContext.company_name && (
+              <button
+                type="button"
+                className={styles.requestContextAction}
+                onClick={() => openAddAccount(tastingRequestContext.company_name ?? '')}
+              >
+                Create New Account from Company Name
+              </button>
+            )}
+          </div>
+        )}
         <h2 className={styles.sectionTitle}>Visit Details</h2>
 
         <div className={styles.row}>
@@ -875,4 +913,3 @@ export function RecapForm({ clients, currentUser, initialValues, initialProducts
     </>
   );
 }
-

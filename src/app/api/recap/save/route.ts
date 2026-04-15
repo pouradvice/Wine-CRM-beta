@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamId } from '@/lib/team';
 import { todayLocal } from '@/lib/dateUtils';
 import { mapDbError } from '@/types';
 
@@ -20,7 +21,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. Parse body
-  let body: { recap: Record<string, unknown>; products: Record<string, unknown>[] };
+  let body: {
+    recap: Record<string, unknown>;
+    products: Record<string, unknown>[];
+    tasting_request_id?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -76,11 +81,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let tastingRequestLinked = false;
+  if (body.tasting_request_id) {
+    const teamId = await resolveTeamId(sb, user);
+    const { error: linkError } = await sb
+      .from('tasting_requests')
+      .update({
+        recap_id: recapId as string,
+        status: 'completed',
+      })
+      .eq('id', body.tasting_request_id)
+      .eq('team_id', teamId);
+
+    if (!linkError) tastingRequestLinked = true;
+  }
+
   // 7. Build and return response
   // 8. Do NOT clear the plan_session_id cookie here — the review page handles that
   return NextResponse.json({
-    ok:              true,
-    recap_id:        recapId as string,
+    ok:               true,
+    recap_id:         recapId as string,
     redirect_to_plan: redirectToPlan,
+    tasting_request_linked: tastingRequestLinked,
   });
 }
