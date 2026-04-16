@@ -11,20 +11,45 @@ export interface ParseResult {
   rows: ParsedDepletionRow[];
   headers: string[];
   detectedAccountColumn: string | null;
+  detectedSkuColumn: string | null;
+  detectedQuantityColumn: string | null;
   requiresColumnSelection: boolean;
 }
 
 const ACCOUNT_NAME_CANDIDATES = [
   'account name', 'account', 'customer name', 'customer', 'name',
 ];
+const SKU_CANDIDATES = [
+  'sku', 'sku #', 'sku number', 'item sku', 'product sku', 'item code', 'product code',
+];
+const QUANTITY_CANDIDATES = [
+  'qty', 'quantity', 'cases', 'depletion qty', 'depletion quantity', 'case quantity',
+];
 
-export function detectAccountColumn(headers: string[]): string | null {
+function detectColumn(headers: string[], candidates: string[]): string | null {
   const lower = headers.map(h => h.toLowerCase().trim());
-  for (const candidate of ACCOUNT_NAME_CANDIDATES) {
+  for (const candidate of candidates) {
     const idx = lower.indexOf(candidate);
     if (idx !== -1) return headers[idx];
   }
+
+  for (const candidate of candidates) {
+    const idx = lower.findIndex(h => h.includes(candidate));
+    if (idx !== -1) return headers[idx];
+  }
   return null;
+}
+
+export function detectAccountColumn(headers: string[]): string | null {
+  return detectColumn(headers, ACCOUNT_NAME_CANDIDATES);
+}
+
+export function detectSkuColumn(headers: string[]): string | null {
+  return detectColumn(headers, SKU_CANDIDATES);
+}
+
+export function detectQuantityColumn(headers: string[]): string | null {
+  return detectColumn(headers, QUANTITY_CANDIDATES);
 }
 
 export function normalizeRows(
@@ -87,7 +112,14 @@ export async function parseDepletionFile(file: File): Promise<ParseResult> {
     const { default: readXlsxFile } = await import('read-excel-file/browser');
     const allRows = await readXlsxFile(file);
     if (allRows.length < 2) {
-      return { rows: [], headers: [], detectedAccountColumn: null, requiresColumnSelection: false };
+      return {
+        rows: [],
+        headers: [],
+        detectedAccountColumn: null,
+        detectedSkuColumn: null,
+        detectedQuantityColumn: null,
+        requiresColumnSelection: false,
+      };
     }
     // First row is headers
     headers = allRows[0].map(cell => (cell != null ? String(cell) : ''));
@@ -105,11 +137,20 @@ export async function parseDepletionFile(file: File): Promise<ParseResult> {
   }
 
   const detectedAccountColumn = detectAccountColumn(headers);
+  const detectedSkuColumn = detectSkuColumn(headers);
+  const detectedQuantityColumn = detectQuantityColumn(headers);
   const requiresColumnSelection = detectedAccountColumn === null;
 
   const rows = detectedAccountColumn
     ? normalizeRows(rawRows, detectedAccountColumn)
     : rawRows.map(r => ({ ...r, account_name: '' }));
 
-  return { rows, headers, detectedAccountColumn, requiresColumnSelection };
+  return {
+    rows,
+    headers,
+    detectedAccountColumn,
+    detectedSkuColumn,
+    detectedQuantityColumn,
+    requiresColumnSelection,
+  };
 }
