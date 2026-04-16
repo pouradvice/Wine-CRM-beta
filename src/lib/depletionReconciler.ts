@@ -7,6 +7,9 @@ export interface RankedAccountCandidate extends ReconcileAccountCandidate {
   score: number;
 }
 
+const TOKEN_SCORE_WEIGHT = 0.85;
+const BIGRAM_SCORE_WEIGHT = 0.95;
+
 export function normalizeReconciliationString(value: string): string {
   return value
     .normalize('NFKD')
@@ -79,9 +82,9 @@ export function scoreReconciledAccountName(source: string, target: string): numb
 
   const tokenScore = jaccardScore(tokenSet(source), tokenSet(target));
   const bigramScore = diceBigramsScore(normalizedSource, normalizedTarget);
-  score = Math.max(score, tokenScore * 0.85, bigramScore * 0.95);
+  score = Math.max(score, tokenScore * TOKEN_SCORE_WEIGHT, bigramScore * BIGRAM_SCORE_WEIGHT);
 
-  return Math.min(1, Number(score.toFixed(4)));
+  return Math.round(Math.min(1, score) * 10000) / 10000;
 }
 
 export function rankReconciledAccountCandidates(
@@ -98,6 +101,5 @@ export function rankReconciledAccountCandidates(
       if (b.score !== a.score) return b.score - a.score;
       return Math.abs(a.name.length - source.length) - Math.abs(b.name.length - source.length);
     })
-    .slice(0, Math.max(1, limit));
+    .slice(0, Math.max(0, limit));
 }
-

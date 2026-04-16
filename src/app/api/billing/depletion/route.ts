@@ -27,17 +27,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const reconciledRows = body.rows.map((row) => {
-      const rawAccountName = String(row.account_name ?? '').trim();
-      const normalizedAccountName = normalizeReconciliationString(rawAccountName);
-      const reconciledAccountName = normalizedReconciliationMap.get(normalizedAccountName);
-      if (!reconciledAccountName) return row;
+    const reconciledRows = normalizedReconciliationMap.size === 0
+      ? body.rows
+      : body.rows.map((row) => {
+        const rawAccountName = String(row.account_name ?? '').trim();
+        const normalizedAccountName = normalizeReconciliationString(rawAccountName);
+        const reconciledAccountName = normalizedReconciliationMap.get(normalizedAccountName);
+        if (!reconciledAccountName) return row;
 
-      return {
-        ...row,
-        account_name: reconciledAccountName,
-      };
-    });
+        return {
+          ...row,
+          account_name: reconciledAccountName,
+        };
+      });
 
     // Upsert depletion report (unique on supplier_id, team_id, period_month)
     const { data: report, error: reportError } = await sb

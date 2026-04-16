@@ -13,6 +13,8 @@ interface Props {
 
 type UploadState = 'idle' | 'preview' | 'reconcile' | 'result';
 type ReconciliationConfidence = 'high' | 'medium' | 'low' | 'none';
+// Keep this aligned with MEDIUM_CONFIDENCE_THRESHOLD in the reconcile API route.
+const RECONCILIATION_AUTO_SELECT_THRESHOLD = 0.7;
 
 interface ReconciliationCandidate {
   id: string;
@@ -185,7 +187,7 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
 
       const defaults = Object.fromEntries(
         (json.reconciliations ?? [])
-          .filter(row => row.suggested_account_id && row.suggested_score >= 0.7)
+          .filter(row => row.suggested_account_id && row.suggested_score >= RECONCILIATION_AUTO_SELECT_THRESHOLD)
           .map(row => [row.source_name, row.suggested_account_id as string]),
       );
 

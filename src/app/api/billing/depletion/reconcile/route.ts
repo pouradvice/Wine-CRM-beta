@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
-  normalizeReconciliationString,
   rankReconciledAccountCandidates,
 } from '@/lib/depletionReconciler';
 import { mapDbError } from '@/types';
@@ -10,6 +9,9 @@ type ReconcileBody = {
   team_id: string;
   account_names: string[];
 };
+
+const HIGH_CONFIDENCE_THRESHOLD = 0.9;
+const MEDIUM_CONFIDENCE_THRESHOLD = 0.7;
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,13 +44,12 @@ export async function POST(request: NextRequest) {
       const best = candidates[0] ?? null;
       const confidence =
         !best ? 'none'
-          : best.score >= 0.9 ? 'high'
-            : best.score >= 0.7 ? 'medium'
+          : best.score >= HIGH_CONFIDENCE_THRESHOLD ? 'high'
+            : best.score >= MEDIUM_CONFIDENCE_THRESHOLD ? 'medium'
               : 'low';
 
       return {
         source_name: sourceName,
-        normalized_source_name: normalizeReconciliationString(sourceName),
         suggested_account_id: best?.id ?? null,
         suggested_account_name: best?.name ?? null,
         suggested_score: best?.score ?? 0,
@@ -66,4 +67,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
