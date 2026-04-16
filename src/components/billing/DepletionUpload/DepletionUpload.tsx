@@ -11,7 +11,25 @@ interface Props {
   teamId: string;
 }
 
-type UploadState = 'idle' | 'preview' | 'result';
+type UploadState = 'idle' | 'preview' | 'reconcile' | 'result';
+type ReconciliationConfidence = 'high' | 'medium' | 'low' | 'none';
+// Keep this aligned with MEDIUM_CONFIDENCE_THRESHOLD in the reconcile API route.
+const RECONCILIATION_AUTO_SELECT_THRESHOLD = 0.7;
+
+interface ReconciliationCandidate {
+  id: string;
+  name: string;
+  score: number;
+}
+
+interface ReconciliationRow {
+  source_name: string;
+  suggested_account_id: string | null;
+  suggested_account_name: string | null;
+  suggested_score: number;
+  confidence: ReconciliationConfidence;
+  candidates: ReconciliationCandidate[];
+}
 
 interface PreviewData {
   file: File;
@@ -32,8 +50,12 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
   const [periodMonth, setPeriodMonth] = useState<string>(prevMonthValue());
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingReconciliation, setLoadingReconciliation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matchResult, setMatchResult] = useState<DepletionMatchResult | null>(null);
+  const [reconciliationRows, setReconciliationRows] = useState<ReconciliationRow[]>([]);
+  const [accountOptions, setAccountOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedReconciliation, setSelectedReconciliation] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +68,9 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
         parseResult: result,
         selectedColumn: result.detectedAccountColumn,
       });
+      setReconciliationRows([]);
+      setAccountOptions([]);
+      setSelectedReconciliation({});
       setState('preview');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse file.');
@@ -86,12 +111,13 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
     setError(null);
 
     try {
-      let rows: ParsedDepletionRow[];
-      if (preview.parseResult.requiresColumnSelection && preview.selectedColumn) {
-        rows = normalizeRows(preview.parseResult.rows, preview.selectedColumn);
-      } else {
-        rows = preview.parseResult.rows;
-      }
+      const rows = buildRowsForImport(preview);
+      const accountNameById = new Map(accountOptions.map(account => [account.id, account.name]));
+      const reconciliationMap = Object.fromEntries(
+        Object.entries(selectedReconciliation)
+          .map(([sourceName, accountId]) => [sourceName, accountNameById.get(accountId) ?? ''])
+          .filter(([, accountName]) => Boolean(accountName)),
+      );
 
       const period_month = `${periodMonth}-01`;
 
@@ -103,6 +129,7 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
           team_id:      teamId,
           period_month,
           rows,
+          reconciliation_map: reconciliationMap,
         }),
       });
 
@@ -120,11 +147,69 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
     }
   }
 
+  function buildRowsForImport(currentPreview: PreviewData): ParsedDepletionRow[] {
+    if (currentPreview.parseResult.requiresColumnSelection && currentPreview.selectedColumn) {
+      return normalizeRows(currentPreview.parseResult.rows, currentPreview.selectedColumn);
+    }
+    return currentPreview.parseResult.rows;
+  }
+
+  async function handleContinueToReconciliation() {
+    if (!preview) return;
+    setLoadingReconciliation(true);
+    setError(null);
+
+    try {
+      const rows = buildRowsForImport(preview);
+      const accountNames = Array.from(
+        new Set(rows.map(row => String(row.account_name ?? '').trim()).filter(Boolean)),
+      );
+
+      const res = await fetch('/api/billing/depletion/reconcile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_id: teamId,
+          account_names: accountNames,
+        }),
+      });
+
+      const json = await res.json() as {
+        accounts: Array<{ id: string; name: string }>;
+        reconciliations: ReconciliationRow[];
+        error?: string;
+      };
+
+      if (!res.ok) {
+        setError(json.error ?? 'Failed to reconcile account names.');
+        return;
+      }
+
+      const defaults = Object.fromEntries(
+        (json.reconciliations ?? [])
+          .filter(row => row.suggested_account_id && row.suggested_score >= RECONCILIATION_AUTO_SELECT_THRESHOLD)
+          .map(row => [row.source_name, row.suggested_account_id as string]),
+      );
+
+      setAccountOptions(json.accounts ?? []);
+      setReconciliationRows(json.reconciliations ?? []);
+      setSelectedReconciliation(defaults);
+      setState('reconcile');
+    } catch {
+      setError('Failed to reconcile account names.');
+    } finally {
+      setLoadingReconciliation(false);
+    }
+  }
+
   function handleUploadAnother() {
     setState('idle');
     setPreview(null);
     setMatchResult(null);
     setError(null);
+    setReconciliationRows([]);
+    setAccountOptions([]);
+    setSelectedReconciliation({});
     setPeriodMonth(prevMonthValue());
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -184,9 +269,17 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
             </select>
           </div>
         ) : (
-          <p className={styles.accountColumnNote}>
-            Account column: <strong>{parseResult.detectedAccountColumn}</strong>
-          </p>
+          <div className={styles.detectedColumns}>
+            <p className={styles.accountColumnNote}>
+              Account column: <strong>{parseResult.detectedAccountColumn}</strong>
+            </p>
+            <p className={styles.accountColumnNote}>
+              SKU column: <strong>{parseResult.detectedSkuColumn ?? 'Not detected'}</strong>
+            </p>
+            <p className={styles.accountColumnNote}>
+              Quantity column: <strong>{parseResult.detectedQuantityColumn ?? 'Not detected'}</strong>
+            </p>
+          </div>
         )}
 
         <div className={styles.tableWrapper}>
@@ -216,13 +309,73 @@ export function DepletionUpload({ supplierId, teamId }: Props) {
           <button
             type="button"
             className={styles.primaryButton}
-            onClick={() => void handleImport()}
+            onClick={() => void handleContinueToReconciliation()}
             disabled={submitting || (parseResult.requiresColumnSelection && !selectedColumn)}
           >
-            {submitting ? 'Importing…' : 'Confirm and import'}
+            {loadingReconciliation ? 'Loading reconciliation…' : 'Continue to reconciliation'}
           </button>
           <button type="button" className={styles.cancelButton} onClick={handleCancel}>
             Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === 'reconcile' && preview) {
+    return (
+      <div className={styles.previewContainer}>
+        <p className={styles.rowCount}>{reconciliationRows.length} unique account names to reconcile</p>
+        <div className={styles.tableWrapper}>
+          <table className={styles.previewTable}>
+            <thead>
+              <tr>
+                <th className={styles.th}>Depletion account</th>
+                <th className={styles.th}>Suggested CRM account</th>
+                <th className={styles.th}>Confidence</th>
+                <th className={styles.th}>Final account</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reconciliationRows.map((row) => (
+                <tr key={row.source_name}>
+                  <td className={styles.td}>{row.source_name}</td>
+                  <td className={styles.td}>{row.suggested_account_name ?? 'No suggestion'}</td>
+                  <td className={styles.td}>
+                    {row.confidence === 'none' ? 'none' : `${row.confidence} (${Math.round(row.suggested_score * 100)}%)`}
+                  </td>
+                  <td className={styles.td}>
+                    <select
+                      className={styles.columnSelect}
+                      value={selectedReconciliation[row.source_name] ?? ''}
+                      onChange={e => setSelectedReconciliation(prev => ({
+                        ...prev,
+                        [row.source_name]: e.target.value,
+                      }))}
+                    >
+                      <option value="">— no mapping —</option>
+                      {accountOptions.map(account => (
+                        <option key={account.id} value={account.id}>{account.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => void handleImport()}
+            disabled={submitting}
+          >
+            {submitting ? 'Importing…' : 'Confirm and import'}
+          </button>
+          <button type="button" className={styles.cancelButton} onClick={() => setState('preview')}>
+            Back
           </button>
         </div>
       </div>
