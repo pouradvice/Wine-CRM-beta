@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { matchDepletionToPlacements } from '@/lib/data';
+import { matchDepletionToPlacements, recordAttributionForPlacements } from '@/lib/data';
 import { mapDbError } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -41,6 +41,18 @@ export async function POST(request: NextRequest) {
       body.supplier_id,
       body.period_month,
     );
+
+    try {
+      await recordAttributionForPlacements(
+        sb,
+        body.team_id,
+        body.supplier_id,
+        report.id,
+        body.period_month,
+      );
+    } catch (attributionError) {
+      console.error('Failed to record attribution matches after depletion upload', attributionError);
+    }
 
     return NextResponse.json({ report, matchResult }, { status: 201 });
   } catch (err) {

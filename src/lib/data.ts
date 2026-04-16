@@ -1299,6 +1299,147 @@ export async function matchDepletionToPlacements(
   return data as DepletionMatchResult;
 }
 
+export async function recordAttributionForPlacements(
+  sb: SupabaseClient,
+  teamId: string,
+  supplierId: string,
+  depletionReportId: string,
+  periodMonth: string,
+): Promise<void> {
+  const { data: placements, error: placementsError } = await sb
+    .from('supplier_verified_placements')
+    .select('id, recap_product_id')
+    .eq('supplier_id', supplierId)
+    .eq('team_id', teamId)
+    .eq('depletion_period', periodMonth)
+    .eq('depletion_report_id', depletionReportId);
+
+  if (placementsError) throw new Error(mapDbError(placementsError));
+  if (!placements?.length) return;
+
+  const placementIds = placements.map(p => p.id);
+  const { data: existing, error: existingError } = await sb
+    .from('attribution_matches')
+    .select('placement_id')
+    .eq('team_id', teamId)
+    .in('placement_id', placementIds);
+
+  if (existingError) throw new Error(mapDbError(existingError));
+
+  const existingPlacementIds = new Set(
+    (existing ?? [])
+      .map(match => match.placement_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  const rows = placements
+    .filter(placement => !existingPlacementIds.has(placement.id))
+    .map(placement => ({
+      team_id:              teamId,
+      supplier_id:          supplierId,
+      recap_product_id:     placement.recap_product_id,
+      depletion_report_id:  depletionReportId,
+      placement_id:         placement.id,
+      invoice_line_item_id: null,
+      confidence_score:     0.95,
+      match_type:           'auto',
+      status:               'matched',
+      notes:                `Auto-matched via depletion report for period ${periodMonth}`,
+    }));
+
+  if (!rows.length) return;
+
+  const { error: insertError } = await sb
+    .from('attribution_matches')
+    .insert(rows);
+  if (insertError) throw new Error(mapDbError(insertError));
+}
+
+export async function linkAttributionToInvoiceLineItems(
+  sb: SupabaseClient,
+  teamId: string,
+  invoiceId: string,
+): Promise<void> {
+  const { data: lineItems, error: lineItemsError } = await sb
+    .from('supplier_invoice_line_items')
+    .select('id, line_type, source_ids')
+    .eq('invoice_id', invoiceId);
+
+  if (lineItemsError) throw new Error(mapDbError(lineItemsError));
+  if (!lineItems?.length) return;
+
+  for (const lineItem of lineItems) {
+    if (lineItem.line_type !== 'Placement' || !Array.isArray(lineItem.source_ids) || !lineItem.source_ids.length) {
+      continue;
+    }
+
+    const placementIds = Array.from(new Set(
+      lineItem.source_ids.filter((id): id is string => typeof id === 'string' && id.length > 0),
+    ));
+    if (!placementIds.length) continue;
+
+    const { data: existingMatches, error: existingMatchesError } = await sb
+      .from('attribution_matches')
+      .select('placement_id')
+      .eq('team_id', teamId)
+      .in('placement_id', placementIds);
+
+    if (existingMatchesError) throw new Error(mapDbError(existingMatchesError));
+
+    if (existingMatches?.length) {
+      const { error: updateError } = await sb
+        .from('attribution_matches')
+        .update({
+          invoice_line_item_id: lineItem.id,
+          updated_at:           new Date().toISOString(),
+        })
+        .eq('team_id', teamId)
+        .in(
+          'placement_id',
+          existingMatches
+            .map(match => match.placement_id)
+            .filter((id): id is string => Boolean(id)),
+        );
+      if (updateError) throw new Error(mapDbError(updateError));
+    }
+
+    const existingPlacementIds = new Set(
+      (existingMatches ?? [])
+        .map(match => match.placement_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const missingPlacementIds = placementIds.filter(id => !existingPlacementIds.has(id));
+    if (!missingPlacementIds.length) continue;
+
+    const { data: placements, error: placementsError } = await sb
+      .from('supplier_verified_placements')
+      .select('id, supplier_id, recap_product_id, depletion_report_id')
+      .eq('team_id', teamId)
+      .in('id', missingPlacementIds);
+
+    if (placementsError) throw new Error(mapDbError(placementsError));
+    if (!placements?.length) continue;
+
+    const rows = placements.map(placement => ({
+      team_id:              teamId,
+      supplier_id:          placement.supplier_id,
+      recap_product_id:     placement.recap_product_id,
+      depletion_report_id:  placement.depletion_report_id,
+      placement_id:         placement.id,
+      invoice_line_item_id: lineItem.id,
+      confidence_score:     0.95,
+      match_type:           'auto',
+      status:               'matched',
+      notes:                `Auto-linked during invoice draft generation for invoice ${invoiceId}`,
+    }));
+
+    const { error: insertError } = await sb
+      .from('attribution_matches')
+      .insert(rows);
+    if (insertError) throw new Error(mapDbError(insertError));
+  }
+}
+
 export async function getAttributionMatches(
   sb: SupabaseClient,
   teamId: string,
