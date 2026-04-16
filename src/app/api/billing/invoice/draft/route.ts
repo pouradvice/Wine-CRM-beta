@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { linkAttributionToInvoiceLineItems } from '@/lib/data';
+import type { InvoiceDraftResult } from '@/types';
 import { mapDbError } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -24,7 +26,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: mapDbError(error) }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    const result = data as InvoiceDraftResult;
+
+    if (result.status === 'OK') {
+      try {
+        await linkAttributionToInvoiceLineItems(
+          sb,
+          body.team_id,
+          result.invoice_id,
+        );
+      } catch (attributionError) {
+        console.error('Failed to link attribution matches after invoice draft generation', attributionError);
+      }
+    }
+
+    return NextResponse.json(result, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : mapDbError({ message: String(err) });
     return NextResponse.json({ error: message }, { status: 500 });
