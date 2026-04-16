@@ -1256,6 +1256,7 @@ export async function generateAndSaveWeeklySummary(
 }
 
 // ── Billing ───────────────────────────────────────────────────
+const AUTO_MATCH_CONFIDENCE_SCORE = 0.95;
 
 export async function getBillingTerms(
   sb: SupabaseClient,
@@ -1341,7 +1342,7 @@ export async function recordAttributionForPlacements(
       depletion_report_id:  depletionReportId,
       placement_id:         placement.id,
       invoice_line_item_id: null,
-      confidence_score:     0.95,
+      confidence_score:     AUTO_MATCH_CONFIDENCE_SCORE,
       match_type:           'auto',
       status:               'matched',
       notes:                `Auto-matched via depletion report for period ${periodMonth}`,
@@ -1368,76 +1369,92 @@ export async function linkAttributionToInvoiceLineItems(
   if (lineItemsError) throw new Error(mapDbError(lineItemsError));
   if (!lineItems?.length) return;
 
-  for (const lineItem of lineItems) {
-    if (lineItem.line_type !== 'Placement' || !Array.isArray(lineItem.source_ids) || !lineItem.source_ids.length) {
-      continue;
-    }
+  const placementLineItems = lineItems
+    .filter(lineItem => lineItem.line_type === 'Placement' && Array.isArray(lineItem.source_ids) && lineItem.source_ids.length)
+    .map(lineItem => ({
+      id: lineItem.id,
+      placementIds: Array.from(new Set(
+        lineItem.source_ids.flatMap((id): string[] =>
+          (typeof id === 'string' && id.length > 0 ? [id] : []),
+        ),
+      )) as string[],
+    }))
+    .filter(lineItem => lineItem.placementIds.length > 0);
 
-    const placementIds = Array.from(new Set(
-      lineItem.source_ids.filter((id): id is string => typeof id === 'string' && id.length > 0),
-    ));
-    if (!placementIds.length) continue;
+  if (!placementLineItems.length) return;
 
-    const { data: existingMatches, error: existingMatchesError } = await sb
+  const allPlacementIds = Array.from(new Set(
+    placementLineItems.flatMap(lineItem => lineItem.placementIds),
+  ));
+
+  const { data: existingMatches, error: existingMatchesError } = await sb
+    .from('attribution_matches')
+    .select('placement_id')
+    .eq('team_id', teamId)
+    .in('placement_id', allPlacementIds);
+
+  if (existingMatchesError) throw new Error(mapDbError(existingMatchesError));
+
+  const existingPlacementIds = new Set(
+    (existingMatches ?? [])
+      .map(match => match.placement_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  for (const lineItem of placementLineItems) {
+    const placementIdsToUpdate = lineItem.placementIds.filter(id => existingPlacementIds.has(id));
+    if (!placementIdsToUpdate.length) continue;
+
+    const { error: updateError } = await sb
       .from('attribution_matches')
-      .select('placement_id')
+      .update({
+        invoice_line_item_id: lineItem.id,
+        updated_at:           new Date().toISOString(),
+      })
       .eq('team_id', teamId)
-      .in('placement_id', placementIds);
-
-    if (existingMatchesError) throw new Error(mapDbError(existingMatchesError));
-
-    if (existingMatches?.length) {
-      const { error: updateError } = await sb
-        .from('attribution_matches')
-        .update({
-          invoice_line_item_id: lineItem.id,
-          updated_at:           new Date().toISOString(),
-        })
-        .eq('team_id', teamId)
-        .in(
-          'placement_id',
-          existingMatches
-            .map(match => match.placement_id)
-            .filter((id): id is string => Boolean(id)),
-        );
-      if (updateError) throw new Error(mapDbError(updateError));
-    }
-
-    const existingPlacementIds = new Set(
-      (existingMatches ?? [])
-        .map(match => match.placement_id)
-        .filter((id): id is string => Boolean(id)),
-    );
-    const missingPlacementIds = placementIds.filter(id => !existingPlacementIds.has(id));
-    if (!missingPlacementIds.length) continue;
-
-    const { data: placements, error: placementsError } = await sb
-      .from('supplier_verified_placements')
-      .select('id, supplier_id, recap_product_id, depletion_report_id')
-      .eq('team_id', teamId)
-      .in('id', missingPlacementIds);
-
-    if (placementsError) throw new Error(mapDbError(placementsError));
-    if (!placements?.length) continue;
-
-    const rows = placements.map(placement => ({
-      team_id:              teamId,
-      supplier_id:          placement.supplier_id,
-      recap_product_id:     placement.recap_product_id,
-      depletion_report_id:  placement.depletion_report_id,
-      placement_id:         placement.id,
-      invoice_line_item_id: lineItem.id,
-      confidence_score:     0.95,
-      match_type:           'auto',
-      status:               'matched',
-      notes:                `Auto-linked during invoice draft generation for invoice ${invoiceId}`,
-    }));
-
-    const { error: insertError } = await sb
-      .from('attribution_matches')
-      .insert(rows);
-    if (insertError) throw new Error(mapDbError(insertError));
+      .in('placement_id', placementIdsToUpdate);
+    if (updateError) throw new Error(mapDbError(updateError));
   }
+
+  const missingPlacementIds = allPlacementIds.filter(id => !existingPlacementIds.has(id));
+  if (!missingPlacementIds.length) return;
+
+  const { data: placements, error: placementsError } = await sb
+    .from('supplier_verified_placements')
+    .select('id, supplier_id, recap_product_id, depletion_report_id')
+    .eq('team_id', teamId)
+    .in('id', missingPlacementIds);
+
+  if (placementsError) throw new Error(mapDbError(placementsError));
+  if (!placements?.length) return;
+
+  const placementsById = new Map(placements.map(placement => [placement.id, placement] as const));
+  const missingPlacementIdSet = new Set(missingPlacementIds);
+  const rows = placementLineItems.flatMap(lineItem =>
+    lineItem.placementIds
+      .filter(id => missingPlacementIdSet.has(id))
+      .map(id => placementsById.get(id))
+      .filter((placement): placement is (typeof placements)[number] => Boolean(placement))
+      .map(placement => ({
+        team_id:              teamId,
+        supplier_id:          placement.supplier_id,
+        recap_product_id:     placement.recap_product_id,
+        depletion_report_id:  placement.depletion_report_id,
+        placement_id:         placement.id,
+        invoice_line_item_id: lineItem.id,
+        confidence_score:     AUTO_MATCH_CONFIDENCE_SCORE,
+        match_type:           'auto',
+        status:               'matched',
+        notes:                `Auto-linked during invoice draft generation for invoice ${invoiceId}`,
+      })),
+  );
+
+  if (!rows.length) return;
+
+  const { error: insertError } = await sb
+    .from('attribution_matches')
+    .insert(rows);
+  if (insertError) throw new Error(mapDbError(insertError));
 }
 
 export async function getAttributionMatches(
