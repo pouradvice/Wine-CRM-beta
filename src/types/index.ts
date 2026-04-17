@@ -190,6 +190,21 @@ export interface Product {
 export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'brand' | 'supplier'>;
 export type ProductUpdate = Partial<ProductInsert>;
 
+export interface ProductDistribution {
+  id: string;
+  product_id: string;
+  distributor_id: string;
+  territory: string;
+  team_id: string;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  product?: Product | null;
+  distributor?: { id: string; name: string } | null;
+}
+
 export const WINE_TYPES: WineType[] = [
   'Red',
   'White',
