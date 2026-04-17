@@ -4,6 +4,8 @@
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_distributors_name_trgm
+  ON distributors USING gin (LOWER(name) gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS product_distribution_unmatched_log (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -37,6 +39,7 @@ matched_rows AS (
     ) AS rn
   FROM source_rows s
   JOIN distributors d
+    -- `%` is the pg_trgm similarity-match operator.
     ON LOWER(d.name) % LOWER(s.distributor_text)
     OR LOWER(d.name) LIKE '%' || LOWER(s.distributor_text) || '%'
     OR LOWER(s.distributor_text) LIKE '%' || LOWER(d.name) || '%'
@@ -57,7 +60,7 @@ INSERT INTO product_distributions (
 SELECT
   bm.product_id,
   bm.distributor_id,
-  COALESCE(NULLIF(TRIM(bm.region), ''), 'Default') AS territory,
+  COALESCE(NULLIF(TRIM(bm.region), ''), 'Unassigned') AS territory,
   bm.team_id,
   TRUE,
   'Backfilled from products.distributor'

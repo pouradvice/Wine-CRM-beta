@@ -469,7 +469,11 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
       const structuredDistributorNames = distributionRows
         .map((row) => distributorsList.find((d) => d.id === row.distributor_id)?.name)
         .filter((name): name is string => Boolean(name));
-      const legacyDistributorText = form.distributor.trim() || structuredDistributorNames.join(', ');
+      const manualDistributorText = form.distributor.trim();
+      const structuredDistributorText = structuredDistributorNames.join(', ');
+      const legacyDistributorText = manualDistributorText
+        ? (structuredDistributorText ? `${manualDistributorText} | ${structuredDistributorText}` : manualDistributorText)
+        : structuredDistributorText;
 
       const payload: ProductInsert & { id?: string } = {
         sku_number:     form.sku_number.trim(),
@@ -506,9 +510,9 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         }))
         .filter((row) => row.distributor_id && row.territory);
 
-      const persistedIds: string[] = [];
+      const persistedRows: Array<{ draft: DistributionDraft; persisted: ProductDistribution }> = [];
       for (const row of cleanedRows) {
-        const dist = await upsertProductDistribution(sb, {
+        const persisted = await upsertProductDistribution(sb, {
           ...(row.id ? { id: row.id } : {}),
           product_id: saved.id,
           distributor_id: row.distributor_id,
@@ -517,9 +521,10 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
           is_active: row.is_active,
           notes: row.notes || null,
         });
-        persistedIds.push(dist.id);
+        persistedRows.push({ draft: row, persisted });
       }
 
+      const persistedIds = persistedRows.map((row) => row.persisted.id);
       const staleIds = existingDistributionIds.filter((id) => !persistedIds.includes(id));
       for (const staleId of staleIds) {
         await deleteProductDistribution(sb, staleId);
@@ -527,21 +532,22 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
       setExistingDistributionIds(persistedIds);
       setProductDistributions(
-        cleanedRows.map((row, i) => ({
-          id: persistedIds[i] ?? row.id ?? '',
-          product_id: saved.id,
-          distributor_id: row.distributor_id,
-          territory: row.territory,
-          team_id: teamId,
-          is_active: row.is_active,
-          notes: row.notes || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          distributor: distributorsList.find((d) => d.id === row.distributor_id)
-            ? { id: row.distributor_id, name: distributorsList.find((d) => d.id === row.distributor_id)!.name }
-            : null,
-          product: saved,
-        })),
+        persistedRows.map(({ draft, persisted }) => {
+          const distributor = distributorsList.find((d) => d.id === draft.distributor_id);
+          return {
+            id: persisted.id,
+            product_id: saved.id,
+            distributor_id: draft.distributor_id,
+            territory: draft.territory,
+            team_id: teamId,
+            is_active: draft.is_active,
+            notes: draft.notes || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            distributor: distributor ? { id: draft.distributor_id, name: distributor.name } : null,
+            product: saved,
+          };
+        }),
       );
 
       if (activeProduct) {

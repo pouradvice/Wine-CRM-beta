@@ -42,6 +42,7 @@ import type {
 } from '@/types';
 import { mapDbError } from '@/types';
 import type { PriceTier } from '@/types';
+import { isOrderOutcome } from '@/lib/outcomes';
 
 // ── Price tier helper ─────────────────────────────────────────
 
@@ -375,7 +376,7 @@ export async function getDistributorProducts(
     if (!stats.has(key)) stats.set(key, { presentations: 0, orders: 0, menu_placements: 0 });
     const s = stats.get(key)!;
     s.presentations += 1;
-    if (rp.outcome === 'Yes Today') s.orders += 1;
+    if (isOrderOutcome(rp.outcome, true)) s.orders += 1;
     if (rp.menu_placement === true) s.menu_placements += 1;
   }
 
@@ -447,7 +448,7 @@ export async function getSupplierDistributionMatrix(
     if (!recapByProduct.has(key)) recapByProduct.set(key, { placements: 0, orders: 0 });
     const row = recapByProduct.get(key)!;
     row.placements += 1;
-    if (rp.outcome === 'Yes Today' || rp.outcome === 'Menu Placement') row.orders += 1;
+    if (isOrderOutcome(rp.outcome, true)) row.orders += 1;
   }
 
   type DistributionRow = {

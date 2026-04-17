@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isOrderOutcome } from '@/lib/outcomes';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -105,24 +106,26 @@ export default async function DistributorPortalPage({
 
   const productIds = Array.from(new Set(distributions.map((d) => d.product_id).filter(Boolean)));
 
-  const { data: placementsData } = productIds.length > 0
-    ? await sb
-        .from('recap_products')
-        .select(`
-          id,
-          product_id,
-          outcome,
-          buyer_feedback,
-          created_at,
-          recap:recaps(
-            visit_date,
-            account:accounts(name)
-          )
-        `)
-        .in('product_id', productIds)
-        .order('created_at', { ascending: false })
-        .limit(250)
-    : { data: [] };
+  let placementsData: unknown[] = [];
+  if (productIds.length > 0) {
+    const placementRes = await sb
+      .from('recap_products')
+      .select(`
+        id,
+        product_id,
+        outcome,
+        buyer_feedback,
+        created_at,
+        recap:recaps(
+          visit_date,
+          account:accounts(name)
+        )
+      `)
+      .in('product_id', productIds)
+      .order('created_at', { ascending: false })
+      .limit(250);
+    placementsData = placementRes.data ?? [];
+  }
 
   const placements = (placementsData ?? []) as unknown as PlacementRow[];
   const placementsByProductId = new Map<string, PlacementRow[]>();
@@ -134,7 +137,7 @@ export default async function DistributorPortalPage({
   const uniqueProductIds = new Set(distributions.map((d) => d.product_id));
   const totalSkus = uniqueProductIds.size;
   const totalPresentations = placements.length;
-  const totalOrders = placements.filter((p) => p.outcome === 'Yes Today' || p.outcome === 'Menu Placement').length;
+  const totalOrders = placements.filter((p) => isOrderOutcome(p.outcome, true)).length;
   const conversionRate = totalPresentations > 0 ? Math.round((totalOrders / totalPresentations) * 1000) / 10 : 0;
 
   const productsByBrand = new Map<string, Array<{
@@ -153,7 +156,7 @@ export default async function DistributorPortalPage({
     const brand = Array.isArray(dist.product.brand) ? dist.product.brand[0] : dist.product.brand;
     const brandName = brand?.name ?? 'Unbranded';
     const productPlacements = placementsByProductId.get(dist.product_id) ?? [];
-    const orders = productPlacements.filter((p) => p.outcome === 'Yes Today' || p.outcome === 'Menu Placement').length;
+    const orders = productPlacements.filter((p) => isOrderOutcome(p.outcome, true)).length;
     if (!productsByBrand.has(brandName)) productsByBrand.set(brandName, []);
     productsByBrand.get(brandName)!.push({
       distribution_id: dist.id,

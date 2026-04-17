@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isOrderOutcome } from '@/lib/outcomes';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -159,7 +160,7 @@ export default async function SupplierPortalPage({
     const stats = recapByProduct.get(productId)!;
     stats.placements += 1;
     const outcome = (row as { outcome: string }).outcome;
-    if (outcome === 'Yes Today' || outcome === 'Menu Placement') stats.orders += 1;
+    if (isOrderOutcome(outcome, true)) stats.orders += 1;
   }
 
   const byDistributor = new Map<string, {
@@ -219,7 +220,11 @@ export default async function SupplierPortalPage({
     tRow.distributorIds.add(distributor.id);
     tRow.productIds.add(product.id);
 
-    const matrixKey = `${brand?.name ?? 'Unbranded'}::${distributor.id}::${dist.territory}`;
+    const matrixKey = [
+      encodeURIComponent(brand?.name ?? 'Unbranded'),
+      distributor.id,
+      encodeURIComponent(dist.territory),
+    ].join('::');
     if (!matrix.has(matrixKey)) {
       matrix.set(matrixKey, {
         brand: brand?.name ?? 'Unbranded',
@@ -246,7 +251,19 @@ export default async function SupplierPortalPage({
         <h1 className={styles.supplierName}>{supplier.name}</h1>
         <div className={styles.supplierSub}>
           {[supplier.region, supplier.country].filter(Boolean).join(' · ')}
-          {supplier.website && <> · <a href={supplier.website} target="_blank" rel="noopener noreferrer" className={styles.websiteLink}>{supplier.website.replace(/^https?:\/\//, '')}</a></>}
+          {supplier.website && (
+            <>
+              {' · '}
+              <a
+                href={supplier.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.websiteLink}
+              >
+                {supplier.website.replace(/^https?:\/\//, '')}
+              </a>
+            </>
+          )}
         </div>
         <div className={styles.headerRole}>
           Signed in as <strong>{user.email}</strong> · <span className={styles.roleBadge}>{mapping.role}</span>
