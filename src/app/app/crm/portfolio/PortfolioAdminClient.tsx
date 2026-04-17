@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import styles from './page.module.css';
+import { PORTFOLIO_SLUG_RE, storefrontPathForSlug } from '@/lib/portfolio';
 
 interface PortfolioPageSettings {
   id: string;
@@ -39,17 +40,17 @@ interface PortfolioAdminClientProps {
   stats: PortfolioStats;
 }
 
-const SLUG_RE = /^[a-z0-9-]+$/;
-
 export function PortfolioAdminClient({ initialPage, stats }: PortfolioAdminClientProps) {
+  const [currentSlug, setCurrentSlug] = useState(initialPage.slug);
   const [slug, setSlug] = useState(initialPage.slug);
   const [calendlyUrl, setCalendlyUrl] = useState(initialPage.calendly_url);
   const [isActive, setIsActive] = useState(initialPage.is_active);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const storefrontPath = useMemo(() => `/pouradvice/${slug || initialPage.slug}`, [initialPage.slug, slug]);
+  const storefrontPath = useMemo(() => storefrontPathForSlug(currentSlug), [currentSlug]);
 
   async function handleSave() {
     const trimmedSlug = slug.trim().toLowerCase();
@@ -57,13 +58,14 @@ export function PortfolioAdminClient({ initialPage, stats }: PortfolioAdminClien
 
     setError('');
     setSaved(false);
+    setCopied(false);
 
     if (!trimmedSlug) {
       setError('Slug is required');
       return;
     }
 
-    if (!SLUG_RE.test(trimmedSlug)) {
+    if (!PORTFOLIO_SLUG_RE.test(trimmedSlug)) {
       setError('Slug must use only lowercase letters, numbers, and hyphens');
       return;
     }
@@ -102,9 +104,11 @@ export function PortfolioAdminClient({ initialPage, stats }: PortfolioAdminClien
       }
 
       setSlug(payload.data.slug);
+      setCurrentSlug(payload.data.slug);
       setCalendlyUrl(payload.data.calendly_url);
       setIsActive(payload.data.is_active);
       setSaved(true);
+      setCopied(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save portfolio settings');
     } finally {
@@ -116,10 +120,12 @@ export function PortfolioAdminClient({ initialPage, stats }: PortfolioAdminClien
     const absoluteUrl = `${window.location.origin}${storefrontPath}`;
     try {
       await navigator.clipboard.writeText(absoluteUrl);
-      setSaved(true);
       setError('');
+      setSaved(false);
+      setCopied(true);
     } catch {
       setError('Unable to copy link. Please copy it manually.');
+      setCopied(false);
     }
   }
 
@@ -173,9 +179,9 @@ export function PortfolioAdminClient({ initialPage, stats }: PortfolioAdminClien
             Active storefront
           </label>
 
-          {(error || saved) && (
+          {(error || saved || copied) && (
             <p className={error ? styles.error : styles.success}>
-              {error || 'Saved'}
+              {error || (saved ? 'Saved' : 'Link copied')}
             </p>
           )}
 

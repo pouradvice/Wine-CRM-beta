@@ -101,7 +101,7 @@ export async function getPortfolioPage(
     .from('portfolio_pages')
     .select('id, team_id, slug, calendly_url, is_active, created_at')
     .eq('team_id', teamId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 

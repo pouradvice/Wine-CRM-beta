@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveTeamId } from '@/lib/team';
 import { getPortfolioPage, upsertPortfolioPage } from '@/lib/data';
-
-const DEFAULT_CALENDLY_URL = 'https://calendly.com/josh-pouradvice/product-tasting';
-const SLUG_RE = /^[a-z0-9-]+$/;
-
-function defaultSlugForTeam(teamId: string): string {
-  return `team-${teamId.toLowerCase()}`;
-}
+import { DEFAULT_CALENDLY_URL, defaultSlugForTeam, PORTFOLIO_SLUG_RE } from '@/lib/portfolio';
 
 async function requireOwner() {
   const sb = await createClient();
@@ -63,15 +57,22 @@ export async function PUT(request: NextRequest) {
   }
 
   const slug = String(body.slug ?? '').trim().toLowerCase();
-  const calendlyUrl = String(body.calendly_url ?? '').trim() || DEFAULT_CALENDLY_URL;
+  const hasCalendlyValue = body.calendly_url !== undefined;
+  const calendlyUrl = hasCalendlyValue
+    ? String(body.calendly_url ?? '').trim()
+    : DEFAULT_CALENDLY_URL;
   const isActive = Boolean(body.is_active);
 
   if (!slug) {
     return NextResponse.json({ error: 'Slug is required' }, { status: 400 });
   }
 
-  if (!SLUG_RE.test(slug)) {
+  if (!PORTFOLIO_SLUG_RE.test(slug)) {
     return NextResponse.json({ error: 'Slug must use only lowercase letters, numbers, and hyphens' }, { status: 400 });
+  }
+
+  if (!calendlyUrl) {
+    return NextResponse.json({ error: 'Calendly URL is required' }, { status: 400 });
   }
 
   try {
@@ -93,7 +94,7 @@ export async function PUT(request: NextRequest) {
     ? await conflictQuery.neq('id', existing.id).maybeSingle()
     : await conflictQuery.maybeSingle();
 
-  if (conflict && conflict.team_id !== teamId) {
+  if (conflict) {
     return NextResponse.json({ error: 'Slug is already in use' }, { status: 409 });
   }
 

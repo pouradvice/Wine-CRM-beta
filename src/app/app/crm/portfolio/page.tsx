@@ -2,15 +2,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { resolveTeamId } from '@/lib/team';
 import { getPortfolioPage, getPortfolioStats, upsertPortfolioPage } from '@/lib/data';
+import { DEFAULT_CALENDLY_URL, defaultSlugForTeam } from '@/lib/portfolio';
 import { PortfolioAdminClient } from './PortfolioAdminClient';
 
 export const dynamic = 'force-dynamic';
-
-const DEFAULT_CALENDLY_URL = 'https://calendly.com/josh-pouradvice/product-tasting';
-
-function defaultSlugForTeam(teamId: string): string {
-  return `team-${teamId.toLowerCase()}`;
-}
 
 export default async function PortfolioPage() {
   const sb = await createClient();
