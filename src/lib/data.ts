@@ -12,7 +12,7 @@ import type {
   Supplier, SupplierInsert,
   SupplierContract, SupplierContractInsert,
   Brand, BrandInsert,
-  Product, ProductInsert,
+  Product, ProductInsert, ProductDistribution,
   Account, AccountInsert,
   Contact, ContactInsert,
   Recap,
@@ -246,6 +246,268 @@ export async function archiveProduct(
   if (teamId) query = query.eq('team_id', teamId);
   const { error } = await query;
   if (error) throw new Error(mapDbError(error));
+}
+
+export async function getProductDistributions(
+  sb: SupabaseClient,
+  options?: {
+    productId?: string;
+    distributorId?: string;
+    territory?: string;
+    teamId?: string;
+    includeInactive?: boolean;
+  },
+): Promise<ProductDistribution[]> {
+  let query = sb
+    .from('product_distributions')
+    .select(`
+      *,
+      product:products(*),
+      distributor:distributors(id, name)
+    `)
+    .order('territory')
+    .order('created_at', { ascending: false });
+
+  if (options?.productId) query = query.eq('product_id', options.productId);
+  if (options?.distributorId) query = query.eq('distributor_id', options.distributorId);
+  if (options?.territory) query = query.eq('territory', options.territory);
+  if (options?.teamId) query = query.eq('team_id', options.teamId);
+  if (!options?.includeInactive) query = query.eq('is_active', true);
+
+  const { data, error } = await query;
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? []) as unknown as ProductDistribution[];
+}
+
+export async function upsertProductDistribution(
+  sb: SupabaseClient,
+  dist: Omit<ProductDistribution, 'id' | 'created_at' | 'updated_at' | 'product' | 'distributor'> & { id?: string },
+): Promise<ProductDistribution> {
+  const { data, error } = await sb
+    .from('product_distributions')
+    .upsert(dist, { onConflict: 'product_id,distributor_id,territory' })
+    .select(`
+      *,
+      product:products(*),
+      distributor:distributors(id, name)
+    `)
+    .single();
+  if (error) throw new Error(mapDbError(error));
+  return data as unknown as ProductDistribution;
+}
+
+export async function deleteProductDistribution(
+  sb: SupabaseClient,
+  id: string,
+): Promise<void> {
+  const { error } = await sb
+    .from('product_distributions')
+    .delete()
+    .eq('id', id);
+  if (error) throw new Error(mapDbError(error));
+}
+
+export async function getDistributorProducts(
+  sb: SupabaseClient,
+  distributorId: string,
+  territory?: string,
+): Promise<Array<{
+  product_id: string;
+  distribution_id: string;
+  territory: string;
+  sku_number: string;
+  wine_name: string;
+  type: string | null;
+  varietal: string | null;
+  brand_name: string | null;
+  presentations: number;
+  orders: number;
+  menu_placements: number;
+}>> {
+  let distributionsQuery = sb
+    .from('product_distributions')
+    .select(`
+      id,
+      territory,
+      product:products(
+        id,
+        sku_number,
+        wine_name,
+        type,
+        varietal,
+        brand:brands(name)
+      )
+    `)
+    .eq('distributor_id', distributorId)
+    .eq('is_active', true);
+
+  if (territory) distributionsQuery = distributionsQuery.eq('territory', territory);
+
+  const { data: distributions, error: dErr } = await distributionsQuery;
+  if (dErr) throw new Error(mapDbError(dErr));
+
+  type DistributionRow = {
+    id: string;
+    territory: string;
+    product: {
+      id: string;
+      sku_number: string;
+      wine_name: string;
+      type: string | null;
+      varietal: string | null;
+      brand: { name: string }[] | { name: string } | null;
+    } | null;
+  };
+
+  const rows = (distributions ?? []) as unknown as DistributionRow[];
+  const productIds = rows.map((r) => r.product?.id).filter((id): id is string => Boolean(id));
+  if (productIds.length === 0) return [];
+
+  const { data: recaps, error: rErr } = await sb
+    .from('recap_products')
+    .select('product_id, outcome, menu_placement')
+    .in('product_id', productIds);
+  if (rErr) throw new Error(mapDbError(rErr));
+
+  const stats = new Map<string, { presentations: number; orders: number; menu_placements: number }>();
+  for (const rp of recaps ?? []) {
+    const key = rp.product_id as string;
+    if (!stats.has(key)) stats.set(key, { presentations: 0, orders: 0, menu_placements: 0 });
+    const s = stats.get(key)!;
+    s.presentations += 1;
+    if (rp.outcome === 'Yes Today') s.orders += 1;
+    if (rp.menu_placement === true) s.menu_placements += 1;
+  }
+
+  return rows
+    .filter((r) => Boolean(r.product))
+    .map((r) => {
+      const product = r.product!;
+      const productStats = stats.get(product.id) ?? { presentations: 0, orders: 0, menu_placements: 0 };
+      const brand = Array.isArray(product.brand) ? product.brand[0] : product.brand;
+      return {
+        product_id: product.id,
+        distribution_id: r.id,
+        territory: r.territory,
+        sku_number: product.sku_number,
+        wine_name: product.wine_name,
+        type: product.type,
+        varietal: product.varietal,
+        brand_name: brand?.name ?? null,
+        presentations: productStats.presentations,
+        orders: productStats.orders,
+        menu_placements: productStats.menu_placements,
+      };
+    })
+    .sort((a, b) => a.wine_name.localeCompare(b.wine_name));
+}
+
+export async function getSupplierDistributionMatrix(
+  sb: SupabaseClient,
+  supplierId: string,
+): Promise<Array<{
+  brand_name: string | null;
+  distributor_id: string;
+  distributor_name: string | null;
+  territory: string;
+  placements: number;
+  orders: number;
+  products: number;
+}>> {
+  const { data: supplierProducts, error: pErr } = await sb
+    .from('products')
+    .select('id')
+    .eq('supplier_id', supplierId)
+    .eq('is_active', true);
+  if (pErr) throw new Error(mapDbError(pErr));
+
+  const productIds = (supplierProducts ?? []).map((p) => p.id as string);
+  if (productIds.length === 0) return [];
+
+  const { data: distributions, error: dErr } = await sb
+    .from('product_distributions')
+    .select(`
+      territory,
+      distributor:distributors(id, name),
+      product:products(id, brand:brands(name))
+    `)
+    .eq('is_active', true)
+    .in('product_id', productIds);
+  if (dErr) throw new Error(mapDbError(dErr));
+
+  const { data: recapProducts, error: rErr } = await sb
+    .from('recap_products')
+    .select('product_id, outcome')
+    .in('product_id', productIds);
+  if (rErr) throw new Error(mapDbError(rErr));
+
+  const recapByProduct = new Map<string, { placements: number; orders: number }>();
+  for (const rp of recapProducts ?? []) {
+    const key = rp.product_id as string;
+    if (!recapByProduct.has(key)) recapByProduct.set(key, { placements: 0, orders: 0 });
+    const row = recapByProduct.get(key)!;
+    row.placements += 1;
+    if (rp.outcome === 'Yes Today' || rp.outcome === 'Menu Placement') row.orders += 1;
+  }
+
+  type DistributionRow = {
+    territory: string;
+    distributor: { id: string; name: string }[] | { id: string; name: string } | null;
+    product: { id: string; brand: { name: string }[] | { name: string } | null }[] | { id: string; brand: { name: string }[] | { name: string } | null } | null;
+  };
+
+  const matrix = new Map<string, {
+    brand_name: string | null;
+    distributor_id: string;
+    distributor_name: string | null;
+    territory: string;
+    placements: number;
+    orders: number;
+    productIds: Set<string>;
+  }>();
+
+  for (const dist of (distributions ?? []) as unknown as DistributionRow[]) {
+    const distributor = Array.isArray(dist.distributor) ? dist.distributor[0] : dist.distributor;
+    const product = Array.isArray(dist.product) ? dist.product[0] : dist.product;
+    if (!distributor || !product) continue;
+    const brand = Array.isArray(product.brand) ? product.brand[0] : product.brand;
+    const recapStats = recapByProduct.get(product.id) ?? { placements: 0, orders: 0 };
+    const key = `${brand?.name ?? 'Unbranded'}::${distributor.id}::${dist.territory}`;
+
+    if (!matrix.has(key)) {
+      matrix.set(key, {
+        brand_name: brand?.name ?? null,
+        distributor_id: distributor.id,
+        distributor_name: distributor.name,
+        territory: dist.territory,
+        placements: 0,
+        orders: 0,
+        productIds: new Set<string>(),
+      });
+    }
+    const row = matrix.get(key)!;
+    row.placements += recapStats.placements;
+    row.orders += recapStats.orders;
+    row.productIds.add(product.id);
+  }
+
+  return Array.from(matrix.values())
+    .map((row) => ({
+      brand_name: row.brand_name,
+      distributor_id: row.distributor_id,
+      distributor_name: row.distributor_name,
+      territory: row.territory,
+      placements: row.placements,
+      orders: row.orders,
+      products: row.productIds.size,
+    }))
+    .sort((a, b) => {
+      const brandCmp = (a.brand_name ?? '').localeCompare(b.brand_name ?? '');
+      if (brandCmp !== 0) return brandCmp;
+      const distCmp = (a.distributor_name ?? '').localeCompare(b.distributor_name ?? '');
+      if (distCmp !== 0) return distCmp;
+      return a.territory.localeCompare(b.territory);
+    });
 }
 
 // ── Accounts ──────────────────────────────────────────────────

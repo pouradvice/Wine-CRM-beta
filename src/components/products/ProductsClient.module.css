@@ -286,6 +286,36 @@
   padding: var(--space-2) 0;
 }
 
+.distributionEditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.distributionRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.distributionAdd,
+.distributionRemove {
+  border: 1px solid var(--mist);
+  background: var(--surface);
+  color: var(--wine);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.distributionRemove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .pagination {
   display: flex;
   align-items: center;
@@ -425,6 +455,19 @@
   min-width: 80px;
   flex-shrink: 0;
   padding-top: 0.125rem;
+}
+
+.distributionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.distributionListItem {
+  font-size: var(--text-sm);
 }
 
 .costsRow {
@@ -726,6 +769,10 @@ details[open] > .accordionHeader::after {
 
 @media (max-width: 640px) {
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .distributionRow {
     grid-template-columns: 1fr;
   }
 

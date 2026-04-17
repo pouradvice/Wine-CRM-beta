@@ -5,11 +5,20 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { upsertProduct, upsertBrand, archiveProduct, getProducts, getPriceTier } from '@/lib/data';
+import {
+  upsertProduct,
+  upsertBrand,
+  archiveProduct,
+  getProducts,
+  getPriceTier,
+  getProductDistributions,
+  upsertProductDistribution,
+  deleteProductDistribution,
+} from '@/lib/data';
 import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
 import { Slideover } from '@/components/ui/Slideover';
 import { Button } from '@/components/ui/Button';
-import type { Product, ProductInsert, WineType, Supplier } from '@/types';
+import type { Product, ProductInsert, WineType, Supplier, Distributor, ProductDistribution } from '@/types';
 import styles from './ProductsClient.module.css';
 
 const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Spirit', 'Other'];
@@ -60,6 +69,14 @@ interface ActiveAccountRow {
   account_name: string;
   value_tier: string | null;
   placement_date: string;
+}
+
+interface DistributionDraft {
+  id?: string;
+  distributor_id: string;
+  territory: string;
+  notes: string;
+  is_active: boolean;
 }
 
 const emptyForm = (): ProductForm => ({
@@ -118,6 +135,13 @@ type SlideoverMode = 'closed' | 'view' | 'edit' | 'add';
 
 const PAGE_SIZE = 25;
 
+const emptyDistribution = (): DistributionDraft => ({
+  distributor_id: '',
+  territory: '',
+  notes: '',
+  is_active: true,
+});
+
 export function ProductsClient({ initialProducts, totalCount: initialTotal, teamId }: ProductsClientProps) {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -128,6 +152,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
   // Suppliers list for the form dropdown
   const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
+  const [distributorsList, setDistributorsList] = useState<Distributor[]>([]);
   const brandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
@@ -148,6 +173,25 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     fetchSuppliers();
   }, []);
 
+  useEffect(() => {
+    const fetchDistributors = async () => {
+      try {
+        const sb = createClient();
+        const { data } = await sb
+          .from('distributors')
+          .select('id, name, region, state, country, website, notes, is_active, created_at, updated_at')
+          .eq('is_active', true)
+          .order('name');
+        setDistributorsList((data ?? []) as Distributor[]);
+      } catch (err) {
+        const e = err as { error?: string; message?: string };
+        console.error('Failed to load distributors:', e.error ?? e.message ?? err);
+        setDistributorsList([]);
+      }
+    };
+    fetchDistributors();
+  }, []);
+
   // Unified slideover state
   const [mode, setMode] = useState<SlideoverMode>('closed');
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
@@ -161,6 +205,9 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const [accountsNotShown, setAccountsNotShown] = useState<AccountNotShownRow[]>([]);
   const [activeAccounts, setActiveAccounts] = useState<ActiveAccountRow[]>([]);
   const [productDetailLoading, setProductDetailLoading] = useState(false);
+  const [productDistributions, setProductDistributions] = useState<ProductDistribution[]>([]);
+  const [distributionRows, setDistributionRows] = useState<DistributionDraft[]>([emptyDistribution()]);
+  const [existingDistributionIds, setExistingDistributionIds] = useState<string[]>([]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -197,6 +244,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
     setAccountsShown([]);
     setAccountsNotShown([]);
     setActiveAccounts([]);
+    setProductDistributions([]);
     setProductDetailLoading(true);
     try {
       const sb = createClient();
@@ -223,6 +271,11 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         .eq('is_active', true)
         .in('status', ['Active', 'Prospective'])
         .order('name');
+
+      const distributionData = await getProductDistributions(sb, {
+        productId: p.id,
+        includeInactive: true,
+      });
 
       type RawRpData = {
         outcome: string;
@@ -302,10 +355,12 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
       setAccountsShown(shownRows);
       setAccountsNotShown(notShown as AccountNotShownRow[]);
       setActiveAccounts(active);
+      setProductDistributions(distributionData);
     } catch {
       setAccountsShown([]);
       setAccountsNotShown([]);
       setActiveAccounts([]);
+      setProductDistributions([]);
     } finally {
       setProductDetailLoading(false);
     }
@@ -320,6 +375,9 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const openAdd = () => {
     setActiveProduct(null);
     setForm(emptyForm());
+    setProductDistributions([]);
+    setDistributionRows([emptyDistribution()]);
+    setExistingDistributionIds([]);
     setErrors({});
     setSaveError(null);
     setMode('add');
@@ -328,6 +386,30 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const openEdit = (p: Product) => {
     setActiveProduct(p);
     setForm(productToForm(p));
+    setProductDistributions([]);
+    setExistingDistributionIds([]);
+    setDistributionRows([emptyDistribution()]);
+    void (async () => {
+      try {
+        const sb = createClient();
+        const rows = await getProductDistributions(sb, { productId: p.id, includeInactive: true });
+        setProductDistributions(rows);
+        setExistingDistributionIds(rows.map((r) => r.id));
+        setDistributionRows(
+          rows.length > 0
+            ? rows.map((r) => ({
+                id: r.id,
+                distributor_id: r.distributor_id,
+                territory: r.territory,
+                notes: r.notes ?? '',
+                is_active: r.is_active,
+              }))
+            : [emptyDistribution()],
+        );
+      } catch {
+        setDistributionRows([emptyDistribution()]);
+      }
+    })();
     setErrors({});
     setSaveError(null);
     setMode('edit');
@@ -384,6 +466,10 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
 
       // Use the selected supplier_id, falling back to brand's supplier
       const resolvedSupplierId = form.supplier_id || brandSupplierId || null;
+      const structuredDistributorNames = distributionRows
+        .map((row) => distributorsList.find((d) => d.id === row.distributor_id)?.name)
+        .filter((name): name is string => Boolean(name));
+      const legacyDistributorText = form.distributor.trim() || structuredDistributorNames.join(', ');
 
       const payload: ProductInsert & { id?: string } = {
         sku_number:     form.sku_number.trim(),
@@ -399,7 +485,7 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
         btg_cost:       form.btg_cost ? Number(form.btg_cost) : null,
         three_cs_cost:  form.three_cs_cost ? Number(form.three_cs_cost) : null,
         frontline_cost: form.frontline_cost ? Number(form.frontline_cost) : null,
-        distributor:    form.distributor || null,
+        distributor:    legacyDistributorText || null,
         tech_sheet_url: form.tech_sheet_url || null,
         notes:          form.notes || null,
         supplier_id:    resolvedSupplierId,
@@ -410,6 +496,53 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
       };
 
       const saved = await upsertProduct(sb, payload);
+
+      const cleanedRows = distributionRows
+        .map((row) => ({
+          ...row,
+          distributor_id: row.distributor_id.trim(),
+          territory: row.territory.trim(),
+          notes: row.notes.trim(),
+        }))
+        .filter((row) => row.distributor_id && row.territory);
+
+      const persistedIds: string[] = [];
+      for (const row of cleanedRows) {
+        const dist = await upsertProductDistribution(sb, {
+          ...(row.id ? { id: row.id } : {}),
+          product_id: saved.id,
+          distributor_id: row.distributor_id,
+          territory: row.territory,
+          team_id: teamId,
+          is_active: row.is_active,
+          notes: row.notes || null,
+        });
+        persistedIds.push(dist.id);
+      }
+
+      const staleIds = existingDistributionIds.filter((id) => !persistedIds.includes(id));
+      for (const staleId of staleIds) {
+        await deleteProductDistribution(sb, staleId);
+      }
+
+      setExistingDistributionIds(persistedIds);
+      setProductDistributions(
+        cleanedRows.map((row, i) => ({
+          id: persistedIds[i] ?? row.id ?? '',
+          product_id: saved.id,
+          distributor_id: row.distributor_id,
+          territory: row.territory,
+          team_id: teamId,
+          is_active: row.is_active,
+          notes: row.notes || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          distributor: distributorsList.find((d) => d.id === row.distributor_id)
+            ? { id: row.distributor_id, name: distributorsList.find((d) => d.id === row.distributor_id)!.name }
+            : null,
+          product: saved,
+        })),
+      );
 
       if (activeProduct) {
         setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
@@ -443,6 +576,22 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
   const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
+  const setDistributionField = <K extends keyof DistributionDraft>(
+    index: number,
+    key: K,
+    value: DistributionDraft[K],
+  ) => {
+    setDistributionRows((rows) => rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  };
+
+  const addDistributionRow = () => {
+    setDistributionRows((rows) => [...rows, emptyDistribution()]);
+  };
+
+  const removeDistributionRow = (index: number) => {
+    setDistributionRows((rows) => (rows.length === 1 ? rows : rows.filter((_, i) => i !== index)));
   };
 
   // When brand_name changes, debounce and auto-populate supplier from matching brand
@@ -661,10 +810,21 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
                     <span>{originParts.join(' · ')}</span>
                   </div>
                 )}
-                {activeProduct.distributor && (
-                  <div className={styles.infoCardRow}>
-                    <span className={styles.infoCardLabel}>Distributor</span>
-                    <span>{activeProduct.distributor}</span>
+                {(productDistributions.length > 0 || activeProduct.distributor) && (
+                  <div className={`${styles.infoCardRow} ${styles.infoCardRowFull}`}>
+                    <span className={styles.infoCardLabel}>Distribution</span>
+                    {productDistributions.length > 0 ? (
+                      <ul className={styles.distributionList}>
+                        {productDistributions.map((dist) => (
+                          <li key={dist.id} className={styles.distributionListItem}>
+                            <strong>{dist.distributor?.name ?? 'Distributor'}</strong>
+                            <span> · {dist.territory}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span>{activeProduct.distributor}</span>
+                    )}
                   </div>
                 )}
                 {(activeProduct.btg_cost != null || activeProduct.three_cs_cost != null || activeProduct.frontline_cost != null) && (
@@ -895,9 +1055,57 @@ export function ProductsClient({ initialProducts, totalCount: initialTotal, team
               <input className={styles.formInput} value={form.appellation} onChange={(e) => setField('appellation', e.target.value)} />
             </div>
 
-            <div className={styles.formField}>
-              <label className={styles.formLabel}>Distributor</label>
-              <input className={styles.formInput} value={form.distributor} onChange={(e) => setField('distributor', e.target.value)} />
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Distributor Assignments</label>
+              <div className={styles.distributionEditor}>
+                {distributionRows.map((row, index) => (
+                  <div key={`${row.id ?? 'new'}-${index}`} className={styles.distributionRow}>
+                    <select
+                      className={styles.formSelect}
+                      value={row.distributor_id}
+                      onChange={(e) => setDistributionField(index, 'distributor_id', e.target.value)}
+                    >
+                      <option value="">Select distributor…</option>
+                      {distributorsList.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      className={styles.formInput}
+                      value={row.territory}
+                      onChange={(e) => setDistributionField(index, 'territory', e.target.value)}
+                      placeholder="Territory"
+                    />
+                    <input
+                      className={styles.formInput}
+                      value={row.notes}
+                      onChange={(e) => setDistributionField(index, 'notes', e.target.value)}
+                      placeholder="Notes (optional)"
+                    />
+                    <button
+                      type="button"
+                      className={styles.distributionRemove}
+                      onClick={() => removeDistributionRow(index)}
+                      disabled={distributionRows.length === 1}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className={styles.distributionAdd} onClick={addDistributionRow}>
+                  + Add assignment
+                </button>
+              </div>
+            </div>
+
+            <div className={`${styles.formField} ${styles.formGridFull}`}>
+              <label className={styles.formLabel}>Legacy Distributor Text (backward compatible)</label>
+              <input
+                className={styles.formInput}
+                value={form.distributor}
+                onChange={(e) => setField('distributor', e.target.value)}
+                placeholder="Optional free-text distributor label"
+              />
             </div>
 
             <div className={styles.formField}>
