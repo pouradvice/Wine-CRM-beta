@@ -62,6 +62,130 @@ function pageRange(page = 0, pageSize = 50): [number, number] {
   return [offset, offset + pageSize - 1];
 }
 
+export interface PortfolioPageSettings {
+  id: string;
+  team_id: string;
+  slug: string;
+  calendly_url: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PortfolioVisitorRow {
+  id: string;
+  email: string;
+  company_name: string | null;
+  created_at: string;
+}
+
+export interface PortfolioRequestRow {
+  id: string;
+  company_name: string | null;
+  visitor_email: string;
+  status: string;
+  created_at: string;
+}
+
+export interface PortfolioStats {
+  visitorCount: number;
+  requestCount: number;
+  recentVisitors: PortfolioVisitorRow[];
+  recentRequests: PortfolioRequestRow[];
+}
+
+export async function getPortfolioPage(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<PortfolioPageSettings | null> {
+  const { data, error } = await sb
+    .from('portfolio_pages')
+    .select('id, team_id, slug, calendly_url, is_active, created_at')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(mapDbError(error));
+  return (data ?? null) as PortfolioPageSettings | null;
+}
+
+export async function upsertPortfolioPage(
+  sb: SupabaseClient,
+  data: {
+    team_id: string;
+    slug: string;
+    calendly_url: string;
+    is_active: boolean;
+  },
+): Promise<PortfolioPageSettings> {
+  const existing = await getPortfolioPage(sb, data.team_id);
+
+  if (existing) {
+    const { data: updated, error } = await sb
+      .from('portfolio_pages')
+      .update({
+        slug: data.slug,
+        calendly_url: data.calendly_url,
+        is_active: data.is_active,
+      })
+      .eq('id', existing.id)
+      .select('id, team_id, slug, calendly_url, is_active, created_at')
+      .single();
+
+    if (error) throw new Error(mapDbError(error));
+    return updated as PortfolioPageSettings;
+  }
+
+  const { data: inserted, error } = await sb
+    .from('portfolio_pages')
+    .insert(data)
+    .select('id, team_id, slug, calendly_url, is_active, created_at')
+    .single();
+
+  if (error) throw new Error(mapDbError(error));
+  return inserted as PortfolioPageSettings;
+}
+
+export async function getPortfolioStats(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<PortfolioStats> {
+  const [visitorsCountRes, requestsCountRes, recentVisitorsRes, recentRequestsRes] = await Promise.all([
+    sb
+      .from('portfolio_visitors')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', teamId),
+    sb
+      .from('tasting_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', teamId),
+    sb
+      .from('portfolio_visitors')
+      .select('id, email, company_name, created_at')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    sb
+      .from('tasting_requests')
+      .select('id, company_name, visitor_email, status, created_at')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ]);
+
+  if (visitorsCountRes.error) throw new Error(mapDbError(visitorsCountRes.error));
+  if (requestsCountRes.error) throw new Error(mapDbError(requestsCountRes.error));
+  if (recentVisitorsRes.error) throw new Error(mapDbError(recentVisitorsRes.error));
+  if (recentRequestsRes.error) throw new Error(mapDbError(recentRequestsRes.error));
+
+  return {
+    visitorCount: visitorsCountRes.count ?? 0,
+    requestCount: requestsCountRes.count ?? 0,
+    recentVisitors: (recentVisitorsRes.data ?? []) as PortfolioVisitorRow[],
+    recentRequests: (recentRequestsRes.data ?? []) as PortfolioRequestRow[],
+  };
+}
+
 // ── Suppliers ─────────────────────────────────────────────────
 
 export async function getSuppliers(sb: SupabaseClient, teamId?: string): Promise<Supplier[]> {
