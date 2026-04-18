@@ -328,9 +328,6 @@ export function TastingRequestsClient({
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search tasting requests"
         />
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-          {filtered.length} request{filtered.length !== 1 ? 's' : ''}
-        </span>
         <span
           className={styles.totalStatsLine}
           aria-label={`${requests.length} requests, ${visitorCount} total visitors`}
