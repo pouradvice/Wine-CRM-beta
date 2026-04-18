@@ -21,7 +21,7 @@ const OWNER_EXTRAS = [
   { href: '/app/crm/team',      label: 'Team' },
   { href: '/app/crm/suppliers', label: 'Suppliers' },
   { href: '/app/crm/attribution', label: 'Attribution' },
-  { href: '/app/crm/portfolio', label: 'Portfolio' },
+  { href: '/app/crm/tasting-requests', label: 'Portfolio' },
 ];
 
 interface NavProps {
