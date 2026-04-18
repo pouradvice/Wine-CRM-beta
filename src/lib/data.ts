@@ -93,6 +93,36 @@ export interface PortfolioStats {
   recentRequests: PortfolioRequestRow[];
 }
 
+export async function getNonRequestingPortfolioVisitors(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<PortfolioVisitorRow[]> {
+  const [visitorsRes, requestEmailsRes] = await Promise.all([
+    sb
+      .from('portfolio_visitors')
+      .select('id, email, company_name, created_at')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false }),
+    sb
+      .from('tasting_requests')
+      .select('visitor_email')
+      .eq('team_id', teamId),
+  ]);
+
+  if (visitorsRes.error) throw new Error(mapDbError(visitorsRes.error));
+  if (requestEmailsRes.error) throw new Error(mapDbError(requestEmailsRes.error));
+
+  const requestEmailSet = new Set(
+    (requestEmailsRes.data ?? [])
+      .map((row: { visitor_email: string | null }) => row.visitor_email?.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  return ((visitorsRes.data ?? []) as PortfolioVisitorRow[]).filter(
+    (visitor) => !requestEmailSet.has(visitor.email.trim().toLowerCase()),
+  );
+}
+
 export async function getPortfolioPage(
   sb: SupabaseClient,
   teamId: string,
