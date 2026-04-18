@@ -292,7 +292,20 @@ export function TastingRequestsClient({
               title="Portfolio settings"
               className={styles.iconButton}
             >
-              ⚙
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V22a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H2a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H8a1.7 1.7 0 0 0 1-1.55V2a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h.04a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V8c0 .68.4 1.29 1.03 1.55.17.07.34.1.52.1H22a2 2 0 0 1 0 4h-.09c-.69 0-1.31.4-1.58 1.03-.07.17-.1.34-.1.52Z" />
+              </svg>
             </Button>
           )}
           <Button
@@ -318,8 +331,13 @@ export function TastingRequestsClient({
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
           {filtered.length} request{filtered.length !== 1 ? 's' : ''}
         </span>
-        <span className={styles.totalStatsLine}>
-          {requests.length} request{requests.length !== 1 ? 's' : ''} · {visitorCount} total visitor{visitorCount !== 1 ? 's' : ''}
+        <span
+          className={styles.totalStatsLine}
+          aria-label={`${requests.length} requests, ${visitorCount} total visitors`}
+        >
+          <span>{requests.length} request{requests.length !== 1 ? 's' : ''}</span>
+          <span aria-hidden="true"> · </span>
+          <span>{visitorCount} total visitor{visitorCount !== 1 ? 's' : ''}</span>
         </span>
       </div>
 

@@ -97,6 +97,8 @@ export async function getNonRequestingPortfolioVisitors(
   sb: SupabaseClient,
   teamId: string,
 ): Promise<PortfolioVisitorRow[]> {
+  type RequestEmailRow = { visitor_email: string | null };
+
   const [visitorsRes, requestEmailsRes] = await Promise.all([
     sb
       .from('portfolio_visitors')
@@ -114,13 +116,15 @@ export async function getNonRequestingPortfolioVisitors(
 
   const requestEmailSet = new Set(
     (requestEmailsRes.data ?? [])
-      .map((row: { visitor_email: string | null }) => row.visitor_email?.trim().toLowerCase())
+      .map((row: RequestEmailRow) => row.visitor_email?.trim().toLowerCase())
       .filter(Boolean),
   );
 
-  return ((visitorsRes.data ?? []) as PortfolioVisitorRow[]).filter(
-    (visitor) => !requestEmailSet.has(visitor.email.trim().toLowerCase()),
-  );
+  return ((visitorsRes.data ?? []) as PortfolioVisitorRow[]).filter((visitor) => {
+    const visitorEmail = visitor.email?.trim().toLowerCase();
+    if (!visitorEmail) return false;
+    return !requestEmailSet.has(visitorEmail);
+  });
 }
 
 export async function getPortfolioPage(
